@@ -1,0 +1,58 @@
+name: LandClaims
+version: '${version}'
+main: com.nick.landclaims.plugin.LandClaimsPlugin
+api-version: '26.1.2'
+author: Nick
+description: Chunk-based land claiming with configurable protections.
+softdepend:
+  - VaultUnlocked
+commands:
+  claims:
+    description: Opens LandClaims commands and menus.
+    usage: /claims
+    aliases: [claim, lc]
+permissions:
+  landclaims.use:
+    description: Allows basic LandClaims usage.
+    default: true
+  landclaims.claim:
+    description: Allows creating player claims.
+    default: true
+  landclaims.gui:
+    description: Allows opening claim menus.
+    default: true
+  landclaims.tool.use:
+    description: Allows using the claim tool.
+    default: true
+  landclaims.tool.craft:
+    description: Allows crafting the claim tool.
+    default: true
+  landclaims.tool.recharge:
+    description: Allows recharging the claim tool.
+    default: true
+  landclaims.member.manage:
+    description: Allows managing claim members.
+    default: true
+  landclaims.bypass.claim-limit:
+    description: Bypasses claim allowance limits.
+    default: op
+  landclaims.bypass.claim-buffer:
+    description: Bypasses claim buffer distance checks.
+    default: op
+  landclaims.bypass.protection:
+    description: Bypasses claim protection checks.
+    default: op
+  landclaims.admin:
+    description: Grants all LandClaims admin permissions.
+    default: op
+    children:
+      landclaims.admin.claim.create: true
+      landclaims.admin.claim.edit: true
+      landclaims.admin.claim.delete: true
+      landclaims.admin.claim.list: true
+      landclaims.admin.userclaims.view: true
+      landclaims.admin.userclaims.edit: true
+      landclaims.admin.userclaims.delete: true
+      landclaims.admin.userclaims.teleport: true
+      landclaims.admin.userclaims.transfer: true
+      landclaims.admin.reload: true
