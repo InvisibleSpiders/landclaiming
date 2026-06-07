@@ -1,11 +1,12 @@
 plugins {
     `java-library`
+    id("com.gradleup.shadow") version "8.3.1"
 }
 
 dependencies {
     api(project(":landclaims-api"))
 
-    compileOnly("io.papermc.paper:paper-api:26.1.2.build.+")
+    compileOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")
     compileOnly("net.milkbowl.vault:VaultAPI:1.7")
 
     implementation("com.zaxxer:HikariCP:6.3.0")
@@ -17,7 +18,24 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.27.3")
 }
 
+tasks.processResources {
+    filesMatching("plugin.yml") {
+        expand("version" to project.version)
+    }
+}
+
 tasks.jar {
     archiveBaseName.set("LandClaims")
     archiveVersion.set(project.version.toString())
+    enabled = false
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("LandClaims")
+    archiveVersion.set(project.version.toString())
+    archiveClassifier.set("")
+}
+
+tasks.build {
+    dependsOn(tasks.shadowJar)
 }

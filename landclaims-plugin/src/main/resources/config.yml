@@ -1,0 +1,3 @@
+# Minimal default config; expanded in later tasks.
+storage:
+  type: sqlite
