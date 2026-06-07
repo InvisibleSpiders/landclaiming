@@ -17,7 +17,7 @@ public final class ProtectionService {
         Objects.requireNonNull(claim, "claim");
         Objects.requireNonNull(flagKey, "flagKey");
 
-        if (Objects.equals(claim.ownerUuid(), actorUuid)) {
+        if (actorUuid != null && actorUuid.equals(claim.ownerUuid())) {
             return ClaimProtectionResult.ALLOW;
         }
 

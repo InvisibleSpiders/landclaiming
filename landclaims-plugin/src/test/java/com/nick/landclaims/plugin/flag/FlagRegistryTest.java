@@ -3,6 +3,7 @@ package com.nick.landclaims.plugin.flag;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.nick.landclaims.api.flag.ClaimFlagDefinition;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +50,15 @@ class FlagRegistryTest {
     }
 
     @Test
+    void rejectsDuplicateFlagKeys() {
+        ClaimFlagDefinition first = flag("custom_flag", false);
+        ClaimFlagDefinition duplicate = flag("custom_flag", true);
+
+        assertThatThrownBy(() -> new FlagRegistry(Set.of(first, duplicate)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void exposedCollectionsCannotMutateRegistryInternals() {
         FlagRegistry registry = FlagRegistry.createDefault();
 
@@ -59,5 +69,14 @@ class FlagRegistryTest {
         assertThat(registry.keys()).contains("build");
         assertThat(registry.keys()).doesNotContain("custom_flag");
         assertThat(registry.keys()).isInstanceOf(Set.class);
+    }
+
+    private static ClaimFlagDefinition flag(String key, boolean defaultValue) {
+        return new ClaimFlagDefinition(
+                key,
+                "custom",
+                defaultValue,
+                "landclaims.flag." + key
+        );
     }
 }

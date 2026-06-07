@@ -35,6 +35,16 @@ class ProtectionServiceTest {
     }
 
     @Test
+    void nullActorDeniedForAdminClaimWithoutOwnerWhenFlagIsFalse() {
+        Claim claim = claim(OwnerType.ADMIN, null, Map.of("build", false));
+        ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
+
+        ClaimProtectionResult result = service.checkClaimFlag(claim, null, "build");
+
+        assertThat(result).isEqualTo(ClaimProtectionResult.DENY_WITH_MESSAGE);
+    }
+
+    @Test
     void strangerAllowedWhenClaimFlagIsTrue() {
         Claim claim = claim(UUID.randomUUID(), Map.of("build", true));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
@@ -56,11 +66,15 @@ class ProtectionServiceTest {
     }
 
     private static Claim claim(UUID ownerUuid, Map<String, Boolean> flags) {
+        return claim(OwnerType.PLAYER, ownerUuid, flags);
+    }
+
+    private static Claim claim(OwnerType ownerType, UUID ownerUuid, Map<String, Boolean> flags) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
                 "Spawn",
-                OwnerType.PLAYER,
+                ownerType,
                 ownerUuid,
                 UUID.randomUUID(),
                 Set.of(),

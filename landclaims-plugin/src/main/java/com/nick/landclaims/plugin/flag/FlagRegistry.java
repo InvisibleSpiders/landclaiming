@@ -16,7 +16,10 @@ public final class FlagRegistry {
         Map<String, ClaimFlagDefinition> byKey = new LinkedHashMap<>();
         for (ClaimFlagDefinition definition : definitions) {
             ClaimFlagDefinition nonNullDefinition = Objects.requireNonNull(definition, "definition");
-            byKey.put(nonNullDefinition.key(), nonNullDefinition);
+            ClaimFlagDefinition previous = byKey.putIfAbsent(nonNullDefinition.key(), nonNullDefinition);
+            if (previous != null) {
+                throw new IllegalArgumentException("Duplicate flag key: " + nonNullDefinition.key());
+            }
         }
         this.definitions = Map.copyOf(byKey);
     }
