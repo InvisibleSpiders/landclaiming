@@ -1,6 +1,7 @@
 package com.nick.landclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Set;
 import java.util.UUID;
@@ -36,6 +37,18 @@ class ClaimServiceTest {
         assertThat(claimService.isWithinChunkBuffer(proposed, new ClaimChunk(worldId, 12, 9), 2)).isTrue();
         assertThat(claimService.isWithinChunkBuffer(proposed, new ClaimChunk(worldId, 13, 10), 2)).isFalse();
         assertThat(claimService.isWithinChunkBuffer(proposed, new ClaimChunk(UUID.randomUUID(), 10, 10), 2)).isFalse();
+    }
+
+    @Test
+    void chunkBufferRejectsNegativeDistance() {
+        UUID worldId = UUID.randomUUID();
+        ClaimService claimService = new ClaimService();
+
+        ClaimChunk proposed = new ClaimChunk(worldId, 10, 10);
+        ClaimChunk existing = new ClaimChunk(worldId, 11, 10);
+
+        assertThatThrownBy(() -> claimService.isWithinChunkBuffer(proposed, existing, -1))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

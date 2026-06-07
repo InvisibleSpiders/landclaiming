@@ -27,6 +27,10 @@ public class ClaimService {
         Objects.requireNonNull(proposed, "proposed");
         Objects.requireNonNull(existing, "existing");
 
+        if (bufferDistance < 0) {
+            throw new IllegalArgumentException("bufferDistance must be non-negative");
+        }
+
         if (!proposed.worldId().equals(existing.worldId())) {
             return false;
         }
