@@ -36,7 +36,11 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
 
-        player.sendMessage(Component.text("LandClaims menu coming soon.", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("LandClaims commands", NamedTextColor.GOLD));
+        player.sendMessage(Component.text("/claims tool", NamedTextColor.YELLOW)
+                .append(Component.text(" - gives you the configured claiming tool.", NamedTextColor.GRAY)));
+        player.sendMessage(Component.text("Right-click two chunks with the tool to preview a selection.", NamedTextColor.GRAY));
+        player.sendMessage(Component.text("Claim creation menus are planned for the next playable build.", NamedTextColor.GRAY));
         return true;
     }
 }

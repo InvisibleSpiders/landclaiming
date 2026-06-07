@@ -25,20 +25,28 @@ public class ClaimToolService {
     }
 
     public ItemStack createClaimTool() {
+        return createClaimTool(DEFAULT_MAX_CHARGES);
+    }
+
+    public ItemStack createClaimTool(int maxCharges) {
+        if (maxCharges < 1) {
+            throw new IllegalArgumentException("maxCharges must be at least 1");
+        }
+
         ItemStack itemStack = new ItemStack(Material.GOLDEN_HOE);
         ItemMeta itemMeta = itemStack.getItemMeta();
         itemMeta.displayName(Component.text("Claiming Hoe", NamedTextColor.GOLD));
         itemMeta.lore(List.of(
                 Component.text("Charges: ", NamedTextColor.GRAY)
-                        .append(Component.text(DEFAULT_MAX_CHARGES, NamedTextColor.YELLOW))
+                        .append(Component.text(maxCharges, NamedTextColor.YELLOW))
                         .append(Component.text("/", NamedTextColor.GRAY))
-                        .append(Component.text(DEFAULT_MAX_CHARGES, NamedTextColor.YELLOW)),
+                        .append(Component.text(maxCharges, NamedTextColor.YELLOW)),
                 Component.text("Right-click two chunks to select land.", NamedTextColor.GRAY)
         ));
 
         PersistentDataContainer persistentDataContainer = itemMeta.getPersistentDataContainer();
-        persistentDataContainer.set(currentChargesKey, PersistentDataType.INTEGER, DEFAULT_MAX_CHARGES);
-        persistentDataContainer.set(maxChargesKey, PersistentDataType.INTEGER, DEFAULT_MAX_CHARGES);
+        persistentDataContainer.set(currentChargesKey, PersistentDataType.INTEGER, maxCharges);
+        persistentDataContainer.set(maxChargesKey, PersistentDataType.INTEGER, maxCharges);
         itemStack.setItemMeta(itemMeta);
         return itemStack;
     }
