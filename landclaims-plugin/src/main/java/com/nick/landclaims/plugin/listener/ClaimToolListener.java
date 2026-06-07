@@ -53,6 +53,11 @@ public class ClaimToolListener implements Listener {
             return;
         }
 
+        if (!claimToolService.isClaimTool(event.getMainHandItem())
+                && !claimToolService.isClaimTool(event.getOffHandItem())) {
+            return;
+        }
+
         event.setCancelled(true);
         player.performCommand("claims menu");
     }
