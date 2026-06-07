@@ -8,6 +8,7 @@ import java.util.Set;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -46,7 +47,7 @@ public class ClaimToolListener implements Listener {
             return;
         }
 
-        Chunk chunk = player.getLocation().getChunk();
+        Chunk chunk = selectionChunk(event.getClickedBlock(), player.getLocation().getChunk());
         selectionService.select(player, chunk).ifPresentOrElse(
                 chunks -> sendSelectionComplete(player, chunks),
                 () -> player.sendMessage(Component.text("First claim corner selected.", NamedTextColor.YELLOW))
@@ -76,6 +77,10 @@ public class ClaimToolListener implements Listener {
 
     private boolean isSelectionAction(Action action) {
         return action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK;
+    }
+
+    static Chunk selectionChunk(Block clickedBlock, Chunk playerChunk) {
+        return clickedBlock != null ? clickedBlock.getChunk() : playerChunk;
     }
 
     private void sendSelectionComplete(Player player, Set<ClaimChunk> chunks) {
