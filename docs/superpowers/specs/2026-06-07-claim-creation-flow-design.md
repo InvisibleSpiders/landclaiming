@@ -14,7 +14,7 @@ Players can clear a pending selection in three ways:
 - Switching away from the claim tool, if selection-clear-on-tool-switch is enabled.
 - Double crouching within a configurable tick window.
 
-The double-crouch window will be configured in ticks rather than milliseconds because Minecraft server input is processed on ticks. The default will be a short but reliable `16` ticks, or about `800ms`. Server owners can lower it; the closest practical setting to `80ms` is `2` ticks, or about `100ms`.
+The double-crouch window will be configured in ticks because Minecraft server input is processed on ticks. The default will be `80` ticks, or about `4` seconds.
 
 ## Commands
 
