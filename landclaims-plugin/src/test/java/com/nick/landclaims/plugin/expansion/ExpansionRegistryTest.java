@@ -32,6 +32,17 @@ class ExpansionRegistryTest {
                 .isThrownBy(() -> registry.registerFlag(null));
     }
 
+    @Test
+    void registerFlagRejectsDuplicateKey() {
+        ExpansionRegistry registry = new ExpansionRegistry();
+
+        registry.registerFlag(flag("custom_one"));
+
+        assertThatThrownBy(() -> registry.registerFlag(flag("custom_one")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("custom_one");
+    }
+
     private static ClaimFlagDefinition flag(String key) {
         return new ClaimFlagDefinition(
                 key,
