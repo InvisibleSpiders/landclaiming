@@ -14,7 +14,6 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.3")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
-    testImplementation("org.mockito:mockito-core:5.18.0")
     testImplementation("org.assertj:assertj-core:3.27.3")
     testCompileOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")
     testImplementation("net.kyori:adventure-api:4.26.1")

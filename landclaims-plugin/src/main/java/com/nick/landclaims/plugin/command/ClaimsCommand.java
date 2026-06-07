@@ -10,6 +10,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 public class ClaimsCommand implements CommandExecutor {
+    private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
+
     private final ClaimToolService claimToolService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
@@ -24,6 +26,11 @@ public class ClaimsCommand implements CommandExecutor {
         }
 
         if (args.length == 1 && args[0].equalsIgnoreCase("tool")) {
+            if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
+                player.sendMessage(Component.text("You do not have permission to use the claim tool.", NamedTextColor.RED));
+                return true;
+            }
+
             player.getInventory().addItem(claimToolService.createClaimTool());
             player.sendMessage(Component.text("Claim tool added to your inventory.", NamedTextColor.GREEN));
             return true;

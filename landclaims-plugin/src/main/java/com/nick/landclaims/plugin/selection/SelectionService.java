@@ -38,6 +38,11 @@ public class SelectionService {
             return Optional.empty();
         }
 
+        if (!firstCorner.worldId().equals(chunk.worldId())) {
+            firstCorners.put(playerId, chunk);
+            return Optional.empty();
+        }
+
         return Optional.of(claimService.expandRectangle(
                 firstCorner.worldId(),
                 firstCorner.chunkX(),

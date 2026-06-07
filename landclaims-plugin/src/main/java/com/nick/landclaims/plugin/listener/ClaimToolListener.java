@@ -18,6 +18,8 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 public class ClaimToolListener implements Listener {
+    private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
+
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
 
@@ -39,6 +41,11 @@ public class ClaimToolListener implements Listener {
 
         event.setCancelled(true);
         Player player = event.getPlayer();
+        if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
+            sendMissingPermission(player);
+            return;
+        }
+
         Chunk chunk = player.getLocation().getChunk();
         selectionService.select(player, chunk).ifPresentOrElse(
                 chunks -> sendSelectionComplete(player, chunks),
@@ -59,6 +66,11 @@ public class ClaimToolListener implements Listener {
         }
 
         event.setCancelled(true);
+        if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
+            sendMissingPermission(player);
+            return;
+        }
+
         player.performCommand("claims menu");
     }
 
@@ -70,5 +82,9 @@ public class ClaimToolListener implements Listener {
         player.sendMessage(Component.text("Claim selection contains ", NamedTextColor.GREEN)
                 .append(Component.text(chunks.size(), NamedTextColor.YELLOW))
                 .append(Component.text(" chunks.", NamedTextColor.GREEN)));
+    }
+
+    private void sendMissingPermission(Player player) {
+        player.sendMessage(Component.text("You do not have permission to use the claim tool.", NamedTextColor.RED));
     }
 }
