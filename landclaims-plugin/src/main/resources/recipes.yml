@@ -1,0 +1,10 @@
+claim-tool:
+  enabled: true
+  shape:
+    - " G "
+    - " S "
+    - " S "
+  ingredients:
+    G: GOLD_INGOT
+    S: STICK
+  result-charges: 25

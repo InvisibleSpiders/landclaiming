@@ -1,0 +1,17 @@
+# Permission nodes registered at startup for permission editor discovery.
+limits:
+  landclaims.limit.default: 10
+  landclaims.limit.member: 25
+  landclaims.limit.vip: 75
+  landclaims.limit.elite: 150
+flag-edit:
+  landclaims.flag.edit.basic:
+    - build
+    - break
+    - interact
+    - container_access
+  landclaims.flag.edit.environment:
+    - fluid_flow
+    - explosion_damage
+    - fire_spread
+    - mob_griefing
