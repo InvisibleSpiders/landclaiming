@@ -89,4 +89,25 @@ class ClaimTest {
         assertThatThrownBy(() -> claim.flags().put("interact", false))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
+
+    @Test
+    void chunkViewsCannotBeModified() {
+        UUID worldId = UUID.randomUUID();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                "Spawn",
+                OwnerType.PLAYER,
+                UUID.randomUUID(),
+                worldId,
+                Set.of(new ClaimChunk(worldId, 4, -2)),
+                Map.of(),
+                Instant.parse("2026-06-07T00:00:00Z"),
+                Instant.parse("2026-06-07T00:05:00Z")
+        );
+
+        assertThatThrownBy(() -> claim.claimChunks().add(new ClaimChunk(worldId, 5, -2)))
+                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> claim.chunks().add(new ClaimChunkView(worldId, 5, -2)))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
 }
