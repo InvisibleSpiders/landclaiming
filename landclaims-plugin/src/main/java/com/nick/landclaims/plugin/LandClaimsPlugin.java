@@ -6,12 +6,15 @@ import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
 import com.nick.landclaims.plugin.listener.ProtectionListener;
 import com.nick.landclaims.plugin.protection.ProtectionService;
+import com.nick.landclaims.plugin.recipe.ClaimToolRecipeService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class LandClaimsPlugin extends JavaPlugin {
@@ -29,6 +32,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
+        new ClaimToolRecipeService(this, claimToolService).register(loadYamlResource("recipes.yml"));
 
         getServer().getPluginManager().registerEvents(
                 new ClaimToolListener(claimToolService, selectionService),
@@ -61,5 +65,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
         if (Files.notExists(resourcePath)) {
             saveResource(resourceName, false);
         }
+    }
+
+    private YamlConfiguration loadYamlResource(String resourceName) {
+        File resourceFile = getDataFolder().toPath().resolve(resourceName).toFile();
+        return YamlConfiguration.loadConfiguration(resourceFile);
     }
 }
