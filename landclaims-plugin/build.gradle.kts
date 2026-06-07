@@ -16,6 +16,9 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.mockito:mockito-core:5.18.0")
     testImplementation("org.assertj:assertj-core:3.27.3")
+    testImplementation("net.kyori:adventure-api:4.26.1")
+    testImplementation("net.kyori:adventure-text-minimessage:4.26.1")
+    testImplementation("net.kyori:adventure-text-serializer-plain:4.26.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
