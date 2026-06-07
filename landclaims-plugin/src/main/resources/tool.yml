@@ -1,0 +1,14 @@
+tool:
+  material: GOLDEN_HOE
+  name: "<gold>Claiming Hoe</gold>"
+  custom-model-data: 0
+  max-charges: 25
+  consume-per-chunk: 1
+  zero-charge-behavior: inactive
+  lore:
+    - "<gray>Charges: <yellow><charges></yellow>/<yellow><max_charges></yellow>"
+    - "<gray>Right-click two chunks to select land.</gray>"
+  recharge:
+    allow-items: true
+    allow-economy: true
+    allow-admin-command: true

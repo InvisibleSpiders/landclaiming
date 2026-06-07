@@ -1,0 +1,18 @@
+claim:
+  created: "<green>Claim <white><claim_name></white> created with <yellow><chunk_count></yellow> chunks."
+  denied: "<red>You cannot do that in <white><claim_name></white>."
+  blocked-near-other: "<red>You cannot claim within <yellow><distance></yellow> chunks of another player's land."
+  not-enough-charges: "<red>Your claim tool needs <yellow><needed></yellow> charges, but only has <yellow><available></yellow>."
+  over-limit-cost: "<yellow>This claim exceeds your allowance by <over_chunks> chunks and will cost <green><cost></green>."
+  economy-unavailable: "<red>Paid over-limit claiming is enabled, but economy is unavailable."
+tool:
+  name: "<gold>Claiming Hoe</gold>"
+  lore:
+    - "<gray>Charges: <yellow><charges></yellow>/<yellow><max_charges></yellow>"
+    - "<gray>Right-click two chunks to select land.</gray>"
+dialog:
+  setup-title: "<gold>Create Claim</gold>"
+  confirm: "<green>Confirm</green>"
+  cancel: "<red>Cancel</red>"
+admin:
+  teleported: "<green>Teleported to <white><claim_name></white>."
