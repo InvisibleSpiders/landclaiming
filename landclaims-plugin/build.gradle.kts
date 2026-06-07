@@ -16,6 +16,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.assertj:assertj-core:3.27.3")
     testCompileOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")
+    testRuntimeOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")
     testImplementation("net.kyori:adventure-api:4.26.1")
     testImplementation("net.kyori:adventure-text-minimessage:4.26.1")
     testImplementation("net.kyori:adventure-text-serializer-plain:4.26.1")
