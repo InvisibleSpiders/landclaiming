@@ -3,9 +3,8 @@ package com.nick.landclaims.plugin.listener;
 import com.nick.landclaims.api.protection.ClaimProtectionResult;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
+import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.protection.ProtectionService;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,13 +22,9 @@ public final class ProtectionListener implements Listener {
     private static final String BYPASS_PERMISSION = "landclaims.bypass.protection";
 
     private final ProtectionService protectionService;
-    private final Map<ClaimChunk, Claim> claimIndex;
+    private final ClaimIndex claimIndex;
 
-    public ProtectionListener(ProtectionService protectionService) {
-        this(protectionService, new HashMap<>());
-    }
-
-    ProtectionListener(ProtectionService protectionService, Map<ClaimChunk, Claim> claimIndex) {
+    public ProtectionListener(ProtectionService protectionService, ClaimIndex claimIndex) {
         this.protectionService = Objects.requireNonNull(protectionService, "protectionService");
         this.claimIndex = Objects.requireNonNull(claimIndex, "claimIndex");
     }
@@ -70,8 +65,8 @@ public final class ProtectionListener implements Listener {
         Objects.requireNonNull(permissionCheck, "permissionCheck");
         Objects.requireNonNull(flagKey, "flagKey");
 
-        Claim claim = claimIndex.get(claimChunk);
-        if (claim == null) {
+        Optional<Claim> claim = claimIndex.findAt(claimChunk);
+        if (claim.isEmpty()) {
             return Optional.empty();
         }
 
@@ -79,7 +74,7 @@ public final class ProtectionListener implements Listener {
             return Optional.of(ClaimProtectionResult.ALLOW);
         }
 
-        return Optional.of(protectionService.checkClaimFlag(claim, actorUuid, flagKey));
+        return Optional.of(protectionService.checkClaimFlag(claim.orElseThrow(), actorUuid, flagKey));
     }
 
     private boolean isDenied(Block block, Player player, String flagKey) {

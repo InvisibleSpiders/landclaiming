@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 public class SelectionService {
     private final ClaimService claimService;
     private final Map<UUID, ClaimChunk> firstCorners = new HashMap<>();
+    private final Map<UUID, Set<ClaimChunk>> completedSelections = new HashMap<>();
 
     public SelectionService(ClaimService claimService) {
         this.claimService = Objects.requireNonNull(claimService, "claimService");
@@ -43,17 +44,35 @@ public class SelectionService {
             return Optional.empty();
         }
 
-        return Optional.of(claimService.expandRectangle(
+        Set<ClaimChunk> chunks = claimService.expandRectangle(
                 firstCorner.worldId(),
                 firstCorner.chunkX(),
                 firstCorner.chunkZ(),
                 chunk.chunkX(),
                 chunk.chunkZ()
-        ));
+        );
+        completedSelections.put(playerId, chunks);
+        return Optional.of(chunks);
+    }
+
+    public Optional<Set<ClaimChunk>> pendingSelection(UUID playerId) {
+        Objects.requireNonNull(playerId, "playerId");
+        return Optional.ofNullable(completedSelections.get(playerId));
+    }
+
+    public Optional<Set<ClaimChunk>> consumeSelection(UUID playerId) {
+        Objects.requireNonNull(playerId, "playerId");
+        return Optional.ofNullable(completedSelections.remove(playerId));
+    }
+
+    public void clear(UUID playerId) {
+        Objects.requireNonNull(playerId, "playerId");
+        firstCorners.remove(playerId);
+        completedSelections.remove(playerId);
     }
 
     public void clear(Player player) {
         Objects.requireNonNull(player, "player");
-        firstCorners.remove(player.getUniqueId());
+        clear(player.getUniqueId());
     }
 }

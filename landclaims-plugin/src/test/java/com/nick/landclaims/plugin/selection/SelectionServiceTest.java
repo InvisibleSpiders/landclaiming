@@ -72,4 +72,38 @@ class SelectionServiceTest {
                         new ClaimChunk(worldId, 10, 11)
                 ));
     }
+
+    @Test
+    void completedSelectionRemainsPendingUntilConsumed() {
+        ClaimService claimService = new ClaimService();
+        SelectionService selectionService = new SelectionService(claimService);
+        UUID playerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+
+        assertThat(selectionService.select(playerId, new ClaimChunk(worldId, 0, 0))).isEmpty();
+        Set<ClaimChunk> completedSelection = selectionService.select(playerId, new ClaimChunk(worldId, 1, 0))
+                .orElseThrow();
+
+        assertThat(selectionService.pendingSelection(playerId)).contains(completedSelection);
+        assertThat(selectionService.pendingSelection(playerId)).contains(completedSelection);
+        assertThat(selectionService.consumeSelection(playerId)).contains(completedSelection);
+        assertThat(selectionService.pendingSelection(playerId)).isEmpty();
+    }
+
+    @Test
+    void clearRemovesFirstCornerAndCompletedSelection() {
+        ClaimService claimService = new ClaimService();
+        SelectionService selectionService = new SelectionService(claimService);
+        UUID playerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+
+        selectionService.select(playerId, new ClaimChunk(worldId, 0, 0));
+        selectionService.select(playerId, new ClaimChunk(worldId, 1, 0));
+
+        selectionService.clear(playerId);
+
+        assertThat(selectionService.pendingSelection(playerId)).isEmpty();
+        assertThat(selectionService.consumeSelection(playerId)).isEmpty();
+        assertThat(selectionService.select(playerId, new ClaimChunk(worldId, 2, 0))).isEmpty();
+    }
 }

@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.nick.landclaims.api.protection.ClaimProtectionResult;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
+import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.protection.ProtectionService;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -77,9 +77,11 @@ class ProtectionListenerTest {
     }
 
     private static ProtectionListener listener(Map<ClaimChunk, Claim> claims) {
+        ClaimIndex claimIndex = new ClaimIndex();
+        claimIndex.load(claims.values());
         return new ProtectionListener(
                 new ProtectionService(FlagRegistry.createDefault()),
-                new HashMap<>(claims)
+                claimIndex
         );
     }
 

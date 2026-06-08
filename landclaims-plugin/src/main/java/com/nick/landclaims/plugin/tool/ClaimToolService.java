@@ -24,6 +24,12 @@ public class ClaimToolService {
         this.maxChargesKey = new NamespacedKey(plugin, "claim_tool_max_charges");
     }
 
+    ClaimToolService(String namespace) {
+        Objects.requireNonNull(namespace, "namespace");
+        this.currentChargesKey = new NamespacedKey(namespace, "claim_tool_current_charges");
+        this.maxChargesKey = new NamespacedKey(namespace, "claim_tool_max_charges");
+    }
+
     public ItemStack createClaimTool() {
         return createClaimTool(DEFAULT_MAX_CHARGES);
     }
@@ -36,19 +42,54 @@ public class ClaimToolService {
         ItemStack itemStack = new ItemStack(Material.GOLDEN_HOE);
         ItemMeta itemMeta = itemStack.getItemMeta();
         itemMeta.displayName(Component.text("Claiming Hoe", NamedTextColor.GOLD));
-        itemMeta.lore(List.of(
-                Component.text("Charges: ", NamedTextColor.GRAY)
-                        .append(Component.text(maxCharges, NamedTextColor.YELLOW))
-                        .append(Component.text("/", NamedTextColor.GRAY))
-                        .append(Component.text(maxCharges, NamedTextColor.YELLOW)),
-                Component.text("Right-click two chunks to select land.", NamedTextColor.GRAY)
-        ));
 
         PersistentDataContainer persistentDataContainer = itemMeta.getPersistentDataContainer();
         persistentDataContainer.set(currentChargesKey, PersistentDataType.INTEGER, maxCharges);
         persistentDataContainer.set(maxChargesKey, PersistentDataType.INTEGER, maxCharges);
         itemStack.setItemMeta(itemMeta);
+        updateLore(itemStack, maxCharges, maxCharges);
         return itemStack;
+    }
+
+    public int currentCharges(ItemStack itemStack) {
+        if (!isClaimTool(itemStack)) {
+            return 0;
+        }
+
+        Integer charges = itemStack.getItemMeta()
+                .getPersistentDataContainer()
+                .get(currentChargesKey, PersistentDataType.INTEGER);
+        return charges == null ? 0 : charges;
+    }
+
+    public int maxCharges(ItemStack itemStack) {
+        if (!isClaimTool(itemStack)) {
+            return 0;
+        }
+
+        Integer charges = itemStack.getItemMeta()
+                .getPersistentDataContainer()
+                .get(maxChargesKey, PersistentDataType.INTEGER);
+        return charges == null ? 0 : charges;
+    }
+
+    public boolean spendCharges(ItemStack itemStack, int amount) {
+        if (amount < 1) {
+            throw new IllegalArgumentException("amount must be at least 1");
+        }
+
+        int currentCharges = currentCharges(itemStack);
+        if (!isClaimTool(itemStack) || currentCharges < amount) {
+            return false;
+        }
+
+        int remainingCharges = currentCharges - amount;
+        int maxCharges = maxCharges(itemStack);
+        ItemMeta itemMeta = itemStack.getItemMeta();
+        itemMeta.getPersistentDataContainer().set(currentChargesKey, PersistentDataType.INTEGER, remainingCharges);
+        itemStack.setItemMeta(itemMeta);
+        updateLore(itemStack, remainingCharges, maxCharges);
+        return true;
     }
 
     public boolean isClaimTool(ItemStack itemStack) {
@@ -59,5 +100,17 @@ public class ClaimToolService {
         return itemStack.getItemMeta()
                 .getPersistentDataContainer()
                 .has(currentChargesKey, PersistentDataType.INTEGER);
+    }
+
+    private void updateLore(ItemStack itemStack, int currentCharges, int maxCharges) {
+        ItemMeta itemMeta = itemStack.getItemMeta();
+        itemMeta.lore(List.of(
+                Component.text("Charges: ", NamedTextColor.GRAY)
+                        .append(Component.text(currentCharges, NamedTextColor.YELLOW))
+                        .append(Component.text("/", NamedTextColor.GRAY))
+                        .append(Component.text(maxCharges, NamedTextColor.YELLOW)),
+                Component.text("Right-click two chunks to select land.", NamedTextColor.GRAY)
+        ));
+        itemStack.setItemMeta(itemMeta);
     }
 }

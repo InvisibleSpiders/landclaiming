@@ -1,5 +1,7 @@
 # General claim settings.
 claiming:
+  # Maximum claim name length accepted by /claims create.
+  max-name-length: 32
   # Minimum chunk gap between a player claim and another player's claim.
   player-buffer-distance: 3
   # Minimum chunk gap between player claims and admin-owned claims.
@@ -35,3 +37,12 @@ shortcuts:
     enabled: true
     require-claim-tool-in-hand: false
     cancel-item-swap: true
+
+selection:
+  # Clears a pending selection when the player switches away from the claim tool.
+  clear-on-tool-switch: true
+  double-crouch-clear:
+    # Clears a pending selection when the player crouches twice within the configured window.
+    enabled: true
+    # 80 ticks is about 4 seconds at normal server speed.
+    window-ticks: 80
