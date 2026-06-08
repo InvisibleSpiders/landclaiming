@@ -25,4 +25,8 @@ public final class ClaimPaymentService {
         }
         return ClaimPaymentResult.success();
     }
+
+    public String format(double amount) {
+        return economyService.format(amount);
+    }
 }

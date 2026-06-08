@@ -52,6 +52,13 @@ class ClaimPaymentServiceTest {
         assertThat(economyService.lastAmount).isEqualTo(100.0);
     }
 
+    @Test
+    void formatsClaimCostWithEconomyService() {
+        ClaimPaymentService paymentService = new ClaimPaymentService(new RecordingEconomyService(true, true));
+
+        assertThat(paymentService.format(100.5)).isEqualTo("100.50");
+    }
+
     private static ClaimCostQuote quote(double cost) {
         return new ClaimCostQuote(10, 8, 3, 11, 1, cost);
     }
@@ -79,6 +86,11 @@ class ClaimPaymentServiceTest {
             lastPlayerId = playerId;
             lastAmount = amount;
             return withdrawResult;
+        }
+
+        @Override
+        public String format(double amount) {
+            return "%.2f".formatted(amount);
         }
     }
 }

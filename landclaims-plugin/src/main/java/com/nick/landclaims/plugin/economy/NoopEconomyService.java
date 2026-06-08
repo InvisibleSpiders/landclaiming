@@ -1,5 +1,6 @@
 package com.nick.landclaims.plugin.economy;
 
+import java.util.Locale;
 import java.util.UUID;
 
 public final class NoopEconomyService implements EconomyService {
@@ -11,5 +12,10 @@ public final class NoopEconomyService implements EconomyService {
     @Override
     public boolean withdraw(UUID playerId, double amount) {
         return false;
+    }
+
+    @Override
+    public String format(double amount) {
+        return String.format(Locale.US, "%.2f", amount);
     }
 }

@@ -7,6 +7,7 @@ import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
 import com.nick.landclaims.plugin.economy.ClaimPaymentResult;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
+import com.nick.landclaims.plugin.limit.ClaimCostMessageService;
 import com.nick.landclaims.plugin.limit.ClaimCostQuote;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.selection.SelectionService;
@@ -69,6 +70,9 @@ public class ClaimsCommand implements CommandExecutor {
         if (args.length >= 2 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
         }
+        if (args.length == 1 && (args[0].equalsIgnoreCase("cost") || args[0].equalsIgnoreCase("quote"))) {
+            return previewClaimCost(player);
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("cancel")) {
             return cancelSelection(player);
         }
@@ -77,6 +81,30 @@ public class ClaimsCommand implements CommandExecutor {
         }
 
         sendHelp(player);
+        return true;
+    }
+
+    private boolean previewClaimCost(Player player) {
+        if (!isClaimCreationAvailable(player)) {
+            return true;
+        }
+        if (claimCostService == null || claimPaymentService == null) {
+            player.sendMessage(Component.text("Claim cost previews are not available yet.", NamedTextColor.RED));
+            return true;
+        }
+
+        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        if (pendingSelection.isEmpty()) {
+            player.sendMessage(Component.text("Select two chunks with the claim tool first.", NamedTextColor.RED));
+            return true;
+        }
+
+        ClaimCostQuote quote = claimCostService.quotePlayerClaim(
+                player.getUniqueId(),
+                permissionNodes(player),
+                pendingSelection.orElseThrow()
+        );
+        ClaimCostMessageService.preview(quote, claimPaymentService.format(quote.cost())).forEach(player::sendMessage);
         return true;
     }
 
@@ -208,6 +236,8 @@ public class ClaimsCommand implements CommandExecutor {
                 .append(Component.text(" - gives you the configured claiming tool.", NamedTextColor.GRAY)));
         player.sendMessage(Component.text("/claims create <name>", NamedTextColor.YELLOW)
                 .append(Component.text(" - creates a claim from your pending selection.", NamedTextColor.GRAY)));
+        player.sendMessage(Component.text("/claims cost", NamedTextColor.YELLOW)
+                .append(Component.text(" - previews claim allowance and over-limit cost.", NamedTextColor.GRAY)));
         player.sendMessage(Component.text("/claims cancel", NamedTextColor.YELLOW)
                 .append(Component.text(" - clears your pending selection.", NamedTextColor.GRAY)));
         player.sendMessage(Component.text("/claims info", NamedTextColor.YELLOW)

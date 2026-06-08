@@ -24,4 +24,9 @@ public final class HavenEconomyServiceAdapter implements EconomyService {
         }
         return havenEconomyService.withdraw(playerId, amount);
     }
+
+    @Override
+    public String format(double amount) {
+        return havenEconomyService.format(amount);
+    }
 }

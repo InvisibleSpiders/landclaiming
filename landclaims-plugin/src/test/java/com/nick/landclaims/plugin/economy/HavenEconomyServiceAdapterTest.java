@@ -33,4 +33,13 @@ class HavenEconomyServiceAdapterTest {
 
         assertThat(adapter.withdraw(playerId, 125.0)).isFalse();
     }
+
+    @Test
+    void delegatesMoneyFormattingToHavenCoreEconomy() {
+        HavenEconomyService havenEconomyService = mock(HavenEconomyService.class);
+        HavenEconomyServiceAdapter adapter = new HavenEconomyServiceAdapter(havenEconomyService);
+        when(havenEconomyService.format(125.5)).thenReturn("$125.50");
+
+        assertThat(adapter.format(125.5)).isEqualTo("$125.50");
+    }
 }
