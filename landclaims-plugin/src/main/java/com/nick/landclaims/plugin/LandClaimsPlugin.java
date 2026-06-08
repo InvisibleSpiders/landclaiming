@@ -13,6 +13,8 @@ import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
 import com.nick.landclaims.plugin.listener.ProtectionListener;
+import com.nick.landclaims.plugin.message.MessageConfigurationLoader;
+import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.permission.PermissionBankService;
 import com.nick.landclaims.plugin.protection.ProtectionService;
 import com.nick.landclaims.plugin.recipe.ClaimToolRecipeService;
@@ -46,6 +48,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
 
         ClaimService claimService = new ClaimService();
         ClaimToolService claimToolService = new ClaimToolService(this);
+        MessageService messageService = new MessageService(MessageConfigurationLoader.load(loadYamlResource("messages.yml")));
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
@@ -103,7 +106,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         claimIndex,
                         claimCostService,
                         claimPaymentService,
-                        new PendingClaimMergeService()
+                        new PendingClaimMergeService(),
+                        messageService
                 ));
 
         getLogger().info("LandClaims enabled.");

@@ -1,15 +1,57 @@
 claim:
   created: "<green>Claim <white><claim_name></white> created with <yellow><chunk_count></yellow> chunks."
   denied: "<red>You cannot do that in <white><claim_name></white>."
+  create-denied: "<red>Claim could not be created: <yellow><reason></yellow>"
   blocked-near-other: "<red>You cannot claim within <yellow><distance></yellow> chunks of another player's land."
   not-enough-charges: "<red>Your claim tool needs <yellow><needed></yellow> charges, but only has <yellow><available></yellow>."
   over-limit-cost: "<yellow>This claim exceeds your allowance by <over_chunks> chunks and will cost <green><cost></green>."
   economy-unavailable: "<red>Paid over-limit claiming is enabled, but economy is unavailable."
+  selection-required: "<red>Select two chunks with the claim tool first."
+  hold-tool: "<red>Hold your claim tool to create a claim."
+  charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
+  cost-preview:
+    selection: "<gray>Selection: <yellow><selected_chunks></yellow> chunks"
+    current-total: "<gray>Current total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"
+    over-limit: "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"
+    cost: "<gray>Cost: <green><cost></green>"
+    free: "free"
+  info:
+    unclaimed: "<yellow>This chunk is not claimed."
+    name: "<gold>Claim: <yellow><claim_name></yellow>"
+    owner-type: "<gray>Owner type: <white><owner_type></white>"
+    chunks: "<gray>Chunks: <white><chunk_count></white>"
+    you-own: "<gray>You are owner: <white><is_owner></white>"
+  merge:
+    prompt: "<yellow>Claim <gold><claim_name></gold> borders <gold><merge_count></gold> same-name claim(s). Merge them? "
+    confirm-button: "<green>[Merge]</green>"
+    cancel-button: "<red>[Cancel]</red>"
+    unavailable: "<red>Claim merge confirmation is not available yet."
+    none-pending: "<red>No pending claim merge to confirm."
+    selection-changed: "<red>Your claim selection changed. Run /claims create again."
+    cancelled: "<yellow>Claim merge cancelled."
 tool:
   name: "<gold>Claiming Hoe</gold>"
   lore:
     - "<gray>Charges: <yellow><charges></yellow>/<yellow><max_charges></yellow>"
     - "<gray>Right-click two chunks to select land.</gray>"
+command:
+  player-only: "<red>Only players can use LandClaims commands."
+  unavailable:
+    claim-creation: "<red>Claim creation is not available yet."
+    claim-info: "<red>Claim info is not available yet."
+    claim-cost: "<red>Claim cost previews are not available yet."
+  tool:
+    no-permission: "<red>You do not have permission to use the claim tool."
+    given: "<green>Claim tool added to your inventory."
+  selection:
+    cleared: "<yellow>Claim selection cleared."
+  help:
+    title: "<gold>LandClaims commands"
+    tool: "<yellow>/claims tool</yellow><gray> - gives you the configured claiming tool.</gray>"
+    create: "<yellow>/claims create <name></yellow><gray> - creates a claim from your pending selection.</gray>"
+    cost: "<yellow>/claims cost</yellow><gray> - previews claim allowance and over-limit cost.</gray>"
+    cancel: "<yellow>/claims cancel</yellow><gray> - clears your pending selection.</gray>"
+    info: "<yellow>/claims info</yellow><gray> - shows the claim at your current chunk.</gray>"
 dialog:
   setup-title: "<gold>Create Claim</gold>"
   confirm: "<green>Confirm</green>"
