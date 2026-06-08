@@ -3,7 +3,16 @@ package com.nick.landclaims.plugin.storage.sql;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import com.nick.landclaims.plugin.claim.Claim;
+import com.nick.landclaims.plugin.claim.ClaimChunk;
+import com.nick.landclaims.plugin.claim.OwnerType;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sqlite.SQLiteDataSource;
 
 class SqlClaimRepositoryTest {
@@ -37,5 +46,35 @@ class SqlClaimRepositoryTest {
                 .contains("claim_id CHAR(36) NOT NULL")
                 .contains("flag_key VARCHAR(")
                 .contains("PRIMARY KEY (claim_id, flag_key)");
+    }
+
+    @Test
+    void savesAndLoadsClaimWithChunksAndFlags(@TempDir Path tempDirectory) {
+        SQLiteDataSource dataSource = new SQLiteDataSource();
+        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        SqlClaimRepository repository = new SqlClaimRepository(dataSource);
+        repository.initialize();
+        UUID claimId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-06-07T00:00:00Z");
+        Claim claim = new Claim(
+                claimId,
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 1, 2), new ClaimChunk(worldId, 1, 3)),
+                Map.of("build", false, "interact", false),
+                createdAt,
+                createdAt
+        );
+
+        repository.saveClaim(claim);
+
+        assertThat(repository.findClaimAt(worldId, 1, 2)).contains(claim);
+        assertThat(repository.findClaimById(claimId)).contains(claim);
+        assertThat(repository.findClaimsByOwner(OwnerType.PLAYER, ownerId)).containsExactly(claim);
+        assertThat(repository.findAllClaims()).containsExactly(claim);
     }
 }
