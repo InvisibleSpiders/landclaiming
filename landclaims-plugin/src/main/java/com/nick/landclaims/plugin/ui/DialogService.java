@@ -32,6 +32,22 @@ public final class DialogService {
         }
     }
 
+    public void openFlagEditor(Player player, ClaimFlagEditor editor, MessageService messageService) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(editor, "editor");
+        Objects.requireNonNull(messageService, "messageService");
+
+        player.sendMessage(messageService.render("claim.flag-editor.title", Map.of("claim_name", editor.claimName())));
+        for (ClaimFlagEditorRow row : editor.rows()) {
+            player.sendMessage(messageService.render("claim.flag-editor.row", Map.of(
+                    "flag", row.key(),
+                    "category", row.category(),
+                    "state", row.stateLabel(),
+                    "next_state", row.nextStateLabel()
+            )).clickEvent(ClickEvent.runCommand(row.toggleCommand())));
+        }
+    }
+
     public void openClaimSetup(Player player) {
         Objects.requireNonNull(player, "player");
         player.sendMessage(Component.text("Claim setup dialog coming soon.", NamedTextColor.YELLOW));

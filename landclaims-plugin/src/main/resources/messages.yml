@@ -46,8 +46,12 @@ claim:
     no-permission: "<red>You do not have permission to edit <yellow><flag></yellow>."
     invalid-value: "<red>Flag value must be <yellow>true</yellow> or <yellow>false</yellow>."
     set: "<green>Set <yellow><flag></yellow> to <yellow><value></yellow>."
+    toggled: "<green>Toggled <yellow><flag></yellow>."
     list-header: "<gold>Claim flags:"
     list-entry: "<gray>- <yellow><flag></yellow> <gray>(<category>): <value></gray>"
+  flag-editor:
+    title: "<gold>Flags for <yellow><claim_name></yellow>"
+    row: "<gray>- <yellow><flag></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Toggle to <next_state>]</green>"
   menu:
     no-permission: "<red>You do not have permission to open claim menus."
     title: "<gold>Claim Menu: <yellow><claim_name></yellow>"
@@ -79,6 +83,7 @@ command:
   help:
     title: "<gold>LandClaims commands"
     menu: "<yellow>/claims menu</yellow><gray> - opens the claim management menu for this chunk.</gray>"
+    flags: "<yellow>/claims flags</yellow><gray> - opens the flag editor for this chunk.</gray>"
     tool: "<yellow>/claims tool</yellow><gray> - gives you the configured claiming tool.</gray>"
     create: "<yellow>/claims create <name></yellow><gray> - creates a claim from your pending selection.</gray>"
     member: "<yellow>/claims member <add|remove|list></yellow><gray> - manages members for the claim you are standing in.</gray>"

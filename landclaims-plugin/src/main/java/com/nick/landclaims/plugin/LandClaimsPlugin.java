@@ -25,6 +25,7 @@ import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.storage.sql.SqlClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import com.nick.landclaims.plugin.ui.ClaimFlagEditorService;
 import com.nick.landclaims.plugin.ui.ClaimMenuService;
 import com.nick.landclaims.plugin.ui.DialogService;
 import com.nick.landclaims.plugin.ui.InventoryGuiFallbackService;
@@ -115,6 +116,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         messageService,
                         new ClaimMemberService(claimRepository, claimIndex),
                         new ClaimFlagService(claimRepository, claimIndex, flagRegistry),
+                        new ClaimFlagEditorService(),
                         new ClaimMenuService(),
                         new DialogService(),
                         new InventoryGuiFallbackService()
