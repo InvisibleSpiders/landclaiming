@@ -29,6 +29,16 @@ claim:
     none-pending: "<red>No pending claim merge to confirm."
     selection-changed: "<red>Your claim selection changed. Run /claims create again."
     cancelled: "<yellow>Claim merge cancelled."
+  member:
+    usage: "<red>Usage: /claims member <add|remove|list> <player> [member|manager]"
+    not-owner: "<red>Only the claim owner can manage members right now."
+    owner-is-not-member: "<red>The claim owner already has full access and cannot be added as a member."
+    invalid-role: "<red>Role must be <yellow>member</yellow> or <yellow>manager</yellow>."
+    added: "<green>Added <yellow><player></yellow> as <yellow><role></yellow>."
+    removed: "<green>Removed <yellow><player></yellow> from this claim."
+    list-empty: "<yellow>This claim has no members."
+    list-header: "<gold>Claim members:"
+    list-entry: "<gray>- <yellow><player></yellow> <gray>(<role>)</gray>"
 tool:
   name: "<gold>Claiming Hoe</gold>"
   lore:
@@ -49,6 +59,7 @@ command:
     title: "<gold>LandClaims commands"
     tool: "<yellow>/claims tool</yellow><gray> - gives you the configured claiming tool.</gray>"
     create: "<yellow>/claims create <name></yellow><gray> - creates a claim from your pending selection.</gray>"
+    member: "<yellow>/claims member <add|remove|list></yellow><gray> - manages members for the claim you are standing in.</gray>"
     cost: "<yellow>/claims cost</yellow><gray> - previews claim allowance and over-limit cost.</gray>"
     cancel: "<yellow>/claims cancel</yellow><gray> - clears your pending selection.</gray>"
     info: "<yellow>/claims info</yellow><gray> - shows the claim at your current chunk.</gray>"

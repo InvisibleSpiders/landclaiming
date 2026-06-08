@@ -4,6 +4,10 @@ import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.ClaimMember;
+import com.nick.landclaims.plugin.claim.ClaimMemberResult;
+import com.nick.landclaims.plugin.claim.ClaimMemberService;
+import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
 import com.nick.landclaims.plugin.claim.PendingClaimMerge;
 import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
@@ -25,6 +29,7 @@ import java.util.stream.Collectors;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Chunk;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -43,9 +48,10 @@ public class ClaimsCommand implements CommandExecutor {
     private final ClaimPaymentService claimPaymentService;
     private final PendingClaimMergeService pendingClaimMergeService;
     private final MessageService messageService;
+    private final ClaimMemberService claimMemberService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()));
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null);
     }
 
     public ClaimsCommand(
@@ -56,7 +62,8 @@ public class ClaimsCommand implements CommandExecutor {
             ClaimCostService claimCostService,
             ClaimPaymentService claimPaymentService,
             PendingClaimMergeService pendingClaimMergeService,
-            MessageService messageService
+            MessageService messageService,
+            ClaimMemberService claimMemberService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -66,6 +73,7 @@ public class ClaimsCommand implements CommandExecutor {
         this.claimPaymentService = claimPaymentService;
         this.pendingClaimMergeService = pendingClaimMergeService;
         this.messageService = Objects.requireNonNull(messageService, "messageService");
+        this.claimMemberService = claimMemberService;
     }
 
     @Override
@@ -80,6 +88,9 @@ public class ClaimsCommand implements CommandExecutor {
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("member")) {
+            return manageMembers(player, args);
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("mergeconfirm")) {
             return confirmPendingMerge(player);
@@ -99,6 +110,100 @@ public class ClaimsCommand implements CommandExecutor {
 
         sendHelp(player);
         return true;
+    }
+
+    private boolean manageMembers(Player player, String[] args) {
+        if (claimMemberService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
+            return listMembers(player, claim.orElseThrow());
+        }
+        if (args.length < 3) {
+            player.sendMessage(message("claim.member.usage"));
+            return true;
+        }
+
+        OfflinePlayer target = player.getServer().getOfflinePlayer(args[2]);
+        if (args[1].equalsIgnoreCase("add")) {
+            ClaimRole role = args.length >= 4 ? parseRole(args[3]).orElse(null) : ClaimRole.MEMBER;
+            if (role == null) {
+                player.sendMessage(message("claim.member.invalid-role"));
+                return true;
+            }
+            ClaimMemberResult result = claimMemberService.addMember(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    target.getUniqueId(),
+                    role
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey()));
+                return true;
+            }
+            player.sendMessage(message("claim.member.added", Map.of(
+                    "player", memberName(target),
+                    "role", role.name().toLowerCase()
+            )));
+            return true;
+        }
+        if (args[1].equalsIgnoreCase("remove")) {
+            ClaimMemberResult result = claimMemberService.removeMember(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    target.getUniqueId()
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey()));
+                return true;
+            }
+            player.sendMessage(message("claim.member.removed", Map.of("player", memberName(target))));
+            return true;
+        }
+
+        player.sendMessage(message("claim.member.usage"));
+        return true;
+    }
+
+    private boolean listMembers(Player player, Claim claim) {
+        if (claim.members().isEmpty()) {
+            player.sendMessage(message("claim.member.list-empty"));
+            return true;
+        }
+
+        player.sendMessage(message("claim.member.list-header"));
+        claim.members().stream()
+                .sorted(java.util.Comparator.comparing(member -> member.memberUuid().toString()))
+                .forEach(member -> {
+                    OfflinePlayer offlinePlayer = player.getServer().getOfflinePlayer(member.memberUuid());
+                    player.sendMessage(message("claim.member.list-entry", Map.of(
+                            "player", memberName(offlinePlayer),
+                            "role", member.role().name().toLowerCase()
+                    )));
+                });
+        return true;
+    }
+
+    private Optional<ClaimRole> parseRole(String value) {
+        if ("member".equalsIgnoreCase(value)) {
+            return Optional.of(ClaimRole.MEMBER);
+        }
+        if ("manager".equalsIgnoreCase(value)) {
+            return Optional.of(ClaimRole.MANAGER);
+        }
+        return Optional.empty();
+    }
+
+    private String memberName(OfflinePlayer player) {
+        return player.getName() == null ? player.getUniqueId().toString() : player.getName();
     }
 
     private boolean previewClaimCost(Player player) {
@@ -278,9 +383,7 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
 
-        Chunk chunk = player.getLocation().getChunk();
-        ClaimChunk claimChunk = new ClaimChunk(player.getWorld().getUID(), chunk.getX(), chunk.getZ());
-        Optional<Claim> claim = claimIndex.findAt(claimChunk);
+        Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isEmpty()) {
             player.sendMessage(message("claim.info.unclaimed"));
             return true;
@@ -292,6 +395,12 @@ public class ClaimsCommand implements CommandExecutor {
         player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(foundClaim.claimChunks().size()))));
         player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(foundClaim.ownerUuid())))));
         return true;
+    }
+
+    private Optional<Claim> claimAtPlayer(Player player) {
+        Chunk chunk = player.getLocation().getChunk();
+        ClaimChunk claimChunk = new ClaimChunk(player.getWorld().getUID(), chunk.getX(), chunk.getZ());
+        return claimIndex.findAt(claimChunk);
     }
 
     private boolean isClaimCreationAvailable(Player player) {
@@ -306,6 +415,7 @@ public class ClaimsCommand implements CommandExecutor {
         player.sendMessage(message("command.help.title"));
         player.sendMessage(message("command.help.tool"));
         player.sendMessage(message("command.help.create"));
+        player.sendMessage(message("command.help.member"));
         player.sendMessage(message("command.help.cost"));
         player.sendMessage(message("command.help.cancel"));
         player.sendMessage(message("command.help.info"));

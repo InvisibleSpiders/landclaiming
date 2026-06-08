@@ -2,6 +2,7 @@ package com.nick.landclaims.plugin;
 
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.ClaimMemberService;
 import com.nick.landclaims.plugin.claim.ClaimService;
 import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.command.ClaimsCommand;
@@ -107,7 +108,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         claimCostService,
                         claimPaymentService,
                         new PendingClaimMergeService(),
-                        messageService
+                        messageService,
+                        new ClaimMemberService(claimRepository, claimIndex)
                 ));
 
         getLogger().info("LandClaims enabled.");
