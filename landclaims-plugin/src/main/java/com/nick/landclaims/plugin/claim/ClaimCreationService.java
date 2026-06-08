@@ -3,6 +3,8 @@ package com.nick.landclaims.plugin.claim;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -53,7 +55,37 @@ public final class ClaimCreationService {
             return validationResult;
         }
 
+        List<Claim> mergeTargets = mergeTargets(ownerUuid, trimmedName, chunks);
         Instant now = Instant.now();
+        if (!mergeTargets.isEmpty()) {
+            Claim existingClaim = mergeTargets.get(0);
+            Set<ClaimChunk> mergedChunks = new HashSet<>();
+            for (Claim mergeTarget : mergeTargets) {
+                mergedChunks.addAll(mergeTarget.claimChunks());
+            }
+            mergedChunks.addAll(chunks);
+            Claim mergedClaim = new Claim(
+                    existingClaim.id(),
+                    existingClaim.name(),
+                    existingClaim.owner(),
+                    existingClaim.ownerUuid(),
+                    existingClaim.worldId(),
+                    mergedChunks,
+                    existingClaim.flags(),
+                    existingClaim.members(),
+                    existingClaim.createdAt(),
+                    now
+            );
+            for (int index = 1; index < mergeTargets.size(); index++) {
+                Claim redundantClaim = mergeTargets.get(index);
+                claimRepository.deleteClaim(redundantClaim.id());
+                claimIndex.remove(redundantClaim.id());
+            }
+            claimRepository.saveClaim(mergedClaim);
+            claimIndex.replace(mergedClaim);
+            return ClaimValidationResult.allowed();
+        }
+
         Claim claim = new Claim(
                 UUID.randomUUID(),
                 trimmedName,
@@ -68,6 +100,26 @@ public final class ClaimCreationService {
         claimRepository.saveClaim(claim);
         claimIndex.add(claim);
         return ClaimValidationResult.allowed();
+    }
+
+    private List<Claim> mergeTargets(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+        return claimIndex.findAll().stream()
+                .filter(claim -> claim.owner() == OwnerType.PLAYER)
+                .filter(claim -> ownerUuid.equals(claim.ownerUuid()))
+                .filter(claim -> claim.name().equalsIgnoreCase(name))
+                .filter(claim -> chunks.stream().anyMatch(chunk -> bordersClaim(chunk, claim)))
+                .toList();
+    }
+
+    private boolean bordersClaim(ClaimChunk proposedChunk, Claim claim) {
+        return claim.claimChunks().stream().anyMatch(existingChunk ->
+                proposedChunk.worldId().equals(existingChunk.worldId())
+                        && manhattanDistance(proposedChunk, existingChunk) == 1
+        );
+    }
+
+    private int manhattanDistance(ClaimChunk first, ClaimChunk second) {
+        return Math.abs(first.chunkX() - second.chunkX()) + Math.abs(first.chunkZ() - second.chunkZ());
     }
 
     public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {

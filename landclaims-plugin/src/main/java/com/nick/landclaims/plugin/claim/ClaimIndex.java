@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 public final class ClaimIndex {
     private final Map<ClaimChunk, Claim> byChunk = new HashMap<>();
@@ -21,6 +22,17 @@ public final class ClaimIndex {
         for (ClaimChunk chunk : claim.claimChunks()) {
             byChunk.put(chunk, claim);
         }
+    }
+
+    public void replace(Claim claim) {
+        Objects.requireNonNull(claim, "claim");
+        byChunk.entrySet().removeIf(entry -> entry.getValue().id().equals(claim.id()));
+        add(claim);
+    }
+
+    public void remove(UUID claimId) {
+        Objects.requireNonNull(claimId, "claimId");
+        byChunk.entrySet().removeIf(entry -> entry.getValue().id().equals(claimId));
     }
 
     public Optional<Claim> findAt(ClaimChunk chunk) {

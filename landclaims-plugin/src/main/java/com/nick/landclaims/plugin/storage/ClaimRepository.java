@@ -11,6 +11,8 @@ public interface ClaimRepository {
 
     void saveClaim(Claim claim);
 
+    void deleteClaim(UUID claimId);
+
     Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ);
 
     Optional<Claim> findClaimById(UUID claimId);

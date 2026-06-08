@@ -91,4 +91,34 @@ class SqlClaimRepositoryTest {
         assertThat(repository.findClaimsByOwner(OwnerType.PLAYER, ownerId)).containsExactly(claim);
         assertThat(repository.findAllClaims()).containsExactly(claim);
     }
+
+    @Test
+    void deletesClaimAndOwnedRows(@TempDir Path tempDirectory) {
+        SQLiteDataSource dataSource = new SQLiteDataSource();
+        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        SqlClaimRepository repository = new SqlClaimRepository(dataSource);
+        repository.initialize();
+        UUID claimId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-06-07T00:00:00Z");
+        Claim claim = new Claim(
+                claimId,
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 1, 2)),
+                Map.of("build", false),
+                createdAt,
+                createdAt
+        );
+        repository.saveClaim(claim);
+
+        repository.deleteClaim(claimId);
+
+        assertThat(repository.findClaimAt(worldId, 1, 2)).isEmpty();
+        assertThat(repository.findClaimById(claimId)).isEmpty();
+        assertThat(repository.findAllClaims()).isEmpty();
+    }
 }

@@ -67,6 +67,16 @@ public class SqlClaimRepository implements ClaimRepository {
     }
 
     @Override
+    public void deleteClaim(UUID claimId) {
+        Objects.requireNonNull(claimId, "claimId");
+        try (Connection connection = dataSource.getConnection()) {
+            deleteClaim(connection, claimId);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to delete claim.", exception);
+        }
+    }
+
+    @Override
     public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
         Objects.requireNonNull(worldId, "worldId");
         String sql = """
