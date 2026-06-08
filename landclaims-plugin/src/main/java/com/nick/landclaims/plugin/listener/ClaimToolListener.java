@@ -105,8 +105,7 @@ public class ClaimToolListener implements Listener {
         PlayerInventory inventory = player.getInventory();
         ItemStack previousItem = inventory.getItem(event.getPreviousSlot());
         ItemStack newItem = inventory.getItem(event.getNewSlot());
-        if (shouldClearOnToolSwitch(claimToolService, previousItem, newItem)) {
-            selectionService.clear(player);
+        if (shouldClearOnToolSwitch(claimToolService, previousItem, newItem) && selectionService.clear(player)) {
             sendSelectionCleared(player);
         }
     }
@@ -118,8 +117,7 @@ public class ClaimToolListener implements Listener {
         }
 
         Player player = event.getPlayer();
-        if (doubleCrouchClearService.recordCrouch(player.getUniqueId())) {
-            selectionService.clear(player);
+        if (doubleCrouchClearService.recordCrouch(player.getUniqueId()) && selectionService.clear(player)) {
             sendSelectionCleared(player);
         }
     }
