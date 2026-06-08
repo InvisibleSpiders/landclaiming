@@ -14,6 +14,8 @@ import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.storage.sql.SqlClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import dev.invisiblespiders.haven.api.HavenAPI;
+import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,13 +23,11 @@ import java.nio.file.Path;
 import java.util.Objects;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.sqlite.SQLiteDataSource;
 
 public final class LandClaimsPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        saveResourceIfMissing("storage.yml");
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("permissions.yml");
         saveResourceIfMissing("tool.yml");
@@ -38,8 +38,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
-        ClaimRepository claimRepository = createClaimRepository(loadYamlResource("storage.yml"));
-        claimRepository.initialize();
+        ClaimRepository claimRepository = createClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.load(claimRepository.findAllClaims());
         ClaimCreationService claimCreationService = new ClaimCreationService(
@@ -101,19 +100,13 @@ public final class LandClaimsPlugin extends JavaPlugin {
         return YamlConfiguration.loadConfiguration(resourceFile);
     }
 
-    private ClaimRepository createClaimRepository(YamlConfiguration storageConfiguration) {
-        String storageType = storageConfiguration.getString("storage.type", "sqlite");
-        if (!"sqlite".equalsIgnoreCase(storageType)) {
-            throw new IllegalStateException("Only sqlite storage is currently implemented for playable claim creation.");
-        }
-
-        String sqliteFile = storageConfiguration.getString("storage.sqlite.file", "landclaims.db");
-        Path configuredPath = Path.of(sqliteFile);
-        Path databasePath = configuredPath.isAbsolute()
-                ? configuredPath
-                : getDataFolder().toPath().resolve(configuredPath);
-        SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite:" + databasePath.toAbsolutePath());
-        return new SqlClaimRepository(dataSource);
+    private ClaimRepository createClaimRepository() {
+        HavenDataSource havenDataSource = HavenAPI.get(HavenDataSource.class);
+        havenDataSource.registerMigrations(
+                "landclaims",
+                "db/migrations/landclaims",
+                getClass().getClassLoader()
+        );
+        return new SqlClaimRepository(havenDataSource.getDataSource());
     }
 }

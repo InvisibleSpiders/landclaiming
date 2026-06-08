@@ -1,0 +1,2 @@
+# Ordered list of LandClaims migrations. One filename per line.
+V1__initial_claim_schema.sql
