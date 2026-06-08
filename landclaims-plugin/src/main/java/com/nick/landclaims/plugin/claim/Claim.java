@@ -17,6 +17,7 @@ public record Claim(
         UUID worldId,
         Set<ClaimChunk> claimChunks,
         Map<String, Boolean> flags,
+        Set<ClaimMember> members,
         Instant createdAt,
         Instant updatedAt
 ) implements ClaimView {
@@ -27,8 +28,23 @@ public record Claim(
         worldId = Objects.requireNonNull(worldId, "worldId");
         claimChunks = Set.copyOf(Objects.requireNonNull(claimChunks, "claimChunks"));
         flags = Map.copyOf(Objects.requireNonNull(flags, "flags"));
+        members = Set.copyOf(Objects.requireNonNull(members, "members"));
         createdAt = Objects.requireNonNull(createdAt, "createdAt");
         updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+    }
+
+    public Claim(
+            UUID id,
+            String name,
+            OwnerType owner,
+            UUID ownerUuid,
+            UUID worldId,
+            Set<ClaimChunk> claimChunks,
+            Map<String, Boolean> flags,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        this(id, name, owner, ownerUuid, worldId, claimChunks, flags, Set.of(), createdAt, updatedAt);
     }
 
     @Override
