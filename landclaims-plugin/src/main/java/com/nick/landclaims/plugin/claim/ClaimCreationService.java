@@ -3,6 +3,7 @@ package com.nick.landclaims.plugin.claim;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,7 @@ public final class ClaimCreationService {
             return validationResult;
         }
 
-        List<Claim> mergeTargets = mergeTargets(ownerUuid, trimmedName, chunks);
+        List<Claim> mergeTargets = findMergeTargets(ownerUuid, trimmedName, chunks);
         Instant now = Instant.now();
         if (!mergeTargets.isEmpty()) {
             Claim existingClaim = mergeTargets.get(0);
@@ -102,13 +103,35 @@ public final class ClaimCreationService {
         return ClaimValidationResult.allowed();
     }
 
-    private List<Claim> mergeTargets(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+    public List<Claim> findMergeTargets(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+        Objects.requireNonNull(ownerUuid, "ownerUuid");
+        Objects.requireNonNull(name, "name");
+        Objects.requireNonNull(chunks, "chunks");
+
         return claimIndex.findAll().stream()
                 .filter(claim -> claim.owner() == OwnerType.PLAYER)
                 .filter(claim -> ownerUuid.equals(claim.ownerUuid()))
-                .filter(claim -> claim.name().equalsIgnoreCase(name))
+                .filter(claim -> claim.name().equalsIgnoreCase(name.trim()))
                 .filter(claim -> chunks.stream().anyMatch(chunk -> bordersClaim(chunk, claim)))
+                .sorted(Comparator
+                        .comparingInt(this::minimumChunkX)
+                        .thenComparingInt(this::minimumChunkZ)
+                        .thenComparing(claim -> claim.id().toString()))
                 .toList();
+    }
+
+    private int minimumChunkX(Claim claim) {
+        return claim.claimChunks().stream()
+                .mapToInt(ClaimChunk::chunkX)
+                .min()
+                .orElse(0);
+    }
+
+    private int minimumChunkZ(Claim claim) {
+        return claim.claimChunks().stream()
+                .mapToInt(ClaimChunk::chunkZ)
+                .min()
+                .orElse(0);
     }
 
     private boolean bordersClaim(ClaimChunk proposedChunk, Claim claim) {
