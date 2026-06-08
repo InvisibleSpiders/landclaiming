@@ -9,6 +9,11 @@ claim:
   selection-required: "<red>Select two chunks with the claim tool first."
   hold-tool: "<red>Hold your claim tool to create a claim."
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
+  tool:
+    point-claimed-own: "<yellow>That chunk is already in one of your claims. It can be used as an expansion anchor."
+    point-claimed-other: "<red>That chunk is already claimed by someone else."
+    selection-existing-trimmed: "<yellow>Existing chunks from your claim were removed from the pending selection."
+    selection-only-existing: "<yellow>That selection only contains chunks you already own."
   cost-preview:
     selection: "<gray>Selection: <yellow><selected_chunks></yellow> chunks"
     current-total: "<gray>Current total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"

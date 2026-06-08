@@ -50,7 +50,9 @@ public final class BukkitChunkBorderRenderer implements ChunkBorderRenderer {
         }
         if (!entities.isEmpty()) {
             activeEntities.put(playerId, entities);
-            clearTasks.put(playerId, Bukkit.getScheduler().runTaskLater(plugin, () -> clear(playerId), plan.durationTicks()));
+            if (plan.durationTicks() > 0) {
+                clearTasks.put(playerId, Bukkit.getScheduler().runTaskLater(plugin, () -> clear(playerId), plan.durationTicks()));
+            }
         }
     }
 

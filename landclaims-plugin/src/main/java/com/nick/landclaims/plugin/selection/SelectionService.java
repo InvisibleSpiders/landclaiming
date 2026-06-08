@@ -33,13 +33,15 @@ public class SelectionService {
         Objects.requireNonNull(playerId, "playerId");
         Objects.requireNonNull(chunk, "chunk");
 
-        ClaimChunk firstCorner = firstCorners.remove(playerId);
+        ClaimChunk firstCorner = firstCorners.get(playerId);
         if (firstCorner == null) {
+            completedSelections.remove(playerId);
             firstCorners.put(playerId, chunk);
             return Optional.empty();
         }
 
         if (!firstCorner.worldId().equals(chunk.worldId())) {
+            completedSelections.remove(playerId);
             firstCorners.put(playerId, chunk);
             return Optional.empty();
         }
@@ -62,7 +64,18 @@ public class SelectionService {
 
     public Optional<Set<ClaimChunk>> consumeSelection(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId");
+        firstCorners.remove(playerId);
         return Optional.ofNullable(completedSelections.remove(playerId));
+    }
+
+    public void replacePendingSelection(UUID playerId, Set<ClaimChunk> chunks) {
+        Objects.requireNonNull(playerId, "playerId");
+        Objects.requireNonNull(chunks, "chunks");
+        if (chunks.isEmpty()) {
+            completedSelections.remove(playerId);
+            return;
+        }
+        completedSelections.put(playerId, Set.copyOf(chunks));
     }
 
     public boolean clear(UUID playerId) {

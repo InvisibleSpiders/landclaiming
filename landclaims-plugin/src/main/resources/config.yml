@@ -35,8 +35,8 @@ visuals:
   border:
     # Uses temporary glowing BlockDisplay entities for player-visible chunk outlines.
     enabled: true
-    # How long temporary chunk borders remain visible.
-    duration-ticks: 160
+    # How long temporary chunk borders remain visible. Set to 0 to keep them until cleared or replaced.
+    duration-ticks: 0
     # Thickness of each display-entity line segment.
     thickness: 0.08
     # Display entity view range in blocks.

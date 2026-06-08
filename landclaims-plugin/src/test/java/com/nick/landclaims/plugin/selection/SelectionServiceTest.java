@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 class SelectionServiceTest {
     @Test
-    void secondSelectionReturnsExpandedRectangleAndClearsFirstCorner() {
+    void thirdSelectionReplacesSecondCorner() {
         ClaimService claimService = new ClaimService();
         SelectionService selectionService = new SelectionService(claimService);
         UUID playerId = UUID.randomUUID();
@@ -27,7 +27,11 @@ class SelectionServiceTest {
                         new ClaimChunk(worldId, 2, 2),
                         new ClaimChunk(worldId, 2, 3)
                 ));
-        assertThat(selectionService.select(playerId, new ClaimChunk(worldId, 5, 5))).isEmpty();
+        assertThat(selectionService.select(playerId, new ClaimChunk(worldId, 1, 2)))
+                .contains(Set.of(
+                        new ClaimChunk(worldId, 1, 1),
+                        new ClaimChunk(worldId, 1, 2)
+                ));
     }
 
     @Test
@@ -88,6 +92,30 @@ class SelectionServiceTest {
         assertThat(selectionService.pendingSelection(playerId)).contains(completedSelection);
         assertThat(selectionService.consumeSelection(playerId)).contains(completedSelection);
         assertThat(selectionService.pendingSelection(playerId)).isEmpty();
+        assertThat(selectionService.select(playerId, new ClaimChunk(worldId, 2, 0))).isEmpty();
+    }
+
+    @Test
+    void replacePendingSelectionKeepsFirstCornerForFutureRecalculation() {
+        ClaimService claimService = new ClaimService();
+        SelectionService selectionService = new SelectionService(claimService);
+        UUID playerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+
+        selectionService.select(playerId, new ClaimChunk(worldId, 0, 0));
+        selectionService.select(playerId, new ClaimChunk(worldId, 2, 0));
+        Set<ClaimChunk> replacement = Set.of(new ClaimChunk(worldId, 1, 0), new ClaimChunk(worldId, 2, 0));
+
+        selectionService.replacePendingSelection(playerId, replacement);
+
+        assertThat(selectionService.pendingSelection(playerId)).contains(replacement);
+        assertThat(selectionService.select(playerId, new ClaimChunk(worldId, 3, 0)))
+                .contains(Set.of(
+                        new ClaimChunk(worldId, 0, 0),
+                        new ClaimChunk(worldId, 1, 0),
+                        new ClaimChunk(worldId, 2, 0),
+                        new ClaimChunk(worldId, 3, 0)
+                ));
     }
 
     @Test
