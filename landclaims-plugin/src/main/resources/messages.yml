@@ -39,6 +39,15 @@ claim:
     list-empty: "<yellow>This claim has no members."
     list-header: "<gold>Claim members:"
     list-entry: "<gray>- <yellow><player></yellow> <gray>(<role>)</gray>"
+  flag:
+    usage: "<red>Usage: /claims flag <list|set> <flag> <true|false>"
+    not-owner: "<red>Only the claim owner can edit flags right now."
+    unknown: "<red>Unknown claim flag: <yellow><flag></yellow>"
+    no-permission: "<red>You do not have permission to edit <yellow><flag></yellow>."
+    invalid-value: "<red>Flag value must be <yellow>true</yellow> or <yellow>false</yellow>."
+    set: "<green>Set <yellow><flag></yellow> to <yellow><value></yellow>."
+    list-header: "<gold>Claim flags:"
+    list-entry: "<gray>- <yellow><flag></yellow> <gray>(<category>): <value></gray>"
 tool:
   name: "<gold>Claiming Hoe</gold>"
   lore:
@@ -60,6 +69,7 @@ command:
     tool: "<yellow>/claims tool</yellow><gray> - gives you the configured claiming tool.</gray>"
     create: "<yellow>/claims create <name></yellow><gray> - creates a claim from your pending selection.</gray>"
     member: "<yellow>/claims member <add|remove|list></yellow><gray> - manages members for the claim you are standing in.</gray>"
+    flag: "<yellow>/claims flag <list|set></yellow><gray> - views or edits flags for the claim you are standing in.</gray>"
     cost: "<yellow>/claims cost</yellow><gray> - previews claim allowance and over-limit cost.</gray>"
     cancel: "<yellow>/claims cancel</yellow><gray> - clears your pending selection.</gray>"
     info: "<yellow>/claims info</yellow><gray> - shows the claim at your current chunk.</gray>"

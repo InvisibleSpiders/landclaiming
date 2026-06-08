@@ -13,6 +13,9 @@ import com.nick.landclaims.plugin.claim.PendingClaimMerge;
 import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.economy.ClaimPaymentResult;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
+import com.nick.landclaims.plugin.flag.ClaimFlagResult;
+import com.nick.landclaims.plugin.flag.ClaimFlagRow;
+import com.nick.landclaims.plugin.flag.ClaimFlagService;
 import com.nick.landclaims.plugin.limit.ClaimCostMessageService;
 import com.nick.landclaims.plugin.limit.ClaimCostQuote;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
@@ -49,9 +52,10 @@ public class ClaimsCommand implements CommandExecutor {
     private final PendingClaimMergeService pendingClaimMergeService;
     private final MessageService messageService;
     private final ClaimMemberService claimMemberService;
+    private final ClaimFlagService claimFlagService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null);
     }
 
     public ClaimsCommand(
@@ -63,7 +67,8 @@ public class ClaimsCommand implements CommandExecutor {
             ClaimPaymentService claimPaymentService,
             PendingClaimMergeService pendingClaimMergeService,
             MessageService messageService,
-            ClaimMemberService claimMemberService
+            ClaimMemberService claimMemberService,
+            ClaimFlagService claimFlagService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -74,6 +79,7 @@ public class ClaimsCommand implements CommandExecutor {
         this.pendingClaimMergeService = pendingClaimMergeService;
         this.messageService = Objects.requireNonNull(messageService, "messageService");
         this.claimMemberService = claimMemberService;
+        this.claimFlagService = claimFlagService;
     }
 
     @Override
@@ -91,6 +97,9 @@ public class ClaimsCommand implements CommandExecutor {
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("member")) {
             return manageMembers(player, args);
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("flag")) {
+            return manageFlags(player, args);
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("mergeconfirm")) {
             return confirmPendingMerge(player);
@@ -110,6 +119,71 @@ public class ClaimsCommand implements CommandExecutor {
 
         sendHelp(player);
         return true;
+    }
+
+    private boolean manageFlags(Player player, String[] args) {
+        if (claimFlagService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
+            return listFlags(player, claim.orElseThrow());
+        }
+        if (args.length == 4 && args[1].equalsIgnoreCase("set")) {
+            Optional<Boolean> enabled = parseBoolean(args[3]);
+            if (enabled.isEmpty()) {
+                player.sendMessage(message("claim.flag.invalid-value"));
+                return true;
+            }
+            ClaimFlagResult result = claimFlagService.setFlag(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    args[2],
+                    enabled.orElseThrow(),
+                    player::hasPermission
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey(), Map.of("flag", args[2])));
+                return true;
+            }
+            player.sendMessage(message("claim.flag.set", Map.of(
+                    "flag", args[2],
+                    "value", String.valueOf(enabled.orElseThrow())
+            )));
+            return true;
+        }
+
+        player.sendMessage(message("claim.flag.usage"));
+        return true;
+    }
+
+    private boolean listFlags(Player player, Claim claim) {
+        player.sendMessage(message("claim.flag.list-header"));
+        for (ClaimFlagRow row : claimFlagService.listFlags(claim)) {
+            player.sendMessage(message("claim.flag.list-entry", Map.of(
+                    "flag", row.key(),
+                    "category", row.category(),
+                    "value", String.valueOf(row.enabled())
+            )));
+        }
+        return true;
+    }
+
+    private Optional<Boolean> parseBoolean(String value) {
+        if ("true".equalsIgnoreCase(value) || "on".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value)) {
+            return Optional.of(true);
+        }
+        if ("false".equalsIgnoreCase(value) || "off".equalsIgnoreCase(value) || "no".equalsIgnoreCase(value)) {
+            return Optional.of(false);
+        }
+        return Optional.empty();
     }
 
     private boolean manageMembers(Player player, String[] args) {
@@ -416,6 +490,7 @@ public class ClaimsCommand implements CommandExecutor {
         player.sendMessage(message("command.help.tool"));
         player.sendMessage(message("command.help.create"));
         player.sendMessage(message("command.help.member"));
+        player.sendMessage(message("command.help.flag"));
         player.sendMessage(message("command.help.cost"));
         player.sendMessage(message("command.help.cancel"));
         player.sendMessage(message("command.help.info"));
