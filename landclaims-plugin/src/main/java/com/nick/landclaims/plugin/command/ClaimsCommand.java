@@ -4,26 +4,35 @@ import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.ClaimMember;
+import com.nick.landclaims.plugin.claim.ClaimMemberResult;
+import com.nick.landclaims.plugin.claim.ClaimMemberService;
+import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
 import com.nick.landclaims.plugin.claim.PendingClaimMerge;
 import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.economy.ClaimPaymentResult;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
+import com.nick.landclaims.plugin.flag.ClaimFlagResult;
+import com.nick.landclaims.plugin.flag.ClaimFlagRow;
+import com.nick.landclaims.plugin.flag.ClaimFlagService;
 import com.nick.landclaims.plugin.limit.ClaimCostMessageService;
 import com.nick.landclaims.plugin.limit.ClaimCostQuote;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
+import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -41,9 +50,12 @@ public class ClaimsCommand implements CommandExecutor {
     private final ClaimCostService claimCostService;
     private final ClaimPaymentService claimPaymentService;
     private final PendingClaimMergeService pendingClaimMergeService;
+    private final MessageService messageService;
+    private final ClaimMemberService claimMemberService;
+    private final ClaimFlagService claimFlagService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null);
     }
 
     public ClaimsCommand(
@@ -53,7 +65,10 @@ public class ClaimsCommand implements CommandExecutor {
             ClaimIndex claimIndex,
             ClaimCostService claimCostService,
             ClaimPaymentService claimPaymentService,
-            PendingClaimMergeService pendingClaimMergeService
+            PendingClaimMergeService pendingClaimMergeService,
+            MessageService messageService,
+            ClaimMemberService claimMemberService,
+            ClaimFlagService claimFlagService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -62,12 +77,15 @@ public class ClaimsCommand implements CommandExecutor {
         this.claimCostService = claimCostService;
         this.claimPaymentService = claimPaymentService;
         this.pendingClaimMergeService = pendingClaimMergeService;
+        this.messageService = Objects.requireNonNull(messageService, "messageService");
+        this.claimMemberService = claimMemberService;
+        this.claimFlagService = claimFlagService;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("Only players can use LandClaims commands.", NamedTextColor.RED));
+            sender.sendMessage(message("command.player-only"));
             return true;
         }
 
@@ -76,6 +94,12 @@ public class ClaimsCommand implements CommandExecutor {
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("member")) {
+            return manageMembers(player, args);
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("flag")) {
+            return manageFlags(player, args);
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("mergeconfirm")) {
             return confirmPendingMerge(player);
@@ -97,18 +121,177 @@ public class ClaimsCommand implements CommandExecutor {
         return true;
     }
 
+    private boolean manageFlags(Player player, String[] args) {
+        if (claimFlagService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
+            return listFlags(player, claim.orElseThrow());
+        }
+        if (args.length == 4 && args[1].equalsIgnoreCase("set")) {
+            Optional<Boolean> enabled = parseBoolean(args[3]);
+            if (enabled.isEmpty()) {
+                player.sendMessage(message("claim.flag.invalid-value"));
+                return true;
+            }
+            ClaimFlagResult result = claimFlagService.setFlag(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    args[2],
+                    enabled.orElseThrow(),
+                    player::hasPermission
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey(), Map.of("flag", args[2])));
+                return true;
+            }
+            player.sendMessage(message("claim.flag.set", Map.of(
+                    "flag", args[2],
+                    "value", String.valueOf(enabled.orElseThrow())
+            )));
+            return true;
+        }
+
+        player.sendMessage(message("claim.flag.usage"));
+        return true;
+    }
+
+    private boolean listFlags(Player player, Claim claim) {
+        player.sendMessage(message("claim.flag.list-header"));
+        for (ClaimFlagRow row : claimFlagService.listFlags(claim)) {
+            player.sendMessage(message("claim.flag.list-entry", Map.of(
+                    "flag", row.key(),
+                    "category", row.category(),
+                    "value", String.valueOf(row.enabled())
+            )));
+        }
+        return true;
+    }
+
+    private Optional<Boolean> parseBoolean(String value) {
+        if ("true".equalsIgnoreCase(value) || "on".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value)) {
+            return Optional.of(true);
+        }
+        if ("false".equalsIgnoreCase(value) || "off".equalsIgnoreCase(value) || "no".equalsIgnoreCase(value)) {
+            return Optional.of(false);
+        }
+        return Optional.empty();
+    }
+
+    private boolean manageMembers(Player player, String[] args) {
+        if (claimMemberService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
+            return listMembers(player, claim.orElseThrow());
+        }
+        if (args.length < 3) {
+            player.sendMessage(message("claim.member.usage"));
+            return true;
+        }
+
+        OfflinePlayer target = player.getServer().getOfflinePlayer(args[2]);
+        if (args[1].equalsIgnoreCase("add")) {
+            ClaimRole role = args.length >= 4 ? parseRole(args[3]).orElse(null) : ClaimRole.MEMBER;
+            if (role == null) {
+                player.sendMessage(message("claim.member.invalid-role"));
+                return true;
+            }
+            ClaimMemberResult result = claimMemberService.addMember(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    target.getUniqueId(),
+                    role
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey()));
+                return true;
+            }
+            player.sendMessage(message("claim.member.added", Map.of(
+                    "player", memberName(target),
+                    "role", role.name().toLowerCase()
+            )));
+            return true;
+        }
+        if (args[1].equalsIgnoreCase("remove")) {
+            ClaimMemberResult result = claimMemberService.removeMember(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    target.getUniqueId()
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey()));
+                return true;
+            }
+            player.sendMessage(message("claim.member.removed", Map.of("player", memberName(target))));
+            return true;
+        }
+
+        player.sendMessage(message("claim.member.usage"));
+        return true;
+    }
+
+    private boolean listMembers(Player player, Claim claim) {
+        if (claim.members().isEmpty()) {
+            player.sendMessage(message("claim.member.list-empty"));
+            return true;
+        }
+
+        player.sendMessage(message("claim.member.list-header"));
+        claim.members().stream()
+                .sorted(java.util.Comparator.comparing(member -> member.memberUuid().toString()))
+                .forEach(member -> {
+                    OfflinePlayer offlinePlayer = player.getServer().getOfflinePlayer(member.memberUuid());
+                    player.sendMessage(message("claim.member.list-entry", Map.of(
+                            "player", memberName(offlinePlayer),
+                            "role", member.role().name().toLowerCase()
+                    )));
+                });
+        return true;
+    }
+
+    private Optional<ClaimRole> parseRole(String value) {
+        if ("member".equalsIgnoreCase(value)) {
+            return Optional.of(ClaimRole.MEMBER);
+        }
+        if ("manager".equalsIgnoreCase(value)) {
+            return Optional.of(ClaimRole.MANAGER);
+        }
+        return Optional.empty();
+    }
+
+    private String memberName(OfflinePlayer player) {
+        return player.getName() == null ? player.getUniqueId().toString() : player.getName();
+    }
+
     private boolean previewClaimCost(Player player) {
         if (!isClaimCreationAvailable(player)) {
             return true;
         }
         if (claimCostService == null || claimPaymentService == null) {
-            player.sendMessage(Component.text("Claim cost previews are not available yet.", NamedTextColor.RED));
+            player.sendMessage(message("command.unavailable.claim-cost"));
             return true;
         }
 
         Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isEmpty()) {
-            player.sendMessage(Component.text("Select two chunks with the claim tool first.", NamedTextColor.RED));
+            player.sendMessage(message("claim.selection-required"));
             return true;
         }
 
@@ -117,18 +300,19 @@ public class ClaimsCommand implements CommandExecutor {
                 permissionNodes(player),
                 pendingSelection.orElseThrow()
         );
-        ClaimCostMessageService.preview(quote, claimPaymentService.format(quote.cost())).forEach(player::sendMessage);
+        ClaimCostMessageService.preview(quote, claimPaymentService.format(quote.cost()), messageService)
+                .forEach(player::sendMessage);
         return true;
     }
 
     private boolean giveTool(Player player) {
         if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
-            player.sendMessage(Component.text("You do not have permission to use the claim tool.", NamedTextColor.RED));
+            player.sendMessage(message("command.tool.no-permission"));
             return true;
         }
 
         player.getInventory().addItem(claimToolService.createClaimTool());
-        player.sendMessage(Component.text("Claim tool added to your inventory.", NamedTextColor.GREEN));
+        player.sendMessage(message("command.tool.given"));
         return true;
     }
 
@@ -143,25 +327,27 @@ public class ClaimsCommand implements CommandExecutor {
 
         Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isEmpty()) {
-            player.sendMessage(Component.text("Select two chunks with the claim tool first.", NamedTextColor.RED));
+            player.sendMessage(message("claim.selection-required"));
             return true;
         }
 
         Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
         ItemStack mainHandItem = player.getInventory().getItemInMainHand();
         if (!claimToolService.isClaimTool(mainHandItem)) {
-            player.sendMessage(Component.text("Hold your claim tool to create a claim.", NamedTextColor.RED));
+            player.sendMessage(message("claim.hold-tool"));
             return true;
         }
         if (claimToolService.currentCharges(mainHandItem) < chunks.size()) {
-            player.sendMessage(Component.text("Your claim tool does not have enough charges for that selection.", NamedTextColor.RED));
+            player.sendMessage(message("claim.not-enough-charges", Map.of(
+                    "needed", String.valueOf(chunks.size()),
+                    "available", String.valueOf(claimToolService.currentCharges(mainHandItem))
+            )));
             return true;
         }
 
         ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(player.getUniqueId(), claimName, chunks);
         if (!validationResult.isAllowed()) {
-            player.sendMessage(Component.text("Claim could not be created: ", NamedTextColor.RED)
-                    .append(Component.text(validationResult.messageKey().orElse("claims.denied"), NamedTextColor.YELLOW)));
+            player.sendMessage(claimCreateDenied(validationResult.messageKey().orElse("claims.denied")));
             return true;
         }
 
@@ -178,46 +364,46 @@ public class ClaimsCommand implements CommandExecutor {
             ClaimCostQuote quote = claimCostService.quotePlayerClaim(player.getUniqueId(), permissionNodes(player), chunks);
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
             if (!paymentResult.allowed()) {
-                player.sendMessage(Component.text("Claim could not be created: ", NamedTextColor.RED)
-                        .append(Component.text(paymentResult.messageKey(), NamedTextColor.YELLOW)));
+                player.sendMessage(claimCreateDenied(paymentResult.messageKey()));
                 return true;
             }
             if (quote.cost() > 0.0) {
-                player.sendMessage(Component.text("Charged ", NamedTextColor.GREEN)
-                        .append(Component.text(quote.cost(), NamedTextColor.YELLOW))
-                        .append(Component.text(" for over-limit claim chunks.", NamedTextColor.GREEN)));
+                player.sendMessage(message("claim.charged", Map.of(
+                        "cost", claimPaymentService.format(quote.cost())
+                )));
             }
         }
 
         ClaimValidationResult result = claimCreationService.createPlayerClaim(player.getUniqueId(), claimName, chunks);
         if (!result.isAllowed()) {
-            player.sendMessage(Component.text("Claim could not be created: ", NamedTextColor.RED)
-                    .append(Component.text(result.messageKey().orElse("claims.denied"), NamedTextColor.YELLOW)));
+            player.sendMessage(claimCreateDenied(result.messageKey().orElse("claims.denied")));
             return true;
         }
 
         claimToolService.spendCharges(mainHandItem, chunks.size());
         selectionService.consumeSelection(player.getUniqueId());
-        player.sendMessage(Component.text("Claim created: ", NamedTextColor.GREEN)
-                .append(Component.text(claimName.trim(), NamedTextColor.YELLOW)));
+        player.sendMessage(message("claim.created", Map.of(
+                "claim_name", claimName.trim(),
+                "chunk_count", String.valueOf(chunks.size())
+        )));
         return true;
     }
 
     private boolean confirmPendingMerge(Player player) {
         if (pendingClaimMergeService == null) {
-            player.sendMessage(Component.text("Claim merge confirmation is not available yet.", NamedTextColor.RED));
+            player.sendMessage(message("claim.merge.unavailable"));
             return true;
         }
 
         Optional<PendingClaimMerge> pendingMerge = pendingClaimMergeService.consume(player.getUniqueId());
         if (pendingMerge.isEmpty()) {
-            player.sendMessage(Component.text("No pending claim merge to confirm.", NamedTextColor.RED));
+            player.sendMessage(message("claim.merge.none-pending"));
             return true;
         }
 
         Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isEmpty() || !pendingSelection.orElseThrow().equals(pendingMerge.orElseThrow().chunks())) {
-            player.sendMessage(Component.text("Your claim selection changed. Run /claims create again.", NamedTextColor.RED));
+            player.sendMessage(message("claim.merge.selection-changed"));
             return true;
         }
 
@@ -228,20 +414,19 @@ public class ClaimsCommand implements CommandExecutor {
         if (pendingClaimMergeService != null) {
             pendingClaimMergeService.clear(player.getUniqueId());
         }
-        player.sendMessage(Component.text("Claim merge cancelled.", NamedTextColor.YELLOW));
+        player.sendMessage(message("claim.merge.cancelled"));
         return true;
     }
 
     private void sendMergeConfirmation(Player player, String claimName, int mergeCount) {
-        player.sendMessage(Component.text("Claim ", NamedTextColor.YELLOW)
-                .append(Component.text(claimName.trim(), NamedTextColor.GOLD))
-                .append(Component.text(" borders ", NamedTextColor.YELLOW))
-                .append(Component.text(mergeCount, NamedTextColor.GOLD))
-                .append(Component.text(" same-name claim(s). Merge them? ", NamedTextColor.YELLOW))
-                .append(Component.text("[Merge]", NamedTextColor.GREEN)
+        player.sendMessage(message("claim.merge.prompt", Map.of(
+                "claim_name", claimName.trim(),
+                "merge_count", String.valueOf(mergeCount)
+        ))
+                .append(message("claim.merge.confirm-button")
                         .clickEvent(ClickEvent.runCommand("/claims mergeconfirm")))
-                .append(Component.text(" "))
-                .append(Component.text("[Cancel]", NamedTextColor.RED)
+                .append(Component.space())
+                .append(message("claim.merge.cancel-button")
                         .clickEvent(ClickEvent.runCommand("/claims mergecancel"))));
     }
 
@@ -254,7 +439,7 @@ public class ClaimsCommand implements CommandExecutor {
 
     private boolean cancelSelection(Player player) {
         if (selectionService == null) {
-            player.sendMessage(Component.text("Claim selection is not available yet.", NamedTextColor.RED));
+            player.sendMessage(message("command.unavailable.claim-creation"));
             return true;
         }
 
@@ -262,55 +447,64 @@ public class ClaimsCommand implements CommandExecutor {
             pendingClaimMergeService.clear(player.getUniqueId());
         }
         selectionService.clear(player);
-        player.sendMessage(Component.text("Claim selection cleared.", NamedTextColor.YELLOW));
+        player.sendMessage(message("command.selection.cleared"));
         return true;
     }
 
     private boolean showInfo(Player player) {
         if (claimIndex == null) {
-            player.sendMessage(Component.text("Claim info is not available yet.", NamedTextColor.RED));
+            player.sendMessage(message("command.unavailable.claim-info"));
             return true;
         }
 
-        Chunk chunk = player.getLocation().getChunk();
-        ClaimChunk claimChunk = new ClaimChunk(player.getWorld().getUID(), chunk.getX(), chunk.getZ());
-        Optional<Claim> claim = claimIndex.findAt(claimChunk);
+        Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isEmpty()) {
-            player.sendMessage(Component.text("This chunk is not claimed.", NamedTextColor.YELLOW));
+            player.sendMessage(message("claim.info.unclaimed"));
             return true;
         }
 
         Claim foundClaim = claim.orElseThrow();
-        player.sendMessage(Component.text("Claim: ", NamedTextColor.GOLD)
-                .append(Component.text(foundClaim.name(), NamedTextColor.YELLOW)));
-        player.sendMessage(Component.text("Owner type: ", NamedTextColor.GRAY)
-                .append(Component.text(foundClaim.owner().name(), NamedTextColor.WHITE)));
-        player.sendMessage(Component.text("Chunks: ", NamedTextColor.GRAY)
-                .append(Component.text(foundClaim.claimChunks().size(), NamedTextColor.WHITE)));
-        player.sendMessage(Component.text("You are owner: ", NamedTextColor.GRAY)
-                .append(Component.text(player.getUniqueId().equals(foundClaim.ownerUuid()), NamedTextColor.WHITE)));
+        player.sendMessage(message("claim.info.name", Map.of("claim_name", foundClaim.name())));
+        player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", foundClaim.owner().name())));
+        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(foundClaim.claimChunks().size()))));
+        player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(foundClaim.ownerUuid())))));
         return true;
+    }
+
+    private Optional<Claim> claimAtPlayer(Player player) {
+        Chunk chunk = player.getLocation().getChunk();
+        ClaimChunk claimChunk = new ClaimChunk(player.getWorld().getUID(), chunk.getX(), chunk.getZ());
+        return claimIndex.findAt(claimChunk);
     }
 
     private boolean isClaimCreationAvailable(Player player) {
         if (selectionService == null || claimCreationService == null || claimIndex == null) {
-            player.sendMessage(Component.text("Claim creation is not available yet.", NamedTextColor.RED));
+            player.sendMessage(message("command.unavailable.claim-creation"));
             return false;
         }
         return true;
     }
 
     private void sendHelp(Player player) {
-        player.sendMessage(Component.text("LandClaims commands", NamedTextColor.GOLD));
-        player.sendMessage(Component.text("/claims tool", NamedTextColor.YELLOW)
-                .append(Component.text(" - gives you the configured claiming tool.", NamedTextColor.GRAY)));
-        player.sendMessage(Component.text("/claims create <name>", NamedTextColor.YELLOW)
-                .append(Component.text(" - creates a claim from your pending selection.", NamedTextColor.GRAY)));
-        player.sendMessage(Component.text("/claims cost", NamedTextColor.YELLOW)
-                .append(Component.text(" - previews claim allowance and over-limit cost.", NamedTextColor.GRAY)));
-        player.sendMessage(Component.text("/claims cancel", NamedTextColor.YELLOW)
-                .append(Component.text(" - clears your pending selection.", NamedTextColor.GRAY)));
-        player.sendMessage(Component.text("/claims info", NamedTextColor.YELLOW)
-                .append(Component.text(" - shows the claim at your current chunk.", NamedTextColor.GRAY)));
+        player.sendMessage(message("command.help.title"));
+        player.sendMessage(message("command.help.tool"));
+        player.sendMessage(message("command.help.create"));
+        player.sendMessage(message("command.help.member"));
+        player.sendMessage(message("command.help.flag"));
+        player.sendMessage(message("command.help.cost"));
+        player.sendMessage(message("command.help.cancel"));
+        player.sendMessage(message("command.help.info"));
+    }
+
+    private Component claimCreateDenied(String reason) {
+        return message("claim.create-denied", Map.of("reason", reason));
+    }
+
+    private Component message(String key) {
+        return message(key, Map.of());
+    }
+
+    private Component message(String key, Map<String, String> placeholders) {
+        return messageService.render(key, placeholders);
     }
 }

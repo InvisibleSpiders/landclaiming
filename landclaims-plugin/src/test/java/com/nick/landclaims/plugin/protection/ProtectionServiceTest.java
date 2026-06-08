@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.nick.landclaims.api.protection.ClaimProtectionResult;
 import com.nick.landclaims.plugin.claim.Claim;
+import com.nick.landclaims.plugin.claim.ClaimMember;
+import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import java.time.Instant;
@@ -30,6 +32,39 @@ class ProtectionServiceTest {
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, UUID.randomUUID(), "build");
+
+        assertThat(result).isEqualTo(ClaimProtectionResult.DENY_WITH_MESSAGE);
+    }
+
+    @Test
+    void memberAllowedForAccessFlagEvenWhenClaimFlagIsFalse() {
+        UUID memberUuid = UUID.randomUUID();
+        Claim claim = claim(UUID.randomUUID(), Map.of("build", false), Set.of(new ClaimMember(memberUuid, ClaimRole.MEMBER)));
+        ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
+
+        ClaimProtectionResult result = service.checkClaimFlag(claim, memberUuid, "build");
+
+        assertThat(result).isEqualTo(ClaimProtectionResult.ALLOW);
+    }
+
+    @Test
+    void managerAllowedForAccessFlagEvenWhenClaimFlagIsFalse() {
+        UUID managerUuid = UUID.randomUUID();
+        Claim claim = claim(UUID.randomUUID(), Map.of("container_access", false), Set.of(new ClaimMember(managerUuid, ClaimRole.MANAGER)));
+        ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
+
+        ClaimProtectionResult result = service.checkClaimFlag(claim, managerUuid, "container_access");
+
+        assertThat(result).isEqualTo(ClaimProtectionResult.ALLOW);
+    }
+
+    @Test
+    void memberStillFollowsEnvironmentFlag() {
+        UUID memberUuid = UUID.randomUUID();
+        Claim claim = claim(UUID.randomUUID(), Map.of("fluid_flow", false), Set.of(new ClaimMember(memberUuid, ClaimRole.MEMBER)));
+        ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
+
+        ClaimProtectionResult result = service.checkClaimFlag(claim, memberUuid, "fluid_flow");
 
         assertThat(result).isEqualTo(ClaimProtectionResult.DENY_WITH_MESSAGE);
     }
@@ -66,10 +101,18 @@ class ProtectionServiceTest {
     }
 
     private static Claim claim(UUID ownerUuid, Map<String, Boolean> flags) {
-        return claim(OwnerType.PLAYER, ownerUuid, flags);
+        return claim(ownerUuid, flags, Set.of());
+    }
+
+    private static Claim claim(UUID ownerUuid, Map<String, Boolean> flags, Set<ClaimMember> members) {
+        return claim(OwnerType.PLAYER, ownerUuid, flags, members);
     }
 
     private static Claim claim(OwnerType ownerType, UUID ownerUuid, Map<String, Boolean> flags) {
+        return claim(ownerType, ownerUuid, flags, Set.of());
+    }
+
+    private static Claim claim(OwnerType ownerType, UUID ownerUuid, Map<String, Boolean> flags, Set<ClaimMember> members) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
@@ -79,6 +122,7 @@ class ProtectionServiceTest {
                 UUID.randomUUID(),
                 Set.of(),
                 flags,
+                members,
                 now,
                 now
         );
