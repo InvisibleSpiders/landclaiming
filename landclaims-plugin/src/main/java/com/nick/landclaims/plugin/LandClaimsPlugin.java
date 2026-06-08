@@ -1,5 +1,7 @@
 package com.nick.landclaims.plugin;
 
+import com.nick.landclaims.api.LandClaimsApi;
+import com.nick.landclaims.plugin.api.BukkitLandClaimsApi;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimMemberService;
@@ -42,8 +44,11 @@ import java.util.Objects;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.ServicePriority;
 
 public final class LandClaimsPlugin extends JavaPlugin {
+    private LandClaimsApi landClaimsApi;
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -88,6 +93,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 getConfig().getInt("selection.double-crouch-clear.window-ticks", 80),
                 () -> getServer().getCurrentTick()
         );
+        landClaimsApi = new BukkitLandClaimsApi(claimRepository, claimIndex, protectionService);
+        getServer().getServicesManager().register(LandClaimsApi.class, landClaimsApi, this, ServicePriority.Normal);
         new ClaimToolRecipeService(this, claimToolService).register(loadYamlResource("recipes.yml"));
 
         getServer().getPluginManager().registerEvents(
@@ -127,6 +134,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (landClaimsApi != null) {
+            getServer().getServicesManager().unregister(LandClaimsApi.class, landClaimsApi);
+            landClaimsApi = null;
+        }
         getLogger().info("LandClaims disabled.");
     }
 
