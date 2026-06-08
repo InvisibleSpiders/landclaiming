@@ -65,14 +65,15 @@ public class SelectionService {
         return Optional.ofNullable(completedSelections.remove(playerId));
     }
 
-    public void clear(UUID playerId) {
+    public boolean clear(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId");
-        firstCorners.remove(playerId);
-        completedSelections.remove(playerId);
+        boolean hadFirstCorner = firstCorners.remove(playerId) != null;
+        boolean hadCompletedSelection = completedSelections.remove(playerId) != null;
+        return hadFirstCorner || hadCompletedSelection;
     }
 
-    public void clear(Player player) {
+    public boolean clear(Player player) {
         Objects.requireNonNull(player, "player");
-        clear(player.getUniqueId());
+        return clear(player.getUniqueId());
     }
 }

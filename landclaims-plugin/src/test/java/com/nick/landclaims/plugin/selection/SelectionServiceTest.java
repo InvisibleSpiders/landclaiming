@@ -100,10 +100,29 @@ class SelectionServiceTest {
         selectionService.select(playerId, new ClaimChunk(worldId, 0, 0));
         selectionService.select(playerId, new ClaimChunk(worldId, 1, 0));
 
-        selectionService.clear(playerId);
+        assertThat(selectionService.clear(playerId)).isTrue();
 
         assertThat(selectionService.pendingSelection(playerId)).isEmpty();
         assertThat(selectionService.consumeSelection(playerId)).isEmpty();
         assertThat(selectionService.select(playerId, new ClaimChunk(worldId, 2, 0))).isEmpty();
+    }
+
+    @Test
+    void clearReturnsFalseWhenNoSelectionExists() {
+        SelectionService selectionService = new SelectionService(new ClaimService());
+
+        assertThat(selectionService.clear(UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    void clearReturnsTrueForOnlyFirstCorner() {
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        UUID playerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+
+        selectionService.select(playerId, new ClaimChunk(worldId, 0, 0));
+
+        assertThat(selectionService.clear(playerId)).isTrue();
+        assertThat(selectionService.clear(playerId)).isFalse();
     }
 }
