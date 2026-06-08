@@ -25,6 +25,9 @@ import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.storage.sql.SqlClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import com.nick.landclaims.plugin.ui.ClaimMenuService;
+import com.nick.landclaims.plugin.ui.DialogService;
+import com.nick.landclaims.plugin.ui.InventoryGuiFallbackService;
 import dev.invisiblespiders.haven.api.HavenAPI;
 import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
@@ -111,7 +114,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         new PendingClaimMergeService(),
                         messageService,
                         new ClaimMemberService(claimRepository, claimIndex),
-                        new ClaimFlagService(claimRepository, claimIndex, flagRegistry)
+                        new ClaimFlagService(claimRepository, claimIndex, flagRegistry),
+                        new ClaimMenuService(),
+                        new DialogService(),
+                        new InventoryGuiFallbackService()
                 ));
 
         getLogger().info("LandClaims enabled.");
