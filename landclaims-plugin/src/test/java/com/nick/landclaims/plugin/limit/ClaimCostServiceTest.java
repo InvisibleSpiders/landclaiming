@@ -84,6 +84,11 @@ class ClaimCostServiceTest {
         }
 
         @Override
+        public void deleteClaim(UUID claimId) {
+            claims.removeIf(claim -> claim.id().equals(claimId));
+        }
+
+        @Override
         public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
             return Optional.empty();
         }

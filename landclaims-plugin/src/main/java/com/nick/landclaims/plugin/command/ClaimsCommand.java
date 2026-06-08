@@ -5,6 +5,8 @@ import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
+import com.nick.landclaims.plugin.claim.PendingClaimMerge;
+import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.economy.ClaimPaymentResult;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
 import com.nick.landclaims.plugin.limit.ClaimCostMessageService;
@@ -13,10 +15,12 @@ import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
@@ -36,9 +40,10 @@ public class ClaimsCommand implements CommandExecutor {
     private final ClaimIndex claimIndex;
     private final ClaimCostService claimCostService;
     private final ClaimPaymentService claimPaymentService;
+    private final PendingClaimMergeService pendingClaimMergeService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null);
+        this(claimToolService, null, null, null, null, null, null);
     }
 
     public ClaimsCommand(
@@ -47,7 +52,8 @@ public class ClaimsCommand implements CommandExecutor {
             ClaimCreationService claimCreationService,
             ClaimIndex claimIndex,
             ClaimCostService claimCostService,
-            ClaimPaymentService claimPaymentService
+            ClaimPaymentService claimPaymentService,
+            PendingClaimMergeService pendingClaimMergeService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -55,6 +61,7 @@ public class ClaimsCommand implements CommandExecutor {
         this.claimIndex = claimIndex;
         this.claimCostService = claimCostService;
         this.claimPaymentService = claimPaymentService;
+        this.pendingClaimMergeService = pendingClaimMergeService;
     }
 
     @Override
@@ -69,6 +76,12 @@ public class ClaimsCommand implements CommandExecutor {
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("mergeconfirm")) {
+            return confirmPendingMerge(player);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("mergecancel")) {
+            return cancelPendingMerge(player);
         }
         if (args.length == 1 && (args[0].equalsIgnoreCase("cost") || args[0].equalsIgnoreCase("quote"))) {
             return previewClaimCost(player);
@@ -120,6 +133,10 @@ public class ClaimsCommand implements CommandExecutor {
     }
 
     private boolean createClaim(Player player, String[] args) {
+        return createClaim(player, String.join(" ", Arrays.copyOfRange(args, 1, args.length)), false);
+    }
+
+    private boolean createClaim(Player player, String claimName, boolean mergeConfirmed) {
         if (!isClaimCreationAvailable(player)) {
             return true;
         }
@@ -141,11 +158,19 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
 
-        String claimName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(player.getUniqueId(), claimName, chunks);
         if (!validationResult.isAllowed()) {
             player.sendMessage(Component.text("Claim could not be created: ", NamedTextColor.RED)
                     .append(Component.text(validationResult.messageKey().orElse("claims.denied"), NamedTextColor.YELLOW)));
+            return true;
+        }
+
+        List<Claim> mergeTargets = claimCreationService.findMergeTargets(player.getUniqueId(), claimName, chunks);
+        if (!mergeTargets.isEmpty() && !mergeConfirmed) {
+            if (pendingClaimMergeService != null) {
+                pendingClaimMergeService.put(player.getUniqueId(), claimName, chunks);
+            }
+            sendMergeConfirmation(player, claimName, mergeTargets.size());
             return true;
         }
 
@@ -178,6 +203,48 @@ public class ClaimsCommand implements CommandExecutor {
         return true;
     }
 
+    private boolean confirmPendingMerge(Player player) {
+        if (pendingClaimMergeService == null) {
+            player.sendMessage(Component.text("Claim merge confirmation is not available yet.", NamedTextColor.RED));
+            return true;
+        }
+
+        Optional<PendingClaimMerge> pendingMerge = pendingClaimMergeService.consume(player.getUniqueId());
+        if (pendingMerge.isEmpty()) {
+            player.sendMessage(Component.text("No pending claim merge to confirm.", NamedTextColor.RED));
+            return true;
+        }
+
+        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        if (pendingSelection.isEmpty() || !pendingSelection.orElseThrow().equals(pendingMerge.orElseThrow().chunks())) {
+            player.sendMessage(Component.text("Your claim selection changed. Run /claims create again.", NamedTextColor.RED));
+            return true;
+        }
+
+        return createClaim(player, pendingMerge.orElseThrow().claimName(), true);
+    }
+
+    private boolean cancelPendingMerge(Player player) {
+        if (pendingClaimMergeService != null) {
+            pendingClaimMergeService.clear(player.getUniqueId());
+        }
+        player.sendMessage(Component.text("Claim merge cancelled.", NamedTextColor.YELLOW));
+        return true;
+    }
+
+    private void sendMergeConfirmation(Player player, String claimName, int mergeCount) {
+        player.sendMessage(Component.text("Claim ", NamedTextColor.YELLOW)
+                .append(Component.text(claimName.trim(), NamedTextColor.GOLD))
+                .append(Component.text(" borders ", NamedTextColor.YELLOW))
+                .append(Component.text(mergeCount, NamedTextColor.GOLD))
+                .append(Component.text(" same-name claim(s). Merge them? ", NamedTextColor.YELLOW))
+                .append(Component.text("[Merge]", NamedTextColor.GREEN)
+                        .clickEvent(ClickEvent.runCommand("/claims mergeconfirm")))
+                .append(Component.text(" "))
+                .append(Component.text("[Cancel]", NamedTextColor.RED)
+                        .clickEvent(ClickEvent.runCommand("/claims mergecancel"))));
+    }
+
     private Set<String> permissionNodes(Player player) {
         return player.getEffectivePermissions().stream()
                 .filter(PermissionAttachmentInfo::getValue)
@@ -191,6 +258,9 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
 
+        if (pendingClaimMergeService != null) {
+            pendingClaimMergeService.clear(player.getUniqueId());
+        }
         selectionService.clear(player);
         player.sendMessage(Component.text("Claim selection cleared.", NamedTextColor.YELLOW));
         return true;
