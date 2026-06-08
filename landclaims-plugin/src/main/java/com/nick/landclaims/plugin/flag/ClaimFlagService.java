@@ -68,6 +68,22 @@ public final class ClaimFlagService {
         return ClaimFlagResult.success();
     }
 
+    public ClaimFlagResult toggleFlag(
+            UUID actorId,
+            Claim claim,
+            String flagKey,
+            Predicate<String> permissionCheck
+    ) {
+        Objects.requireNonNull(flagKey, "flagKey");
+        ClaimFlagDefinition definition = flagRegistry.definition(flagKey)
+                .orElse(null);
+        if (definition == null) {
+            return ClaimFlagResult.denied("claim.flag.unknown");
+        }
+        boolean currentValue = claim.flags().getOrDefault(definition.key(), definition.defaultValue());
+        return setFlag(actorId, claim, definition.key(), !currentValue, permissionCheck);
+    }
+
     public List<ClaimFlagRow> listFlags(Claim claim) {
         Objects.requireNonNull(claim, "claim");
         return flagRegistry.definitions().stream()

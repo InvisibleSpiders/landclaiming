@@ -22,6 +22,12 @@ import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import com.nick.landclaims.plugin.ui.ClaimFlagEditor;
+import com.nick.landclaims.plugin.ui.ClaimFlagEditorService;
+import com.nick.landclaims.plugin.ui.ClaimMenu;
+import com.nick.landclaims.plugin.ui.ClaimMenuService;
+import com.nick.landclaims.plugin.ui.DialogService;
+import com.nick.landclaims.plugin.ui.InventoryGuiFallbackService;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +48,7 @@ import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimsCommand implements CommandExecutor {
     private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
+    private static final String CLAIM_MENU_PERMISSION = "landclaims.gui";
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
@@ -53,9 +60,13 @@ public class ClaimsCommand implements CommandExecutor {
     private final MessageService messageService;
     private final ClaimMemberService claimMemberService;
     private final ClaimFlagService claimFlagService;
+    private final ClaimFlagEditorService claimFlagEditorService;
+    private final ClaimMenuService claimMenuService;
+    private final DialogService dialogService;
+    private final InventoryGuiFallbackService inventoryGuiFallbackService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null);
     }
 
     public ClaimsCommand(
@@ -68,7 +79,11 @@ public class ClaimsCommand implements CommandExecutor {
             PendingClaimMergeService pendingClaimMergeService,
             MessageService messageService,
             ClaimMemberService claimMemberService,
-            ClaimFlagService claimFlagService
+            ClaimFlagService claimFlagService,
+            ClaimFlagEditorService claimFlagEditorService,
+            ClaimMenuService claimMenuService,
+            DialogService dialogService,
+            InventoryGuiFallbackService inventoryGuiFallbackService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -80,6 +95,10 @@ public class ClaimsCommand implements CommandExecutor {
         this.messageService = Objects.requireNonNull(messageService, "messageService");
         this.claimMemberService = claimMemberService;
         this.claimFlagService = claimFlagService;
+        this.claimFlagEditorService = claimFlagEditorService;
+        this.claimMenuService = claimMenuService;
+        this.dialogService = dialogService;
+        this.inventoryGuiFallbackService = inventoryGuiFallbackService;
     }
 
     @Override
@@ -91,6 +110,12 @@ public class ClaimsCommand implements CommandExecutor {
 
         if (args.length == 1 && args[0].equalsIgnoreCase("tool")) {
             return giveTool(player);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("menu")) {
+            return openClaimMenu(player);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("flags")) {
+            return openFlagEditor(player);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
@@ -121,6 +146,49 @@ public class ClaimsCommand implements CommandExecutor {
         return true;
     }
 
+    private boolean openFlagEditor(Player player) {
+        if (claimFlagService == null || claimFlagEditorService == null || claimIndex == null || dialogService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        if (!player.hasPermission(CLAIM_MENU_PERMISSION)) {
+            player.sendMessage(message("claim.menu.no-permission"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        Claim foundClaim = claim.orElseThrow();
+        ClaimFlagEditor editor = claimFlagEditorService.buildEditor(foundClaim.name(), claimFlagService.listFlags(foundClaim));
+        dialogService.openFlagEditor(player, editor, messageService);
+        return true;
+    }
+
+    private boolean openClaimMenu(Player player) {
+        if (claimMenuService == null || claimIndex == null || dialogService == null || inventoryGuiFallbackService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        if (!player.hasPermission(CLAIM_MENU_PERMISSION)) {
+            player.sendMessage(message("claim.menu.no-permission"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        ClaimMenu menu = claimMenuService.buildMenu(claim.orElseThrow(), player.getUniqueId());
+        dialogService.openClaimMenu(player, menu, messageService);
+        return true;
+    }
+
     private boolean manageFlags(Player player, String[] args) {
         if (claimFlagService == null || claimIndex == null) {
             player.sendMessage(message("command.unavailable.claim-info"));
@@ -134,7 +202,21 @@ public class ClaimsCommand implements CommandExecutor {
         }
 
         if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
-            return listFlags(player, claim.orElseThrow());
+            return openFlagEditor(player);
+        }
+        if (args.length == 3 && args[1].equalsIgnoreCase("toggle")) {
+            ClaimFlagResult result = claimFlagService.toggleFlag(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    args[2],
+                    player::hasPermission
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey(), Map.of("flag", args[2])));
+                return true;
+            }
+            player.sendMessage(message("claim.flag.toggled", Map.of("flag", args[2])));
+            return openFlagEditor(player);
         }
         if (args.length == 4 && args[1].equalsIgnoreCase("set")) {
             Optional<Boolean> enabled = parseBoolean(args[3]);
@@ -487,6 +569,8 @@ public class ClaimsCommand implements CommandExecutor {
 
     private void sendHelp(Player player) {
         player.sendMessage(message("command.help.title"));
+        player.sendMessage(message("command.help.menu"));
+        player.sendMessage(message("command.help.flags"));
         player.sendMessage(message("command.help.tool"));
         player.sendMessage(message("command.help.create"));
         player.sendMessage(message("command.help.member"));

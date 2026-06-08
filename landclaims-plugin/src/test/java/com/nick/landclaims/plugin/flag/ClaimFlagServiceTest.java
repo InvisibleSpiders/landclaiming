@@ -43,6 +43,30 @@ class ClaimFlagServiceTest {
     }
 
     @Test
+    void ownerCanToggleEditableFlagWhenPermissionAllowsIt() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimFlagService service = new ClaimFlagService(repository, claimIndex, FlagRegistry.createDefault());
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(ownerId, worldId, Map.of("build", true));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+
+        ClaimFlagResult result = service.toggleFlag(
+                ownerId,
+                claim,
+                "build",
+                permission -> permission.equals("landclaims.flag.build")
+        );
+
+        assertThat(result.allowed()).isTrue();
+        Claim updated = repository.claims.get(0);
+        assertThat(updated.flags()).containsEntry("build", false);
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
+    }
+
+    @Test
     void nonOwnerCannotSetFlag() {
         ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
         Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of("build", false));
