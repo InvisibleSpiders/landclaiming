@@ -31,6 +31,9 @@ import com.nick.landclaims.plugin.ui.ClaimFlagEditorService;
 import com.nick.landclaims.plugin.ui.ClaimMenuService;
 import com.nick.landclaims.plugin.ui.DialogService;
 import com.nick.landclaims.plugin.ui.InventoryGuiFallbackService;
+import com.nick.landclaims.plugin.visual.BukkitChunkBorderRenderer;
+import com.nick.landclaims.plugin.visual.ClaimBorderColorService;
+import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import dev.invisiblespiders.haven.api.HavenAPI;
 import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
@@ -48,6 +51,7 @@ import org.bukkit.plugin.ServicePriority;
 
 public final class LandClaimsPlugin extends JavaPlugin {
     private LandClaimsApi landClaimsApi;
+    private ChunkBorderVisualService chunkBorderVisualService;
 
     @Override
     public void onEnable() {
@@ -89,10 +93,16 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 getConfig().getInt("claiming.admin-buffer-distance", 3),
                 getConfig().getInt("claiming.max-name-length", 32)
         );
+        ClaimBorderColorService claimBorderColorService = new ClaimBorderColorService(
+                claimCreationService,
+                claimIndex,
+                claimCostService
+        );
         DoubleCrouchClearService doubleCrouchClearService = new DoubleCrouchClearService(
                 getConfig().getInt("selection.double-crouch-clear.window-ticks", 80),
                 () -> getServer().getCurrentTick()
         );
+        chunkBorderVisualService = createChunkBorderVisualService();
         landClaimsApi = new BukkitLandClaimsApi(claimRepository, claimIndex, protectionService);
         getServer().getServicesManager().register(LandClaimsApi.class, landClaimsApi, this, ServicePriority.Normal);
         new ClaimToolRecipeService(this, claimToolService).register(loadYamlResource("recipes.yml"));
@@ -102,6 +112,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         claimToolService,
                         selectionService,
                         doubleCrouchClearService,
+                        chunkBorderVisualService,
+                        claimBorderColorService,
                         getConfig().getBoolean("selection.clear-on-tool-switch", true),
                         getConfig().getBoolean("selection.double-crouch-clear.enabled", true)
                 ),
@@ -126,7 +138,9 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         new ClaimFlagEditorService(),
                         new ClaimMenuService(),
                         new DialogService(),
-                        new InventoryGuiFallbackService()
+                        new InventoryGuiFallbackService(),
+                        chunkBorderVisualService,
+                        claimBorderColorService
                 ));
 
         getLogger().info("LandClaims enabled.");
@@ -134,6 +148,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.clearAll();
+            chunkBorderVisualService = null;
+        }
         if (landClaimsApi != null) {
             getServer().getServicesManager().unregister(LandClaimsApi.class, landClaimsApi);
             landClaimsApi = null;
@@ -171,6 +189,20 @@ public final class LandClaimsPlugin extends JavaPlugin {
             limitPermissions.put(permissionNode, limitsSection.getInt(permissionNode));
         }
         return Map.copyOf(limitPermissions);
+    }
+
+    private ChunkBorderVisualService createChunkBorderVisualService() {
+        if (!getConfig().getBoolean("visuals.border.enabled", true)) {
+            return null;
+        }
+        return new ChunkBorderVisualService(
+                new BukkitChunkBorderRenderer(
+                        this,
+                        getConfig().getDouble("visuals.border.thickness", 0.08D),
+                        (float) getConfig().getDouble("visuals.border.view-range", 96.0D)
+                ),
+                getConfig().getInt("visuals.border.duration-ticks", 160)
+        );
     }
 
     private ClaimRepository createClaimRepository() {

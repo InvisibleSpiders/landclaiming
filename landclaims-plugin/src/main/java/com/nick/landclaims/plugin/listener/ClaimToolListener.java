@@ -4,8 +4,13 @@ import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.selection.DoubleCrouchClearService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import com.nick.landclaims.plugin.visual.BorderColor;
+import com.nick.landclaims.plugin.visual.ClaimBorderColorService;
+import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
@@ -16,11 +21,13 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimToolListener implements Listener {
     private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
@@ -28,23 +35,29 @@ public class ClaimToolListener implements Listener {
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
     private final DoubleCrouchClearService doubleCrouchClearService;
+    private final ChunkBorderVisualService chunkBorderVisualService;
+    private final ClaimBorderColorService claimBorderColorService;
     private final boolean clearOnToolSwitch;
     private final boolean doubleCrouchClearEnabled;
 
     public ClaimToolListener(ClaimToolService claimToolService, SelectionService selectionService) {
-        this(claimToolService, selectionService, null, false, false);
+        this(claimToolService, selectionService, null, null, null, false, false);
     }
 
     public ClaimToolListener(
             ClaimToolService claimToolService,
             SelectionService selectionService,
             DoubleCrouchClearService doubleCrouchClearService,
+            ChunkBorderVisualService chunkBorderVisualService,
+            ClaimBorderColorService claimBorderColorService,
             boolean clearOnToolSwitch,
             boolean doubleCrouchClearEnabled
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = Objects.requireNonNull(selectionService, "selectionService");
         this.doubleCrouchClearService = doubleCrouchClearService;
+        this.chunkBorderVisualService = chunkBorderVisualService;
+        this.claimBorderColorService = claimBorderColorService;
         this.clearOnToolSwitch = clearOnToolSwitch;
         this.doubleCrouchClearEnabled = doubleCrouchClearEnabled;
     }
@@ -69,8 +82,15 @@ public class ClaimToolListener implements Listener {
 
         Chunk chunk = selectionChunk(event.getClickedBlock(), player.getLocation().getChunk());
         selectionService.select(player, chunk).ifPresentOrElse(
-                chunks -> sendSelectionComplete(player, chunks),
-                () -> player.sendMessage(Component.text("First claim corner selected.", NamedTextColor.YELLOW))
+                chunks -> {
+                    showBorder(player, chunks, previewColor(player, chunks));
+                    sendSelectionComplete(player, chunks);
+                },
+                () -> {
+                    Set<ClaimChunk> chunks = Set.of(new ClaimChunk(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ()));
+                    showBorder(player, chunks, previewColor(player, chunks));
+                    player.sendMessage(Component.text("First claim corner selected.", NamedTextColor.YELLOW));
+                }
         );
     }
 
@@ -106,6 +126,7 @@ public class ClaimToolListener implements Listener {
         ItemStack previousItem = inventory.getItem(event.getPreviousSlot());
         ItemStack newItem = inventory.getItem(event.getNewSlot());
         if (shouldClearOnToolSwitch(claimToolService, previousItem, newItem) && selectionService.clear(player)) {
+            clearBorder(player);
             sendSelectionCleared(player);
         }
     }
@@ -118,8 +139,14 @@ public class ClaimToolListener implements Listener {
 
         Player player = event.getPlayer();
         if (doubleCrouchClearService.recordCrouch(player.getUniqueId()) && selectionService.clear(player)) {
+            clearBorder(player);
             sendSelectionCleared(player);
         }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        clearBorder(event.getPlayer());
     }
 
     private boolean isSelectionAction(Action action) {
@@ -147,5 +174,36 @@ public class ClaimToolListener implements Listener {
 
     private void sendSelectionCleared(Player player) {
         player.sendMessage(Component.text("Claim selection cleared.", NamedTextColor.YELLOW));
+    }
+
+    private void showBorder(Player player, Set<ClaimChunk> chunks, BorderColor color) {
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.showSelection(player, chunks, color);
+        }
+    }
+
+    private BorderColor previewColor(Player player, Set<ClaimChunk> chunks) {
+        if (claimBorderColorService == null) {
+            return BorderColor.GREEN;
+        }
+        return claimBorderColorService.colorForPlayerSelection(
+                player.getUniqueId(),
+                Optional.empty(),
+                chunks,
+                permissionNodes(player)
+        );
+    }
+
+    private Set<String> permissionNodes(Player player) {
+        return player.getEffectivePermissions().stream()
+                .filter(PermissionAttachmentInfo::getValue)
+                .map(PermissionAttachmentInfo::getPermission)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private void clearBorder(Player player) {
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.clear(player.getUniqueId());
+        }
     }
 }

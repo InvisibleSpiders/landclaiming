@@ -52,6 +52,11 @@ claim:
   flag-editor:
     title: "<gold>Flags for <yellow><claim_name></yellow>"
     row: "<gray>- <yellow><flag></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Toggle to <next_state>]</green>"
+  visual:
+    border-selection: "<green>Showing your pending claim selection border.</green> <gray>Color: <yellow><color></yellow>."
+    border-claim: "<green>Showing this claim border."
+    border-current-chunk: "<green>Showing the current chunk border.</green> <gray>Color: <yellow><color></yellow>."
+    color-help: "<gray>Green: claimable. Red: blocked. Yellow: can merge. Aqua: claimable with cost. Gold: existing or created claim.</gray>"
   menu:
     no-permission: "<red>You do not have permission to open claim menus."
     title: "<gold>Claim Menu: <yellow><claim_name></yellow>"
@@ -84,6 +89,7 @@ command:
     title: "<gold>LandClaims commands"
     menu: "<yellow>/claims menu</yellow><gray> - opens the claim management menu for this chunk.</gray>"
     flags: "<yellow>/claims flags</yellow><gray> - opens the flag editor for this chunk.</gray>"
+    viewborder: "<yellow>/claims viewborder</yellow><gray> - shows the current selection, claim, or chunk border.</gray>"
     tool: "<yellow>/claims tool</yellow><gray> - gives you the configured claiming tool.</gray>"
     create: "<yellow>/claims create <name></yellow><gray> - creates a claim from your pending selection.</gray>"
     member: "<yellow>/claims member <add|remove|list></yellow><gray> - manages members for the claim you are standing in.</gray>"
