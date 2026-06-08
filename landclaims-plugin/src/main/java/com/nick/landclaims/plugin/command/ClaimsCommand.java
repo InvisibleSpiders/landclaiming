@@ -28,6 +28,8 @@ import com.nick.landclaims.plugin.ui.ClaimMenu;
 import com.nick.landclaims.plugin.ui.ClaimMenuService;
 import com.nick.landclaims.plugin.ui.DialogService;
 import com.nick.landclaims.plugin.ui.InventoryGuiFallbackService;
+import com.nick.landclaims.plugin.visual.BorderColor;
+import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -64,9 +66,10 @@ public class ClaimsCommand implements CommandExecutor {
     private final ClaimMenuService claimMenuService;
     private final DialogService dialogService;
     private final InventoryGuiFallbackService inventoryGuiFallbackService;
+    private final ChunkBorderVisualService chunkBorderVisualService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null);
     }
 
     public ClaimsCommand(
@@ -83,7 +86,8 @@ public class ClaimsCommand implements CommandExecutor {
             ClaimFlagEditorService claimFlagEditorService,
             ClaimMenuService claimMenuService,
             DialogService dialogService,
-            InventoryGuiFallbackService inventoryGuiFallbackService
+            InventoryGuiFallbackService inventoryGuiFallbackService,
+            ChunkBorderVisualService chunkBorderVisualService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -99,6 +103,7 @@ public class ClaimsCommand implements CommandExecutor {
         this.claimMenuService = claimMenuService;
         this.dialogService = dialogService;
         this.inventoryGuiFallbackService = inventoryGuiFallbackService;
+        this.chunkBorderVisualService = chunkBorderVisualService;
     }
 
     @Override
@@ -116,6 +121,9 @@ public class ClaimsCommand implements CommandExecutor {
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("flags")) {
             return openFlagEditor(player);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("viewborder")) {
+            return viewBorder(player);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
@@ -143,6 +151,38 @@ public class ClaimsCommand implements CommandExecutor {
         }
 
         sendHelp(player);
+        return true;
+    }
+
+    private boolean viewBorder(Player player) {
+        if (claimIndex == null || chunkBorderVisualService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+
+        Optional<Set<ClaimChunk>> pendingSelection = selectionService == null
+                ? Optional.empty()
+                : selectionService.pendingSelection(player.getUniqueId());
+        if (pendingSelection.isPresent()) {
+            chunkBorderVisualService.showSelection(player, pendingSelection.orElseThrow(), BorderColor.GREEN);
+            player.sendMessage(message("claim.visual.border-selection"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isPresent()) {
+            chunkBorderVisualService.showSelection(player, claim.orElseThrow().claimChunks(), BorderColor.GOLD);
+            player.sendMessage(message("claim.visual.border-claim"));
+            return true;
+        }
+
+        Chunk chunk = player.getLocation().getChunk();
+        chunkBorderVisualService.showSelection(
+                player,
+                Set.of(new ClaimChunk(player.getWorld().getUID(), chunk.getX(), chunk.getZ())),
+                BorderColor.GREEN
+        );
+        player.sendMessage(message("claim.visual.border-current-chunk"));
         return true;
     }
 
@@ -464,6 +504,9 @@ public class ClaimsCommand implements CommandExecutor {
 
         claimToolService.spendCharges(mainHandItem, chunks.size());
         selectionService.consumeSelection(player.getUniqueId());
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.showSelection(player, chunks, BorderColor.GOLD);
+        }
         player.sendMessage(message("claim.created", Map.of(
                 "claim_name", claimName.trim(),
                 "chunk_count", String.valueOf(chunks.size())
@@ -529,6 +572,9 @@ public class ClaimsCommand implements CommandExecutor {
             pendingClaimMergeService.clear(player.getUniqueId());
         }
         selectionService.clear(player);
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.clear(player.getUniqueId());
+        }
         player.sendMessage(message("command.selection.cleared"));
         return true;
     }
@@ -571,6 +617,7 @@ public class ClaimsCommand implements CommandExecutor {
         player.sendMessage(message("command.help.title"));
         player.sendMessage(message("command.help.menu"));
         player.sendMessage(message("command.help.flags"));
+        player.sendMessage(message("command.help.viewborder"));
         player.sendMessage(message("command.help.tool"));
         player.sendMessage(message("command.help.create"));
         player.sendMessage(message("command.help.member"));

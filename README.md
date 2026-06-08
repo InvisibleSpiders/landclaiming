@@ -27,6 +27,7 @@ This branch is an MVP foundation. The current build includes claim-tool selectio
 - Run `/claims create <name>` to create the claim.
 - Run `/claims menu` while standing in a claim to open the current claim management shell.
 - Run `/claims flags` while standing in a claim to open clickable flag toggles.
+- Run `/claims viewborder` to show the current selection, claim, or chunk border.
 - Switch away from the claim tool or double crouch within the configured window to clear an active selection.
 
 ## Commands
@@ -41,6 +42,7 @@ Base command: `/claims`. Aliases: `/claim`, `/lc`.
 | `/claims cost` | `landclaims.claim` | Previews selected chunks, allowance, over-limit chunks, and cost. `/claims quote` is also accepted. |
 | `/claims menu` | `landclaims.gui` | Opens the claim management menu for the claim at the player's current chunk. |
 | `/claims flags` | `landclaims.gui` | Opens the clickable flag editor for the claim at the player's current chunk. |
+| `/claims viewborder` | `landclaims.use` | Shows the pending selection border, the current claim border, or the current chunk border. |
 | `/claims flag list` | `landclaims.gui` | Opens the same flag editor as `/claims flags`. |
 | `/claims flag set <flag> <true\|false>` | Claim owner plus `landclaims.flag.<flag>` | Sets a claim flag directly. Also accepts `on/off` and `yes/no`. |
 | `/claims flag toggle <flag>` | Claim owner plus `landclaims.flag.<flag>` | Toggles a claim flag and redraws the flag editor. |
@@ -56,10 +58,40 @@ Base command: `/claims`. Aliases: `/claim`, `/lc`.
 
 | Shortcut | Permission | Description |
 | --- | --- | --- |
-| Right-click with claim tool | `landclaims.tool.use` | Selects the first and second claim corners by chunk. |
-| Switch away from claim tool | `landclaims.tool.use` | Clears a pending first corner or completed selection when `selection.clear-on-tool-switch` is enabled. |
-| Double crouch | `landclaims.tool.use` | Clears a pending first corner or completed selection when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
+| Right-click with claim tool | `landclaims.tool.use` | Selects the first and second claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
+| Switch away from claim tool | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.clear-on-tool-switch` is enabled. |
+| Double crouch | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
 | Sneak + swap hand | `landclaims.gui` | Opens `/claims menu` when the claim tool is involved. |
+
+## Visuals
+
+Chunk borders use temporary glowing `BlockDisplay` entities. There is no native Paper chunk glow API, so LandClaims draws short-lived display-entity line segments for the viewing player and removes them on timeout, selection clear, logout, plugin disable, or replacement.
+
+Current border colors:
+
+| Color | Meaning |
+| --- | --- |
+| Green | Active claim selection or current unclaimed chunk preview. |
+| Gold | Created claim or existing claim border preview. |
+
+Planned colors:
+
+| Color | Meaning |
+| --- | --- |
+| Red | Claim blocked by buffer, admin claim, or another player's land. |
+| Yellow | Selection can merge with one of the player's bordering claims. |
+| Aqua | Selection is claimable but may exceed the player's free allowance and cost money. |
+
+Relevant config:
+
+```yaml
+visuals:
+  border:
+    enabled: true
+    duration-ticks: 160
+    thickness: 0.08
+    view-range: 96.0
+```
 
 ## Permissions
 

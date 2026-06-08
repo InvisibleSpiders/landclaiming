@@ -31,6 +31,17 @@ ui:
   # Use inventory menus for dense or item-based flows.
   use-inventory-fallbacks: true
 
+visuals:
+  border:
+    # Uses temporary glowing BlockDisplay entities for player-visible chunk outlines.
+    enabled: true
+    # How long temporary chunk borders remain visible.
+    duration-ticks: 160
+    # Thickness of each display-entity line segment.
+    thickness: 0.08
+    # Display entity view range in blocks.
+    view-range: 96.0
+
 shortcuts:
   sneak-swap-hand:
     # Opens the context claim menu when the player sneaks and presses the swap-hand key.
