@@ -4,9 +4,15 @@ import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimService;
 import com.nick.landclaims.plugin.command.ClaimsCommand;
+import com.nick.landclaims.plugin.economy.ClaimPaymentService;
+import com.nick.landclaims.plugin.economy.HavenEconomyServiceAdapter;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
+import com.nick.landclaims.plugin.limit.ClaimCostConfig;
+import com.nick.landclaims.plugin.limit.ClaimCostService;
+import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
 import com.nick.landclaims.plugin.listener.ProtectionListener;
+import com.nick.landclaims.plugin.permission.PermissionBankService;
 import com.nick.landclaims.plugin.protection.ProtectionService;
 import com.nick.landclaims.plugin.recipe.ClaimToolRecipeService;
 import com.nick.landclaims.plugin.selection.DoubleCrouchClearService;
@@ -14,20 +20,24 @@ import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.storage.sql.SqlClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import dev.invisiblespiders.haven.api.HavenAPI;
+import dev.invisiblespiders.haven.api.service.HavenDataSource;
+import dev.invisiblespiders.haven.api.service.HavenEconomyService;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.sqlite.SQLiteDataSource;
 
 public final class LandClaimsPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        saveResourceIfMissing("storage.yml");
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("permissions.yml");
         saveResourceIfMissing("tool.yml");
@@ -38,10 +48,23 @@ public final class LandClaimsPlugin extends JavaPlugin {
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
-        ClaimRepository claimRepository = createClaimRepository(loadYamlResource("storage.yml"));
-        claimRepository.initialize();
+        ClaimRepository claimRepository = createClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.load(claimRepository.findAllClaims());
+        Map<String, Integer> limitPermissions = loadLimitPermissions(loadYamlResource("permissions.yml"));
+        new PermissionBankService(getServer().getPluginManager()).registerLimitPermissions(limitPermissions);
+        LimitService limitService = new LimitService(
+                getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("landclaims.limit.default", 10)),
+                limitPermissions
+        );
+        ClaimCostService claimCostService = new ClaimCostService(
+                claimRepository,
+                limitService,
+                ClaimCostConfig.from(getConfig())
+        );
+        ClaimPaymentService claimPaymentService = new ClaimPaymentService(
+                new HavenEconomyServiceAdapter(HavenAPI.get(HavenEconomyService.class))
+        );
         ClaimCreationService claimCreationService = new ClaimCreationService(
                 claimRepository,
                 claimIndex,
@@ -72,7 +95,14 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 this
         );
         Objects.requireNonNull(getCommand("claims"), "claims command is not defined in plugin.yml")
-                .setExecutor(new ClaimsCommand(claimToolService, selectionService, claimCreationService, claimIndex));
+                .setExecutor(new ClaimsCommand(
+                        claimToolService,
+                        selectionService,
+                        claimCreationService,
+                        claimIndex,
+                        claimCostService,
+                        claimPaymentService
+                ));
 
         getLogger().info("LandClaims enabled.");
     }
@@ -101,19 +131,26 @@ public final class LandClaimsPlugin extends JavaPlugin {
         return YamlConfiguration.loadConfiguration(resourceFile);
     }
 
-    private ClaimRepository createClaimRepository(YamlConfiguration storageConfiguration) {
-        String storageType = storageConfiguration.getString("storage.type", "sqlite");
-        if (!"sqlite".equalsIgnoreCase(storageType)) {
-            throw new IllegalStateException("Only sqlite storage is currently implemented for playable claim creation.");
+    private Map<String, Integer> loadLimitPermissions(YamlConfiguration permissionsConfiguration) {
+        ConfigurationSection limitsSection = permissionsConfiguration.getConfigurationSection("limits");
+        if (limitsSection == null) {
+            return Map.of();
         }
 
-        String sqliteFile = storageConfiguration.getString("storage.sqlite.file", "landclaims.db");
-        Path configuredPath = Path.of(sqliteFile);
-        Path databasePath = configuredPath.isAbsolute()
-                ? configuredPath
-                : getDataFolder().toPath().resolve(configuredPath);
-        SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite:" + databasePath.toAbsolutePath());
-        return new SqlClaimRepository(dataSource);
+        Map<String, Integer> limitPermissions = new HashMap<>();
+        for (String permissionNode : limitsSection.getKeys(false)) {
+            limitPermissions.put(permissionNode, limitsSection.getInt(permissionNode));
+        }
+        return Map.copyOf(limitPermissions);
+    }
+
+    private ClaimRepository createClaimRepository() {
+        HavenDataSource havenDataSource = HavenAPI.get(HavenDataSource.class);
+        havenDataSource.registerMigrations(
+                "landclaims",
+                "db/migrations/landclaims",
+                getClass().getClassLoader()
+        );
+        return new SqlClaimRepository(havenDataSource.getDataSource());
     }
 }

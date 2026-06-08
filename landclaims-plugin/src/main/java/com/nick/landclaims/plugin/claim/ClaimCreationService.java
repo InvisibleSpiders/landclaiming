@@ -48,6 +48,34 @@ public final class ClaimCreationService {
         Objects.requireNonNull(chunks, "chunks");
 
         String trimmedName = name.trim();
+        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks);
+        if (!validationResult.isAllowed()) {
+            return validationResult;
+        }
+
+        Instant now = Instant.now();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                trimmedName,
+                OwnerType.PLAYER,
+                ownerUuid,
+                chunks.iterator().next().worldId(),
+                chunks,
+                defaultFlags(),
+                now,
+                now
+        );
+        claimRepository.saveClaim(claim);
+        claimIndex.add(claim);
+        return ClaimValidationResult.allowed();
+    }
+
+    public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+        Objects.requireNonNull(ownerUuid, "ownerUuid");
+        Objects.requireNonNull(name, "name");
+        Objects.requireNonNull(chunks, "chunks");
+
+        String trimmedName = name.trim();
         if (trimmedName.isEmpty() || trimmedName.length() > maxClaimNameLength) {
             return ClaimValidationResult.denied("claims.invalid-name");
         }
@@ -67,20 +95,6 @@ public final class ClaimCreationService {
             }
         }
 
-        Instant now = Instant.now();
-        Claim claim = new Claim(
-                UUID.randomUUID(),
-                trimmedName,
-                OwnerType.PLAYER,
-                ownerUuid,
-                chunks.iterator().next().worldId(),
-                chunks,
-                defaultFlags(),
-                now,
-                now
-        );
-        claimRepository.saveClaim(claim);
-        claimIndex.add(claim);
         return ClaimValidationResult.allowed();
     }
 

@@ -104,6 +104,23 @@ class ClaimCreationServiceTest {
         assertThat(repository.savedClaims).isEmpty();
     }
 
+    @Test
+    void validatePlayerClaimDoesNotSaveClaim() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService service = service(repository, claimIndex);
+
+        ClaimValidationResult result = service.validatePlayerClaim(
+                UUID.randomUUID(),
+                "Home",
+                Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0))
+        );
+
+        assertThat(result.isAllowed()).isTrue();
+        assertThat(repository.savedClaims).isEmpty();
+        assertThat(claimIndex.findAll()).isEmpty();
+    }
+
     private static ClaimCreationService service(FakeClaimRepository repository, ClaimIndex claimIndex) {
         return new ClaimCreationService(
                 repository,

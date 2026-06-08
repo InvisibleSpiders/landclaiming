@@ -36,10 +36,21 @@ public final class SqlStatements {
             )
             """;
 
+    public static final String CREATE_CLAIM_MEMBERS_TABLE = """
+            CREATE TABLE IF NOT EXISTS claim_members (
+                claim_id CHAR(36) NOT NULL,
+                member_uuid CHAR(36) NOT NULL,
+                role VARCHAR(32) NOT NULL,
+                PRIMARY KEY (claim_id, member_uuid),
+                FOREIGN KEY (claim_id) REFERENCES claims(id) ON DELETE CASCADE
+            )
+            """;
+
     public static final List<String> CREATE_SCHEMA = List.of(
             CREATE_CLAIMS_TABLE,
             CREATE_CLAIM_CHUNKS_TABLE,
-            CREATE_CLAIM_FLAGS_TABLE
+            CREATE_CLAIM_FLAGS_TABLE,
+            CREATE_CLAIM_MEMBERS_TABLE
     );
 
     private SqlStatements() {

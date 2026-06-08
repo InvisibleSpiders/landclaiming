@@ -6,4 +6,6 @@ public interface EconomyService {
     boolean available();
 
     boolean withdraw(UUID playerId, double amount);
+
+    String format(double amount);
 }

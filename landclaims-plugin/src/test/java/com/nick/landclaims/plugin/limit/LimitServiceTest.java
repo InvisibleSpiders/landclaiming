@@ -38,4 +38,16 @@ class LimitServiceTest {
         assertThat(service.overageChunks(14, 10)).isEqualTo(4);
         assertThat(service.overageChunks(8, 10)).isZero();
     }
+
+    @Test
+    void flatOverLimitCostChargesSameAmountPerOverageChunk() {
+        assertThat(LimitService.flatOverLimitCost(3, 250.0)).isEqualTo(750.0);
+        assertThat(LimitService.flatOverLimitCost(0, 250.0)).isZero();
+    }
+
+    @Test
+    void exponentialOverLimitCostIncreasesEachOverageChunk() {
+        assertThat(LimitService.exponentialOverLimitCost(3, 250.0, 1.25)).isEqualTo(953.125);
+        assertThat(LimitService.exponentialOverLimitCost(0, 250.0, 1.25)).isZero();
+    }
 }

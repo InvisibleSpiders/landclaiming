@@ -4,6 +4,8 @@ main: com.nick.landclaims.plugin.LandClaimsPlugin
 api-version: '26.1.2'
 author: Nick
 description: Chunk-based land claiming with configurable protections.
+depend:
+  - HavenCore
 softdepend:
   - VaultUnlocked
 commands:

@@ -12,5 +12,6 @@ class NoopEconomyServiceTest {
 
         assertThat(service.available()).isFalse();
         assertThat(service.withdraw(UUID.randomUUID(), 10.0)).isFalse();
+        assertThat(service.format(10.5)).isEqualTo("10.50");
     }
 }

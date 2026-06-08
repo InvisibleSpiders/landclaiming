@@ -29,4 +29,19 @@ public final class LimitService {
     public int overageChunks(int proposedTotalChunks, int allowedChunks) {
         return Math.max(0, proposedTotalChunks - allowedChunks);
     }
+
+    public static double flatOverLimitCost(int overageChunks, double costPerChunk) {
+        return Math.max(0, overageChunks) * Math.max(0.0, costPerChunk);
+    }
+
+    public static double exponentialOverLimitCost(int overageChunks, double baseCost, double multiplier) {
+        int normalizedOverageChunks = Math.max(0, overageChunks);
+        double normalizedBaseCost = Math.max(0.0, baseCost);
+        double normalizedMultiplier = Math.max(0.0, multiplier);
+        double total = 0.0;
+        for (int chunkNumber = 0; chunkNumber < normalizedOverageChunks; chunkNumber++) {
+            total += normalizedBaseCost * Math.pow(normalizedMultiplier, chunkNumber);
+        }
+        return total;
+    }
 }

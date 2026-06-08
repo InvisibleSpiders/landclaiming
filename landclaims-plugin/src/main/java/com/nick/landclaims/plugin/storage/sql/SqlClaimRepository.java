@@ -2,6 +2,8 @@ package com.nick.landclaims.plugin.storage.sql;
 
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
+import com.nick.landclaims.plugin.claim.ClaimMember;
+import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.sql.Connection;
@@ -51,6 +53,7 @@ public class SqlClaimRepository implements ClaimRepository {
                 insertClaim(connection, claim);
                 insertChunks(connection, claim);
                 insertFlags(connection, claim);
+                insertMembers(connection, claim);
                 connection.commit();
             } catch (SQLException exception) {
                 connection.rollback();
@@ -132,6 +135,7 @@ public class SqlClaimRepository implements ClaimRepository {
     }
 
     private void deleteClaim(Connection connection, UUID claimId) throws SQLException {
+        executeDelete(connection, "DELETE FROM claim_members WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claim_flags WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claim_chunks WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claims WHERE id = ?", claimId);
@@ -188,6 +192,19 @@ public class SqlClaimRepository implements ClaimRepository {
         }
     }
 
+    private void insertMembers(Connection connection, Claim claim) throws SQLException {
+        String sql = "INSERT INTO claim_members (claim_id, member_uuid, role) VALUES (?, ?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (ClaimMember member : claim.members()) {
+                statement.setString(1, claim.id().toString());
+                statement.setString(2, member.memberUuid().toString());
+                statement.setString(3, member.role().name());
+                statement.addBatch();
+            }
+            statement.executeBatch();
+        }
+    }
+
     private List<Claim> mapClaims(Connection connection, PreparedStatement statement) throws SQLException {
         List<Claim> claims = new ArrayList<>();
         try (ResultSet resultSet = statement.executeQuery()) {
@@ -209,6 +226,7 @@ public class SqlClaimRepository implements ClaimRepository {
                 worldId,
                 loadChunks(connection, claimId),
                 loadFlags(connection, claimId),
+                loadMembers(connection, claimId),
                 Instant.parse(resultSet.getString("created_at")),
                 Instant.parse(resultSet.getString("updated_at"))
         );
@@ -246,6 +264,24 @@ public class SqlClaimRepository implements ClaimRepository {
             }
         }
         return Map.copyOf(flags);
+    }
+
+    private Set<ClaimMember> loadMembers(Connection connection, UUID claimId) throws SQLException {
+        Set<ClaimMember> members = new HashSet<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT member_uuid, role FROM claim_members WHERE claim_id = ?"
+        )) {
+            statement.setString(1, claimId.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    members.add(new ClaimMember(
+                            UUID.fromString(resultSet.getString("member_uuid")),
+                            ClaimRole.valueOf(resultSet.getString("role"))
+                    ));
+                }
+            }
+        }
+        return Set.copyOf(members);
     }
 
     private UUID nullableUuid(String value) {
