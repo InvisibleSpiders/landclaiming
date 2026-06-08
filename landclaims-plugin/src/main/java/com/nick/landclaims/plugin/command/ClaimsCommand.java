@@ -5,12 +5,17 @@ import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
+import com.nick.landclaims.plugin.economy.ClaimPaymentResult;
+import com.nick.landclaims.plugin.economy.ClaimPaymentService;
+import com.nick.landclaims.plugin.limit.ClaimCostQuote;
+import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
@@ -19,6 +24,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimsCommand implements CommandExecutor {
     private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
@@ -27,21 +33,27 @@ public class ClaimsCommand implements CommandExecutor {
     private final SelectionService selectionService;
     private final ClaimCreationService claimCreationService;
     private final ClaimIndex claimIndex;
+    private final ClaimCostService claimCostService;
+    private final ClaimPaymentService claimPaymentService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null);
+        this(claimToolService, null, null, null, null, null);
     }
 
     public ClaimsCommand(
             ClaimToolService claimToolService,
             SelectionService selectionService,
             ClaimCreationService claimCreationService,
-            ClaimIndex claimIndex
+            ClaimIndex claimIndex,
+            ClaimCostService claimCostService,
+            ClaimPaymentService claimPaymentService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
         this.claimCreationService = claimCreationService;
         this.claimIndex = claimIndex;
+        this.claimCostService = claimCostService;
+        this.claimPaymentService = claimPaymentService;
     }
 
     @Override
@@ -102,6 +114,28 @@ public class ClaimsCommand implements CommandExecutor {
         }
 
         String claimName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(player.getUniqueId(), claimName, chunks);
+        if (!validationResult.isAllowed()) {
+            player.sendMessage(Component.text("Claim could not be created: ", NamedTextColor.RED)
+                    .append(Component.text(validationResult.messageKey().orElse("claims.denied"), NamedTextColor.YELLOW)));
+            return true;
+        }
+
+        if (claimCostService != null && claimPaymentService != null) {
+            ClaimCostQuote quote = claimCostService.quotePlayerClaim(player.getUniqueId(), permissionNodes(player), chunks);
+            ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
+            if (!paymentResult.allowed()) {
+                player.sendMessage(Component.text("Claim could not be created: ", NamedTextColor.RED)
+                        .append(Component.text(paymentResult.messageKey(), NamedTextColor.YELLOW)));
+                return true;
+            }
+            if (quote.cost() > 0.0) {
+                player.sendMessage(Component.text("Charged ", NamedTextColor.GREEN)
+                        .append(Component.text(quote.cost(), NamedTextColor.YELLOW))
+                        .append(Component.text(" for over-limit claim chunks.", NamedTextColor.GREEN)));
+            }
+        }
+
         ClaimValidationResult result = claimCreationService.createPlayerClaim(player.getUniqueId(), claimName, chunks);
         if (!result.isAllowed()) {
             player.sendMessage(Component.text("Claim could not be created: ", NamedTextColor.RED)
@@ -114,6 +148,13 @@ public class ClaimsCommand implements CommandExecutor {
         player.sendMessage(Component.text("Claim created: ", NamedTextColor.GREEN)
                 .append(Component.text(claimName.trim(), NamedTextColor.YELLOW)));
         return true;
+    }
+
+    private Set<String> permissionNodes(Player player) {
+        return player.getEffectivePermissions().stream()
+                .filter(PermissionAttachmentInfo::getValue)
+                .map(PermissionAttachmentInfo::getPermission)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private boolean cancelSelection(Player player) {
