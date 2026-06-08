@@ -53,9 +53,10 @@ claim:
     title: "<gold>Flags for <yellow><claim_name></yellow>"
     row: "<gray>- <yellow><flag></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Toggle to <next_state>]</green>"
   visual:
-    border-selection: "<green>Showing your pending claim selection border."
+    border-selection: "<green>Showing your pending claim selection border.</green> <gray>Color: <yellow><color></yellow>."
     border-claim: "<green>Showing this claim border."
-    border-current-chunk: "<green>Showing the current chunk border."
+    border-current-chunk: "<green>Showing the current chunk border.</green> <gray>Color: <yellow><color></yellow>."
+    color-help: "<gray>Green: claimable. Red: blocked. Yellow: can merge. Aqua: claimable with cost. Gold: existing or created claim.</gray>"
   menu:
     no-permission: "<red>You do not have permission to open claim menus."
     title: "<gold>Claim Menu: <yellow><claim_name></yellow>"

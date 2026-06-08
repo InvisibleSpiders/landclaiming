@@ -67,20 +67,15 @@ Base command: `/claims`. Aliases: `/claim`, `/lc`.
 
 Chunk borders use temporary glowing `BlockDisplay` entities. There is no native Paper chunk glow API, so LandClaims draws short-lived display-entity line segments for the viewing player and removes them on timeout, selection clear, logout, plugin disable, or replacement.
 
-Current border colors:
+Claim preview border colors:
 
 | Color | Meaning |
 | --- | --- |
-| Green | Active claim selection or current unclaimed chunk preview. |
+| Green | Selection or current chunk is claimable without extra action. |
+| Red | Selection is blocked by overlap, buffer distance, admin claim, or another player's land. |
+| Yellow | Selection borders one of the player's claims and can merge when the claim name matches. |
+| Aqua | Selection is claimable but exceeds the player's free allowance and may cost money. |
 | Gold | Created claim or existing claim border preview. |
-
-Planned colors:
-
-| Color | Meaning |
-| --- | --- |
-| Red | Claim blocked by buffer, admin claim, or another player's land. |
-| Yellow | Selection can merge with one of the player's bordering claims. |
-| Aqua | Selection is claimable but may exceed the player's free allowance and cost money. |
 
 Relevant config:
 

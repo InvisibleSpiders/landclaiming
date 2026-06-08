@@ -5,9 +5,12 @@ import com.nick.landclaims.plugin.selection.DoubleCrouchClearService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
 import com.nick.landclaims.plugin.visual.BorderColor;
+import com.nick.landclaims.plugin.visual.ClaimBorderColorService;
 import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
@@ -24,6 +27,7 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimToolListener implements Listener {
     private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
@@ -32,11 +36,12 @@ public class ClaimToolListener implements Listener {
     private final SelectionService selectionService;
     private final DoubleCrouchClearService doubleCrouchClearService;
     private final ChunkBorderVisualService chunkBorderVisualService;
+    private final ClaimBorderColorService claimBorderColorService;
     private final boolean clearOnToolSwitch;
     private final boolean doubleCrouchClearEnabled;
 
     public ClaimToolListener(ClaimToolService claimToolService, SelectionService selectionService) {
-        this(claimToolService, selectionService, null, null, false, false);
+        this(claimToolService, selectionService, null, null, null, false, false);
     }
 
     public ClaimToolListener(
@@ -44,6 +49,7 @@ public class ClaimToolListener implements Listener {
             SelectionService selectionService,
             DoubleCrouchClearService doubleCrouchClearService,
             ChunkBorderVisualService chunkBorderVisualService,
+            ClaimBorderColorService claimBorderColorService,
             boolean clearOnToolSwitch,
             boolean doubleCrouchClearEnabled
     ) {
@@ -51,6 +57,7 @@ public class ClaimToolListener implements Listener {
         this.selectionService = Objects.requireNonNull(selectionService, "selectionService");
         this.doubleCrouchClearService = doubleCrouchClearService;
         this.chunkBorderVisualService = chunkBorderVisualService;
+        this.claimBorderColorService = claimBorderColorService;
         this.clearOnToolSwitch = clearOnToolSwitch;
         this.doubleCrouchClearEnabled = doubleCrouchClearEnabled;
     }
@@ -76,11 +83,12 @@ public class ClaimToolListener implements Listener {
         Chunk chunk = selectionChunk(event.getClickedBlock(), player.getLocation().getChunk());
         selectionService.select(player, chunk).ifPresentOrElse(
                 chunks -> {
-                    showBorder(player, chunks, BorderColor.GREEN);
+                    showBorder(player, chunks, previewColor(player, chunks));
                     sendSelectionComplete(player, chunks);
                 },
                 () -> {
-                    showBorder(player, Set.of(new ClaimChunk(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ())), BorderColor.GREEN);
+                    Set<ClaimChunk> chunks = Set.of(new ClaimChunk(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ()));
+                    showBorder(player, chunks, previewColor(player, chunks));
                     player.sendMessage(Component.text("First claim corner selected.", NamedTextColor.YELLOW));
                 }
         );
@@ -172,6 +180,25 @@ public class ClaimToolListener implements Listener {
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.showSelection(player, chunks, color);
         }
+    }
+
+    private BorderColor previewColor(Player player, Set<ClaimChunk> chunks) {
+        if (claimBorderColorService == null) {
+            return BorderColor.GREEN;
+        }
+        return claimBorderColorService.colorForPlayerSelection(
+                player.getUniqueId(),
+                Optional.empty(),
+                chunks,
+                permissionNodes(player)
+        );
+    }
+
+    private Set<String> permissionNodes(Player player) {
+        return player.getEffectivePermissions().stream()
+                .filter(PermissionAttachmentInfo::getValue)
+                .map(PermissionAttachmentInfo::getPermission)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private void clearBorder(Player player) {
