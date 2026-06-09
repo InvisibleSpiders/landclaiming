@@ -35,12 +35,16 @@ notifications:
   claim-boundary:
     # Shows a configurable message when players enter or exit claimed land.
     enabled: true
-    # Options: action_bar, chat, both.
+    # Options: action_bar, chat, both, none.
     delivery: action_bar
     enter:
       enabled: true
+      # Optional override. Options: action_bar, chat, both, none.
+      delivery: action_bar
     exit:
       enabled: true
+      # Optional override. Options: action_bar, chat, both, none.
+      delivery: action_bar
 
 access-denial:
   # Prevents players on a claim's denied list from entering that claim.

@@ -11,7 +11,7 @@ claim:
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
   boundary:
     enter: "<gold>Entering <yellow><claim_name></yellow></gold>"
-    exit: "<gray>Leaving claimed land.</gray>"
+    exit: "<gray>Leaving <yellow><claim_name></yellow>.</gray>"
   tool:
     first-corner-selected: "<yellow>First claim corner selected."
     selection-complete: "<green>Claim selection contains <yellow><chunk_count></yellow> chunks."
