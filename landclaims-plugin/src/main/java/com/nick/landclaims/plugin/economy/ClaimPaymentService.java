@@ -26,6 +26,14 @@ public final class ClaimPaymentService {
         return ClaimPaymentResult.success();
     }
 
+    public void refund(UUID playerId, ClaimCostQuote quote) {
+        Objects.requireNonNull(playerId, "playerId");
+        Objects.requireNonNull(quote, "quote");
+        if (quote.cost() > 0.0 && economyService.available()) {
+            economyService.deposit(playerId, quote.cost());
+        }
+    }
+
     public String format(double amount) {
         return economyService.format(amount);
     }

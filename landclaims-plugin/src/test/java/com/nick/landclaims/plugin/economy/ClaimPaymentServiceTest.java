@@ -59,6 +59,39 @@ class ClaimPaymentServiceTest {
         assertThat(paymentService.format(100.5)).isEqualTo("100.50");
     }
 
+    @Test
+    void refundDepositsWhenCostIsPositiveAndEconomyIsAvailable() {
+        RecordingEconomyService economyService = new RecordingEconomyService(true, true);
+        ClaimPaymentService paymentService = new ClaimPaymentService(economyService);
+        UUID playerId = UUID.randomUUID();
+
+        paymentService.refund(playerId, quote(100.0));
+
+        assertThat(economyService.depositCalls).isEqualTo(1);
+        assertThat(economyService.lastPlayerId).isEqualTo(playerId);
+        assertThat(economyService.lastAmount).isEqualTo(100.0);
+    }
+
+    @Test
+    void refundSkipsDepositForFreeClaims() {
+        RecordingEconomyService economyService = new RecordingEconomyService(true, true);
+        ClaimPaymentService paymentService = new ClaimPaymentService(economyService);
+
+        paymentService.refund(UUID.randomUUID(), quote(0.0));
+
+        assertThat(economyService.depositCalls).isZero();
+    }
+
+    @Test
+    void refundSkipsDepositWhenEconomyIsUnavailable() {
+        RecordingEconomyService economyService = new RecordingEconomyService(false, false);
+        ClaimPaymentService paymentService = new ClaimPaymentService(economyService);
+
+        paymentService.refund(UUID.randomUUID(), quote(100.0));
+
+        assertThat(economyService.depositCalls).isZero();
+    }
+
     private static ClaimCostQuote quote(double cost) {
         return new ClaimCostQuote(10, 8, 3, 11, 1, cost);
     }
@@ -67,6 +100,7 @@ class ClaimPaymentServiceTest {
         private final boolean available;
         private final boolean withdrawResult;
         private int withdrawCalls;
+        private int depositCalls;
         private UUID lastPlayerId;
         private double lastAmount;
 
@@ -86,6 +120,14 @@ class ClaimPaymentServiceTest {
             lastPlayerId = playerId;
             lastAmount = amount;
             return withdrawResult;
+        }
+
+        @Override
+        public boolean deposit(UUID playerId, double amount) {
+            depositCalls++;
+            lastPlayerId = playerId;
+            lastAmount = amount;
+            return true;
         }
 
         @Override

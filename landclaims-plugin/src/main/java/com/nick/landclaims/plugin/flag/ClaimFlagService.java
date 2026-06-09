@@ -3,6 +3,7 @@ package com.nick.landclaims.plugin.flag;
 import com.nick.landclaims.api.flag.ClaimFlagDefinition;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
 import java.util.Comparator;
@@ -36,7 +37,7 @@ public final class ClaimFlagService {
         Objects.requireNonNull(flagKey, "flagKey");
         Objects.requireNonNull(permissionCheck, "permissionCheck");
 
-        if (!actorId.equals(claim.ownerUuid())) {
+        if (!actorId.equals(claim.ownerUuid()) && !isManager(actorId, claim)) {
             return ClaimFlagResult.denied("claim.flag.not-owner");
         }
 
@@ -82,6 +83,14 @@ public final class ClaimFlagService {
         }
         boolean currentValue = claim.flags().getOrDefault(definition.key(), definition.defaultValue());
         return setFlag(actorId, claim, definition.key(), !currentValue, permissionCheck);
+    }
+
+    private boolean isManager(UUID actorId, Claim claim) {
+        if (actorId == null) {
+            return false;
+        }
+        return claim.members().stream()
+                .anyMatch(m -> m.memberUuid().equals(actorId) && m.role() == ClaimRole.MANAGER);
     }
 
     public List<ClaimFlagRow> listFlags(Claim claim) {

@@ -146,10 +146,6 @@ class ClaimFlagServiceTest {
         private final List<Claim> claims = new ArrayList<>();
 
         @Override
-        public void initialize() {
-        }
-
-        @Override
         public void saveClaim(Claim claim) {
             claims.removeIf(existing -> existing.id().equals(claim.id()));
             claims.add(claim);

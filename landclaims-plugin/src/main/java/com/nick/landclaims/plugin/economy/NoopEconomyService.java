@@ -15,6 +15,11 @@ public final class NoopEconomyService implements EconomyService {
     }
 
     @Override
+    public boolean deposit(UUID playerId, double amount) {
+        return false;
+    }
+
+    @Override
     public String format(double amount) {
         return String.format(Locale.US, "%.2f", amount);
     }

@@ -1,67 +1,33 @@
 package com.nick.landclaims.plugin.storage.sql;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimMember;
 import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.OwnerType;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.sql.Connection;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sqlite.SQLiteDataSource;
 
 class SqlClaimRepositoryTest {
     @Test
-    void initializesInMemorySqliteSchema() {
-        SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite::memory:");
-        SqlClaimRepository repository = new SqlClaimRepository(dataSource);
-
-        assertThatCode(repository::initialize).doesNotThrowAnyException();
-    }
-
-    @Test
-    void createStatementsUseBoundedStringColumnsForKeys() {
-        assertThat(SqlStatements.CREATE_SCHEMA)
-                .noneMatch(statement -> statement.contains("TEXT PRIMARY KEY"));
-
-        assertThat(SqlStatements.CREATE_CLAIMS_TABLE)
-                .contains("id CHAR(36) PRIMARY KEY")
-                .contains("name VARCHAR(")
-                .contains("owner_type VARCHAR(")
-                .contains("owner_uuid CHAR(36)")
-                .contains("world_id CHAR(36) NOT NULL");
-
-        assertThat(SqlStatements.CREATE_CLAIM_CHUNKS_TABLE)
-                .contains("claim_id CHAR(36) NOT NULL")
-                .contains("world_id CHAR(36) NOT NULL")
-                .contains("PRIMARY KEY (world_id, chunk_x, chunk_z)");
-
-        assertThat(SqlStatements.CREATE_CLAIM_FLAGS_TABLE)
-                .contains("claim_id CHAR(36) NOT NULL")
-                .contains("flag_key VARCHAR(")
-                .contains("PRIMARY KEY (claim_id, flag_key)");
-
-        assertThat(SqlStatements.CREATE_CLAIM_MEMBERS_TABLE)
-                .contains("claim_id CHAR(36) NOT NULL")
-                .contains("member_uuid CHAR(36) NOT NULL")
-                .contains("role VARCHAR(")
-                .contains("PRIMARY KEY (claim_id, member_uuid)");
-    }
-
-    @Test
-    void savesAndLoadsClaimWithChunksFlagsAndMembers(@TempDir Path tempDirectory) {
+    void savesAndLoadsClaimWithChunksFlagsAndMembers(@TempDir Path tempDirectory) throws Exception {
         SQLiteDataSource dataSource = new SQLiteDataSource();
         dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        applyMigrations(dataSource);
         SqlClaimRepository repository = new SqlClaimRepository(dataSource);
-        repository.initialize();
         UUID claimId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
@@ -93,11 +59,11 @@ class SqlClaimRepositoryTest {
     }
 
     @Test
-    void deletesClaimAndOwnedRows(@TempDir Path tempDirectory) {
+    void deletesClaimAndOwnedRows(@TempDir Path tempDirectory) throws Exception {
         SQLiteDataSource dataSource = new SQLiteDataSource();
         dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        applyMigrations(dataSource);
         SqlClaimRepository repository = new SqlClaimRepository(dataSource);
-        repository.initialize();
         UUID claimId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
@@ -120,5 +86,21 @@ class SqlClaimRepositoryTest {
         assertThat(repository.findClaimAt(worldId, 1, 2)).isEmpty();
         assertThat(repository.findClaimById(claimId)).isEmpty();
         assertThat(repository.findAllClaims()).isEmpty();
+    }
+
+    private static void applyMigrations(DataSource dataSource) throws Exception {
+        try (InputStream in = SqlClaimRepositoryTest.class.getClassLoader()
+                .getResourceAsStream("db/migrations/landclaims/V1__initial_claim_schema.sql")) {
+            Objects.requireNonNull(in, "V1 migration resource not found");
+            String sql = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            try (Connection connection = dataSource.getConnection()) {
+                for (String statement : sql.split(";")) {
+                    String trimmed = statement.trim();
+                    if (!trimmed.isEmpty()) {
+                        connection.prepareStatement(trimmed).execute();
+                    }
+                }
+            }
+        }
     }
 }

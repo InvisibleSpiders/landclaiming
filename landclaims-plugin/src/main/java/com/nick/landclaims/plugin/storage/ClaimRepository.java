@@ -7,8 +7,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ClaimRepository {
-    void initialize();
-
     void saveClaim(Claim claim);
 
     void deleteClaim(UUID claimId);

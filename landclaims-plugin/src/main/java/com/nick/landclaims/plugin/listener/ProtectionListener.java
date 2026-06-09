@@ -16,26 +16,28 @@ import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockFromToEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 
 public final class ProtectionListener implements Listener {
     private static final String BYPASS_PERMISSION = "landclaims.bypass.protection";
@@ -77,7 +79,7 @@ public final class ProtectionListener implements Listener {
 
         String flagKey = event.getAction() == Action.PHYSICAL && clickedBlock.getType() == Material.FARMLAND
                 ? "crop_trample"
-                : resolveInteractFlag(clickedBlock.getType());
+                : resolveInteractFlag(clickedBlock);
         if (isDeniedWithMessage(clickedBlock, event.getPlayer(), flagKey)) {
             event.setCancelled(true);
         }
@@ -261,7 +263,9 @@ public final class ProtectionListener implements Listener {
         player.sendMessage(messageService.render("claim.denied", Map.of("claim_name", claim.name())));
     }
 
-    static String resolveInteractFlag(Material material) {
+    // Maps the interacted block to the most-specific protection flag so each flag can be toggled independently.
+    static String resolveInteractFlag(Block block) {
+        Material material = block.getType();
         if (Tag.DOORS.isTagged(material) || Tag.TRAPDOORS.isTagged(material) || Tag.FENCE_GATES.isTagged(material)) {
             return "door_access";
         }
@@ -271,30 +275,10 @@ public final class ProtectionListener implements Listener {
         if (material == Material.REPEATER || material == Material.COMPARATOR) {
             return "redstone_access";
         }
-        if (isContainerMaterial(material)) {
+        BlockState state = block.getState();
+        if (state instanceof Container || material == Material.ENDER_CHEST) {
             return "container_access";
         }
         return "interact";
-    }
-
-    private static boolean isContainerMaterial(Material material) {
-        return switch (material) {
-            case BARREL,
-                    BLAST_FURNACE,
-                    BREWING_STAND,
-                    CHEST,
-                    CHISELED_BOOKSHELF,
-                    DISPENSER,
-                    DROPPER,
-                    ENDER_CHEST,
-                    FURNACE,
-                    HOPPER,
-                    JUKEBOX,
-                    LECTERN,
-                    SHULKER_BOX,
-                    SMOKER,
-                    TRAPPED_CHEST -> true;
-            default -> material.name().endsWith("_SHULKER_BOX");
-        };
     }
 }
