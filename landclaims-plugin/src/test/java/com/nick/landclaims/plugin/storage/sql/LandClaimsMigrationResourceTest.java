@@ -9,13 +9,16 @@ import org.junit.jupiter.api.Test;
 
 class LandClaimsMigrationResourceTest {
     @Test
-    void migrationIndexListsInitialSchemaMigration() throws IOException {
+    void migrationIndexListsSchemaMigrationsInOrder() throws IOException {
         String index = resource("db/migrations/landclaims/migrations.index");
 
         assertThat(index.lines()
                 .map(String::trim)
                 .filter(line -> !line.isEmpty() && !line.startsWith("#")))
-                .containsExactly("V1__initial_claim_schema.sql");
+                .containsExactly(
+                        "V1__initial_claim_schema.sql",
+                        "V2__claim_denied_players.sql"
+                );
     }
 
     @Test
@@ -29,6 +32,16 @@ class LandClaimsMigrationResourceTest {
                 .contains("CREATE TABLE IF NOT EXISTS claim_members")
                 .contains("PRIMARY KEY (world_id, chunk_x, chunk_z)")
                 .contains("PRIMARY KEY (claim_id, member_uuid)");
+    }
+
+    @Test
+    void deniedPlayersMigrationCreatesClaimDeniedPlayersTable() throws IOException {
+        String migration = resource("db/migrations/landclaims/V2__claim_denied_players.sql");
+
+        assertThat(migration)
+                .contains("CREATE TABLE IF NOT EXISTS claim_denied_players")
+                .contains("player_uuid CHAR(36) NOT NULL")
+                .contains("PRIMARY KEY (claim_id, player_uuid)");
     }
 
     private static String resource(String path) throws IOException {

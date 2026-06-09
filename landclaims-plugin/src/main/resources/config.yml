@@ -42,6 +42,14 @@ notifications:
     exit:
       enabled: true
 
+access-denial:
+  # Prevents players on a claim's denied list from entering that claim.
+  enabled: true
+  knockback:
+    # Applies a small push away from the denied border when access is blocked.
+    enabled: true
+    strength: 0.65
+
 advanced:
   entity-control:
     # Enables claim flags that automatically remove hostile or passive entities.

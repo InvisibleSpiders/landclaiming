@@ -3,6 +3,8 @@ package com.nick.landclaims.plugin.command;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
+import com.nick.landclaims.plugin.claim.ClaimDenyResult;
+import com.nick.landclaims.plugin.claim.ClaimDenyService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimMember;
 import com.nick.landclaims.plugin.claim.ClaimMemberResult;
@@ -54,6 +56,7 @@ import org.bukkit.permissions.PermissionAttachmentInfo;
 public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
     private static final String CLAIM_MENU_PERMISSION = "landclaims.gui";
+    private static final String CLAIM_DENY_PERMISSION = "landclaims.deny.manage";
     private static final List<String> ROOT_SUGGESTIONS = List.of(
             "tool",
             "create",
@@ -64,6 +67,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "viewborder",
             "flag",
             "member",
+            "deny",
+            "undeny",
+            "denied",
             "cancel",
             "info"
     );
@@ -77,6 +83,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final PendingClaimMergeService pendingClaimMergeService;
     private final MessageService messageService;
     private final ClaimMemberService claimMemberService;
+    private final ClaimDenyService claimDenyService;
     private final ClaimFlagService claimFlagService;
     private final ClaimFlagEditorService claimFlagEditorService;
     private final ClaimMenuService claimMenuService;
@@ -86,7 +93,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final ClaimBorderColorService claimBorderColorService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null);
     }
 
     public ClaimsCommand(
@@ -99,6 +106,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             PendingClaimMergeService pendingClaimMergeService,
             MessageService messageService,
             ClaimMemberService claimMemberService,
+            ClaimDenyService claimDenyService,
             ClaimFlagService claimFlagService,
             ClaimFlagEditorService claimFlagEditorService,
             ClaimMenuService claimMenuService,
@@ -116,6 +124,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.pendingClaimMergeService = pendingClaimMergeService;
         this.messageService = Objects.requireNonNull(messageService, "messageService");
         this.claimMemberService = claimMemberService;
+        this.claimDenyService = claimDenyService;
         this.claimFlagService = claimFlagService;
         this.claimFlagEditorService = claimFlagEditorService;
         this.claimMenuService = claimMenuService;
@@ -149,6 +158,11 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("member")) {
             return manageMembers(player, args);
+        }
+        if (args.length >= 1 && (args[0].equalsIgnoreCase("deny")
+                || args[0].equalsIgnoreCase("undeny")
+                || args[0].equalsIgnoreCase("denied"))) {
+            return manageDeniedPlayers(player, args);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("flag")) {
             return manageFlags(player, args);
@@ -185,6 +199,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         String subcommand = args[0].toLowerCase();
         if (args.length == 2 && subcommand.equals("member")) {
             return matching(List.of("add", "remove", "list"), args[1]);
+        }
+        if (args.length == 2 && (subcommand.equals("deny") || subcommand.equals("undeny"))) {
+            return null;
         }
         if (args.length == 2 && subcommand.equals("flag")) {
             return matching(List.of("list", "set", "toggle"), args[1]);
@@ -342,6 +359,88 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean manageDeniedPlayers(Player player, String[] args) {
+        if (claimDenyService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        if (!player.hasPermission(CLAIM_DENY_PERMISSION)) {
+            player.sendMessage(message("claim.deny.no-permission"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("denied")) {
+            return listDeniedPlayers(player, claim.orElseThrow());
+        }
+        if (args.length < 2) {
+            player.sendMessage(message("claim.deny.usage"));
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("deny")) {
+            Optional<UUID> targetId = resolveOnlinePlayerOrUuid(player, args[1]);
+            if (targetId.isEmpty()) {
+                player.sendMessage(message("claim.deny.player-not-found", Map.of("player", args[1])));
+                return true;
+            }
+            ClaimDenyResult result = claimDenyService.denyPlayer(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    targetId.orElseThrow(),
+                    player::hasPermission
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey()));
+                return true;
+            }
+            player.sendMessage(message("claim.deny.added", Map.of("player", playerName(player, targetId.orElseThrow()))));
+            return true;
+        }
+        if (args[0].equalsIgnoreCase("undeny")) {
+            Optional<UUID> targetId = findExistingDeniedPlayer(claim.orElseThrow(), player, args[1]);
+            if (targetId.isEmpty()) {
+                player.sendMessage(message("claim.deny.not-denied", Map.of("player", args[1])));
+                return true;
+            }
+            ClaimDenyResult result = claimDenyService.allowPlayer(
+                    player.getUniqueId(),
+                    claim.orElseThrow(),
+                    targetId.orElseThrow(),
+                    player::hasPermission
+            );
+            if (!result.allowed()) {
+                player.sendMessage(message(result.messageKey()));
+                return true;
+            }
+            player.sendMessage(message("claim.deny.removed", Map.of("player", playerName(player, targetId.orElseThrow()))));
+            return true;
+        }
+
+        player.sendMessage(message("claim.deny.usage"));
+        return true;
+    }
+
+    private boolean listDeniedPlayers(Player player, Claim claim) {
+        if (claim.deniedPlayers().isEmpty()) {
+            player.sendMessage(message("claim.deny.list-empty"));
+            return true;
+        }
+
+        player.sendMessage(message("claim.deny.list-header"));
+        claim.deniedPlayers().stream()
+                .sorted(java.util.Comparator.comparing(UUID::toString))
+                .forEach(deniedPlayer -> player.sendMessage(message("claim.deny.list-entry", Map.of(
+                        "player", playerName(player, deniedPlayer)
+                ))));
+        return true;
+    }
+
     private boolean listFlags(Player player, Claim claim) {
         player.sendMessage(message("claim.flag.list-header"));
         for (ClaimFlagRow row : claimFlagService.listFlags(claim)) {
@@ -472,6 +571,38 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
     private String memberName(OfflinePlayer player) {
         return player.getName() == null ? player.getUniqueId().toString() : player.getName();
+    }
+
+    private String playerName(Player viewer, UUID playerId) {
+        return memberName(viewer.getServer().getOfflinePlayer(playerId));
+    }
+
+    private Optional<UUID> resolveOnlinePlayerOrUuid(Player actor, String input) {
+        Optional<UUID> inputUuid = parseUuid(input);
+        if (inputUuid.isPresent()) {
+            return inputUuid;
+        }
+        Player onlinePlayer = actor.getServer().getPlayerExact(input);
+        return onlinePlayer == null ? Optional.empty() : Optional.of(onlinePlayer.getUniqueId());
+    }
+
+    private Optional<UUID> findExistingDeniedPlayer(Claim claim, Player actor, String input) {
+        Optional<UUID> inputUuid = parseUuid(input);
+        if (inputUuid.isPresent() && claim.deniedPlayers().contains(inputUuid.orElseThrow())) {
+            return inputUuid;
+        }
+
+        Player onlinePlayer = actor.getServer().getPlayerExact(input);
+        if (onlinePlayer != null && claim.deniedPlayers().contains(onlinePlayer.getUniqueId())) {
+            return Optional.of(onlinePlayer.getUniqueId());
+        }
+
+        return claim.deniedPlayers().stream()
+                .filter(deniedPlayer -> {
+                    OfflinePlayer offlinePlayer = actor.getServer().getOfflinePlayer(deniedPlayer);
+                    return offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(input);
+                })
+                .findFirst();
     }
 
     private Optional<ClaimMember> findExistingMember(Claim claim, Player actor, String input) {
@@ -755,6 +886,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("command.help.tool"));
         player.sendMessage(message("command.help.create"));
         player.sendMessage(message("command.help.member"));
+        player.sendMessage(message("command.help.deny"));
         player.sendMessage(message("command.help.flag"));
         player.sendMessage(message("command.help.cost"));
         player.sendMessage(message("command.help.cancel"));

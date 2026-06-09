@@ -3,6 +3,7 @@ package com.nick.landclaims.plugin;
 import com.nick.landclaims.api.LandClaimsApi;
 import com.nick.landclaims.plugin.api.BukkitLandClaimsApi;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
+import com.nick.landclaims.plugin.claim.ClaimDenyService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimMemberService;
 import com.nick.landclaims.plugin.claim.ClaimService;
@@ -19,6 +20,7 @@ import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
 import com.nick.landclaims.plugin.listener.ClaimBoundaryNotificationListener;
+import com.nick.landclaims.plugin.listener.DeniedClaimAccessListener;
 import com.nick.landclaims.plugin.listener.EntityControlListener;
 import com.nick.landclaims.plugin.listener.ProtectionListener;
 import com.nick.landclaims.plugin.message.MessageConfigurationLoader;
@@ -50,6 +52,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.ServicePriority;
 
@@ -76,7 +79,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.load(claimRepository.findAllClaims());
         Map<String, Integer> limitPermissions = loadLimitPermissions(loadYamlResource("permissions.yml"));
-        new PermissionBankService(getServer().getPluginManager()).registerLimitPermissions(limitPermissions);
+        PermissionBankService permissionBankService = new PermissionBankService(getServer().getPluginManager());
+        permissionBankService.registerLimitPermissions(limitPermissions);
+        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "commands", PermissionDefault.TRUE);
+        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "bypass", PermissionDefault.OP);
         LimitService limitService = new LimitService(
                 getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("landclaims.limit.default", 10)),
                 limitPermissions
@@ -135,6 +141,16 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 this
         );
         getServer().getPluginManager().registerEvents(
+                new DeniedClaimAccessListener(
+                        claimIndex,
+                        messageService,
+                        getConfig().getBoolean("access-denial.enabled", true),
+                        getConfig().getBoolean("access-denial.knockback.enabled", true),
+                        getConfig().getDouble("access-denial.knockback.strength", 0.65D)
+                ),
+                this
+        );
+        getServer().getPluginManager().registerEvents(
                 new ClaimBoundaryNotificationListener(
                         claimIndex,
                         messageService,
@@ -159,6 +175,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         new PendingClaimMergeService(),
                         messageService,
                         new ClaimMemberService(claimRepository, claimIndex),
+                        new ClaimDenyService(claimRepository, claimIndex),
                         new ClaimFlagService(claimRepository, claimIndex, flagRegistry),
                         new ClaimFlagEditorService(),
                         new ClaimMenuService(),
@@ -222,6 +239,21 @@ public final class LandClaimsPlugin extends JavaPlugin {
             limitPermissions.put(permissionNode, limitsSection.getInt(permissionNode));
         }
         return Map.copyOf(limitPermissions);
+    }
+
+    private void registerConfiguredPermissions(
+            PermissionBankService permissionBankService,
+            YamlConfiguration permissionsConfiguration,
+            String sectionPath,
+            PermissionDefault permissionDefault
+    ) {
+        ConfigurationSection section = permissionsConfiguration.getConfigurationSection(sectionPath);
+        if (section == null) {
+            return;
+        }
+        for (String permissionNode : section.getKeys(false)) {
+            permissionBankService.register(permissionNode, section.getString(permissionNode, "LandClaims permission."), permissionDefault);
+        }
     }
 
     private ChunkBorderVisualService createChunkBorderVisualService() {
