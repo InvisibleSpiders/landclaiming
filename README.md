@@ -11,6 +11,10 @@ This branch is an MVP foundation. The current build includes claim-tool selectio
 - Optional: VaultUnlocked for paid over-limit claiming
 - Optional: LuckPerms for permission management
 
+## Development Notes
+
+Feature PRs should follow the [development checklist](docs/development-checklist.md) so commands, permissions, config, messages, migrations, and README notes stay in sync.
+
 ## Install
 
 1. Download the latest `LandClaims` jar from GitHub Releases.
