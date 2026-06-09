@@ -10,6 +10,7 @@ import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.command.ClaimsCommand;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
 import com.nick.landclaims.plugin.economy.HavenEconomyServiceAdapter;
+import com.nick.landclaims.plugin.economy.NoopEconomyService;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.flag.ClaimFlagService;
 import com.nick.landclaims.plugin.limit.ClaimCostConfig;
@@ -77,12 +78,15 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 limitPermissions
         );
         ClaimCostService claimCostService = new ClaimCostService(
-                claimRepository,
+                claimIndex,
                 limitService,
                 ClaimCostConfig.from(getConfig())
         );
+        HavenEconomyService havenEconomy = HavenAPI.get(HavenEconomyService.class);
         ClaimPaymentService claimPaymentService = new ClaimPaymentService(
-                new HavenEconomyServiceAdapter(HavenAPI.get(HavenEconomyService.class))
+                havenEconomy != null
+                        ? new HavenEconomyServiceAdapter(havenEconomy)
+                        : new NoopEconomyService()
         );
         ClaimCreationService claimCreationService = new ClaimCreationService(
                 claimRepository,

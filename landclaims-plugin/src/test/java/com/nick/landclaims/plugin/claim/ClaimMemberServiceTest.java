@@ -81,6 +81,81 @@ class ClaimMemberServiceTest {
     }
 
     @Test
+    void managerCanAddMemberToClaim() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimMemberService service = new ClaimMemberService(repository, claimIndex);
+        UUID ownerId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+        UUID newMemberId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(ownerId, worldId, Set.of(new ClaimMember(managerId, ClaimRole.MANAGER)));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+
+        ClaimMemberResult result = service.addMember(managerId, claim, newMemberId, ClaimRole.MEMBER);
+
+        assertThat(result.allowed()).isTrue();
+        assertThat(repository.claims.get(0).members()).contains(new ClaimMember(newMemberId, ClaimRole.MEMBER));
+    }
+
+    @Test
+    void managerCannotAddAnotherManagerToClaim() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimMemberService service = new ClaimMemberService(repository, new ClaimIndex());
+        UUID ownerId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+        Claim claim = claim(ownerId, UUID.randomUUID(), Set.of(new ClaimMember(managerId, ClaimRole.MANAGER)));
+
+        ClaimMemberResult result = service.addMember(managerId, claim, UUID.randomUUID(), ClaimRole.MANAGER);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.member.manager-cannot-promote");
+        assertThat(repository.claims).isEmpty();
+    }
+
+    @Test
+    void managerCanRemoveMemberFromClaim() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimMemberService service = new ClaimMemberService(repository, claimIndex);
+        UUID ownerId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        Claim claim = claim(ownerId, UUID.randomUUID(), Set.of(
+                new ClaimMember(managerId, ClaimRole.MANAGER),
+                new ClaimMember(memberId, ClaimRole.MEMBER)
+        ));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+
+        ClaimMemberResult result = service.removeMember(managerId, claim, memberId);
+
+        assertThat(result.allowed()).isTrue();
+        assertThat(repository.claims.get(0).members())
+                .containsExactly(new ClaimMember(managerId, ClaimRole.MANAGER));
+    }
+
+    @Test
+    void managerCannotRemoveAnotherManagerFromClaim() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimMemberService service = new ClaimMemberService(repository, new ClaimIndex());
+        UUID ownerId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+        UUID otherManagerId = UUID.randomUUID();
+        Claim claim = claim(ownerId, UUID.randomUUID(), Set.of(
+                new ClaimMember(managerId, ClaimRole.MANAGER),
+                new ClaimMember(otherManagerId, ClaimRole.MANAGER)
+        ));
+
+        ClaimMemberResult result = service.removeMember(managerId, claim, otherManagerId);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.member.manager-cannot-remove-manager");
+        assertThat(repository.claims).isEmpty();
+    }
+
+    @Test
     void ownerCanRemoveMemberFromClaim() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
@@ -115,10 +190,6 @@ class ClaimMemberServiceTest {
 
     private static final class FakeClaimRepository implements ClaimRepository {
         private final List<Claim> claims = new ArrayList<>();
-
-        @Override
-        public void initialize() {
-        }
 
         @Override
         public void saveClaim(Claim claim) {

@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,18 +27,6 @@ public class SqlClaimRepository implements ClaimRepository {
 
     public SqlClaimRepository(DataSource dataSource) {
         this.dataSource = Objects.requireNonNull(dataSource, "dataSource");
-    }
-
-    @Override
-    public void initialize() {
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            for (String createStatement : SqlStatements.CREATE_SCHEMA) {
-                statement.execute(createStatement);
-            }
-        } catch (SQLException exception) {
-            throw new IllegalStateException("Failed to initialize claim repository schema.", exception);
-        }
     }
 
     @Override

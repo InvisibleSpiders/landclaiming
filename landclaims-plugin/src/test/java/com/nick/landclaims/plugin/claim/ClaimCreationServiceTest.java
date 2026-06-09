@@ -236,10 +236,6 @@ class ClaimCreationServiceTest {
         private final List<UUID> deletedClaimIds = new ArrayList<>();
 
         @Override
-        public void initialize() {
-        }
-
-        @Override
         public void saveClaim(Claim claim) {
             savedClaims.removeIf(savedClaim -> savedClaim.id().equals(claim.id()));
             savedClaims.add(claim);
