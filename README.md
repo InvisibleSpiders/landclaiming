@@ -112,11 +112,13 @@ notifications:
     delivery: action_bar
     enter:
       enabled: true
+      delivery: action_bar
     exit:
       enabled: true
+      delivery: action_bar
 ```
 
-`notifications.claim-boundary.delivery` accepts `action_bar`, `chat`, or `both`.
+`notifications.claim-boundary.delivery` accepts `action_bar`, `chat`, `both`, or `none`. The `enter.delivery` and `exit.delivery` values override the default for that specific event. Boundary messages support `<claim_name>`, `<owner_type>`, and `<chunk_count>` placeholders.
 
 ## Denied Entry
 

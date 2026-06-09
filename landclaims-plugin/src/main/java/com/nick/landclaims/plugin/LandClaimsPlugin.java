@@ -157,7 +157,11 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         getConfig().getBoolean("notifications.claim-boundary.enabled", true),
                         getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
                         getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
-                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar")
+                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar"),
+                        getConfig().getString("notifications.claim-boundary.enter.delivery",
+                                getConfig().getString("notifications.claim-boundary.delivery", "action_bar")),
+                        getConfig().getString("notifications.claim-boundary.exit.delivery",
+                                getConfig().getString("notifications.claim-boundary.delivery", "action_bar"))
                 ),
                 this
         );

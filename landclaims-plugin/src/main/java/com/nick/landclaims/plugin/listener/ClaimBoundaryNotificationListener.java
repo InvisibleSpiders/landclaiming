@@ -23,8 +23,9 @@ public final class ClaimBoundaryNotificationListener implements Listener {
     private final boolean enabled;
     private final boolean enterEnabled;
     private final boolean exitEnabled;
-    private final Delivery delivery;
-    private final Map<UUID, UUID> currentClaimIds = new java.util.HashMap<>();
+    private final BoundaryMessageDelivery enterDelivery;
+    private final BoundaryMessageDelivery exitDelivery;
+    private final Map<UUID, Claim> currentClaims = new java.util.HashMap<>();
 
     public ClaimBoundaryNotificationListener(
             ClaimIndex claimIndex,
@@ -34,12 +35,27 @@ public final class ClaimBoundaryNotificationListener implements Listener {
             boolean exitEnabled,
             String deliveryMode
     ) {
+        this(claimIndex, messageService, enabled, enterEnabled, exitEnabled, deliveryMode, deliveryMode, deliveryMode);
+    }
+
+    public ClaimBoundaryNotificationListener(
+            ClaimIndex claimIndex,
+            MessageService messageService,
+            boolean enabled,
+            boolean enterEnabled,
+            boolean exitEnabled,
+            String deliveryMode,
+            String enterDeliveryMode,
+            String exitDeliveryMode
+    ) {
         this.claimIndex = Objects.requireNonNull(claimIndex, "claimIndex");
         this.messageService = Objects.requireNonNull(messageService, "messageService");
         this.enabled = enabled;
         this.enterEnabled = enterEnabled;
         this.exitEnabled = exitEnabled;
-        this.delivery = Delivery.from(deliveryMode);
+        BoundaryMessageDelivery defaultDelivery = BoundaryMessageDelivery.from(deliveryMode, BoundaryMessageDelivery.ACTION_BAR);
+        this.enterDelivery = BoundaryMessageDelivery.from(enterDeliveryMode, defaultDelivery);
+        this.exitDelivery = BoundaryMessageDelivery.from(exitDeliveryMode, defaultDelivery);
     }
 
     @EventHandler
@@ -50,33 +66,30 @@ public final class ClaimBoundaryNotificationListener implements Listener {
 
         Player player = event.getPlayer();
         Optional<Claim> claim = claimAt(event.getTo());
-        UUID previousClaimId = currentClaimIds.get(player.getUniqueId());
+        Claim previousClaim = currentClaims.get(player.getUniqueId());
+        UUID previousClaimId = previousClaim == null ? null : previousClaim.id();
         UUID nextClaimId = claim.map(Claim::id).orElse(null);
         if (Objects.equals(previousClaimId, nextClaimId)) {
             return;
         }
 
-        if (previousClaimId != null && exitEnabled) {
-            send(player, "claim.boundary.exit", Map.of());
+        if (previousClaim != null && exitEnabled) {
+            send(player, exitDelivery, "claim.boundary.exit", placeholders(previousClaim));
         }
         if (claim.isPresent() && enterEnabled) {
-            Claim foundClaim = claim.orElseThrow();
-            send(player, "claim.boundary.enter", Map.of(
-                    "claim_name", foundClaim.name(),
-                    "owner_type", foundClaim.owner().name().toLowerCase()
-            ));
+            send(player, enterDelivery, "claim.boundary.enter", placeholders(claim.orElseThrow()));
         }
 
         if (nextClaimId == null) {
-            currentClaimIds.remove(player.getUniqueId());
+            currentClaims.remove(player.getUniqueId());
         } else {
-            currentClaimIds.put(player.getUniqueId(), nextClaimId);
+            currentClaims.put(player.getUniqueId(), claim.orElseThrow());
         }
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        currentClaimIds.remove(event.getPlayer().getUniqueId());
+        currentClaims.remove(event.getPlayer().getUniqueId());
     }
 
     private Optional<Claim> claimAt(Location location) {
@@ -92,29 +105,26 @@ public final class ClaimBoundaryNotificationListener implements Listener {
                 || from.getChunk().getZ() != to.getChunk().getZ());
     }
 
-    private void send(Player player, String messageKey, Map<String, String> placeholders) {
-        Component message = messageService.render(messageKey, placeholders);
-        if (delivery == Delivery.CHAT || delivery == Delivery.BOTH) {
-            player.sendMessage(message);
-        }
-        if (delivery == Delivery.ACTION_BAR || delivery == Delivery.BOTH) {
-            player.sendActionBar(message);
-        }
+    private Map<String, String> placeholders(Claim claim) {
+        return Map.of(
+                "claim_name", claim.name(),
+                "owner_type", claim.owner().name().toLowerCase(),
+                "chunk_count", String.valueOf(claim.claimChunks().size())
+        );
     }
 
-    private enum Delivery {
-        CHAT,
-        ACTION_BAR,
-        BOTH;
-
-        private static Delivery from(String value) {
-            if ("chat".equalsIgnoreCase(value)) {
-                return CHAT;
-            }
-            if ("both".equalsIgnoreCase(value)) {
-                return BOTH;
-            }
-            return ACTION_BAR;
+    private void send(
+            Player player,
+            BoundaryMessageDelivery delivery,
+            String messageKey,
+            Map<String, String> placeholders
+    ) {
+        Component message = messageService.render(messageKey, placeholders);
+        if (delivery.sendsChat()) {
+            player.sendMessage(message);
+        }
+        if (delivery.sendsActionBar()) {
+            player.sendActionBar(message);
         }
     }
 }
