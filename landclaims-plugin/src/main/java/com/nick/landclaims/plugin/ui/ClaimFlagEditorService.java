@@ -17,15 +17,29 @@ public final class ClaimFlagEditorService {
                                 flag.category(),
                                 flag.label(),
                                 flag.description(),
-                                stateLabel(flag.enabled()),
-                                stateLabel(!flag.enabled()),
+                                stateLabel(flag, flag.enabled()),
+                                stateLabel(flag, !flag.enabled()),
                                 "/claims flag toggle " + flag.key()
                         ))
                         .toList()
         );
     }
 
-    private String stateLabel(boolean enabled) {
-        return enabled ? "ON" : "OFF";
+    private String stateLabel(ClaimFlagRow flag, boolean enabled) {
+        if (flag.key().startsWith("remove_") && flag.category().equalsIgnoreCase("Entity Control")) {
+            return enabled ? "REMOVING" : "KEEPING";
+        }
+        if (flag.category().equalsIgnoreCase("Access")
+                || flag.category().equalsIgnoreCase("Items")
+                || flag.category().equalsIgnoreCase("Entity")) {
+            return enabled ? "ALLOWED" : "DENIED";
+        }
+        if (flag.category().equalsIgnoreCase("Environment")) {
+            return enabled ? "ALLOWED" : "BLOCKED";
+        }
+        if (flag.category().equalsIgnoreCase("Protection")) {
+            return enabled ? "PROTECTED" : "UNPROTECTED";
+        }
+        return enabled ? "ENABLED" : "DISABLED";
     }
 }

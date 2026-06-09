@@ -186,8 +186,8 @@ Default flags are locked down unless configured otherwise by the claim owner.
 | `mob_griefing` | environment | `false` | Controls entity block changes such as mob griefing. |
 | `crop_trample` | entity | `false` | Controls farmland trampling in claimed chunks. |
 | `entity_damage` | entity | `false` | Controls damaging entities in claimed chunks. |
-| `remove_hostile_entities` | entity control | `false` | Removes hostile entities from claimed chunks when enabled. |
-| `remove_passive_entities` | entity control | `false` | Removes passive entities from claimed chunks when enabled. |
+| `remove_hostile_entities` | entity control | `false` | Removes hostile mobs from claimed chunks unless named or tamed. |
+| `remove_passive_entities` | entity control | `false` | Removes passive mobs from claimed chunks unless named or tamed. |
 | `item_pickup` | item | `false` | Controls item pickup in claimed chunks. |
 | `item_drop` | item | `false` | Controls player item drops in claimed chunks and external plugin checks. |
 
@@ -209,6 +209,7 @@ advanced:
 - Spawned hostile or passive entities are removed immediately when the matching claim flag is enabled.
 - Existing entities are checked on the configured cleanup interval.
 - Named and tamed entities are preserved by default as a safety guard.
+- In the flag editor, entity-control flags show `REMOVING` or `KEEPING` so owners can tell at a glance what the claim will do.
 
 ## Plugin API
 

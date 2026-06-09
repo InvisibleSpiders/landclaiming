@@ -40,8 +40,8 @@ public final class FlagRegistry {
                 flag("mob_griefing", "Environment", "Mob Griefing", "Allow entity block changes in this claim.", false),
                 flag("crop_trample", "Entity", "Crop Trample", "Allow farmland trampling in this claim.", false),
                 flag("entity_damage", "Entity", "Entity Damage", "Allow non-members to damage entities here.", false),
-                flag("remove_hostile_entities", "Entity Control", "Remove Hostiles", "Automatically remove hostile entities in this claim.", false),
-                flag("remove_passive_entities", "Entity Control", "Remove Passives", "Automatically remove passive entities in this claim.", false),
+                flag("remove_hostile_entities", "Entity Control", "Remove Hostiles", "Removes hostile mobs unless named or tamed.", false),
+                flag("remove_passive_entities", "Entity Control", "Remove Passives", "Removes passive mobs unless named or tamed.", false),
                 flag("item_pickup", "Items", "Item Pickup", "Allow non-members to pick up items here.", false),
                 flag("item_drop", "Items", "Item Drop", "Allow non-members to drop items here.", false)
         ));

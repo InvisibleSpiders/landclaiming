@@ -20,12 +20,41 @@ class ClaimFlagEditorServiceTest {
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::toggleCommand)
                 .containsExactly("/claims flag toggle build", "/claims flag toggle fluid_flow");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::stateLabel)
-                .containsExactly("ON", "OFF");
+                .containsExactly("ALLOWED", "BLOCKED");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::nextStateLabel)
-                .containsExactly("OFF", "ON");
+                .containsExactly("DENIED", "ALLOWED");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::label)
                 .containsExactly("Build", "Fluid Flow");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::description)
                 .containsExactly("Allow block placement.", "Allow water and lava.");
+    }
+
+    @Test
+    void usesPurposeBuiltStateLabelsForEntityControlFlags() {
+        ClaimFlagEditorService service = new ClaimFlagEditorService();
+
+        ClaimFlagEditor editor = service.buildEditor("Home", List.of(
+                new ClaimFlagRow(
+                        "remove_hostile_entities",
+                        "Entity Control",
+                        "Remove Hostiles",
+                        "Removes hostile mobs unless named or tamed.",
+                        true,
+                        "landclaims.flag.remove_hostile_entities"
+                ),
+                new ClaimFlagRow(
+                        "remove_passive_entities",
+                        "Entity Control",
+                        "Remove Passives",
+                        "Removes passive mobs unless named or tamed.",
+                        false,
+                        "landclaims.flag.remove_passive_entities"
+                )
+        ));
+
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::stateLabel)
+                .containsExactly("REMOVING", "KEEPING");
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::nextStateLabel)
+                .containsExactly("KEEPING", "REMOVING");
     }
 }
