@@ -26,22 +26,24 @@ public final class FlagRegistry {
 
     public static FlagRegistry createDefault() {
         return new FlagRegistry(Set.of(
-                flag("build", "access", false),
-                flag("break", "access", false),
-                flag("interact", "access", false),
-                flag("container_access", "access", false),
-                flag("door_access", "access", false),
-                flag("switch_access", "access", false),
-                flag("redstone_access", "access", false),
-                flag("piston_protection", "protection", true),
-                flag("fluid_flow", "environment", false),
-                flag("explosion_damage", "environment", false),
-                flag("fire_spread", "environment", false),
-                flag("mob_griefing", "environment", false),
-                flag("crop_trample", "entity", false),
-                flag("entity_damage", "entity", false),
-                flag("item_pickup", "item", false),
-                flag("item_drop", "item", false)
+                flag("build", "Access", "Build", "Allow non-members to place blocks.", false),
+                flag("break", "Access", "Break", "Allow non-members to break blocks.", false),
+                flag("interact", "Access", "Interact", "Allow generic block interaction.", false),
+                flag("container_access", "Access", "Containers", "Allow chest, barrel, furnace, and hopper access.", false),
+                flag("door_access", "Access", "Doors & Gates", "Allow doors, trapdoors, and fence gates.", false),
+                flag("switch_access", "Access", "Switches", "Allow buttons, levers, and pressure plates.", false),
+                flag("redstone_access", "Access", "Redstone Use", "Allow repeater and comparator interaction.", false),
+                flag("piston_protection", "Protection", "Piston Protection", "Block piston movement touching this claim.", true),
+                flag("fluid_flow", "Environment", "Fluid Flow", "Allow water and lava to flow into this claim.", false),
+                flag("explosion_damage", "Environment", "Explosion Damage", "Allow explosions to damage claimed blocks.", false),
+                flag("fire_spread", "Environment", "Fire Spread", "Allow fire to spread into this claim.", false),
+                flag("mob_griefing", "Environment", "Mob Griefing", "Allow entity block changes in this claim.", false),
+                flag("crop_trample", "Entity", "Crop Trample", "Allow farmland trampling in this claim.", false),
+                flag("entity_damage", "Entity", "Entity Damage", "Allow non-members to damage entities here.", false),
+                flag("remove_hostile_entities", "Entity Control", "Remove Hostiles", "Automatically remove hostile entities in this claim.", false),
+                flag("remove_passive_entities", "Entity Control", "Remove Passives", "Automatically remove passive entities in this claim.", false),
+                flag("item_pickup", "Items", "Item Pickup", "Allow non-members to pick up items here.", false),
+                flag("item_drop", "Items", "Item Drop", "Allow non-members to drop items here.", false)
         ));
     }
 
@@ -63,10 +65,12 @@ public final class FlagRegistry {
         return definitions.values();
     }
 
-    private static ClaimFlagDefinition flag(String key, String category, boolean defaultValue) {
+    private static ClaimFlagDefinition flag(String key, String category, String label, String description, boolean defaultValue) {
         return new ClaimFlagDefinition(
                 key,
                 category,
+                label,
+                description,
                 defaultValue,
                 "landclaims.flag." + key
         );

@@ -15,6 +15,8 @@ public final class ClaimFlagEditorService {
                         .map(flag -> new ClaimFlagEditorRow(
                                 flag.key(),
                                 flag.category(),
+                                flag.label(),
+                                flag.description(),
                                 stateLabel(flag.enabled()),
                                 stateLabel(!flag.enabled()),
                                 "/claims flag toggle " + flag.key()

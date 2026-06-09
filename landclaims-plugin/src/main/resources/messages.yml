@@ -56,10 +56,10 @@ claim:
     set: "<green>Set <yellow><flag></yellow> to <yellow><value></yellow>."
     toggled: "<green>Toggled <yellow><flag></yellow>."
     list-header: "<gold>Claim flags:"
-    list-entry: "<gray>- <yellow><flag></yellow> <gray>(<category>): <value></gray>"
+    list-entry: "<gray>- <yellow><label></yellow> <dark_gray>(<flag>, <category>)</dark_gray>: <white><value></white> <dark_gray>- <description></dark_gray>"
   flag-editor:
     title: "<gold>Flags for <yellow><claim_name></yellow>"
-    row: "<gray>- <yellow><flag></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Toggle to <next_state>]</green>"
+    row: "<gray>- <yellow><label></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Toggle to <next_state>]</green> <dark_gray>- <description></dark_gray>"
   visual:
     border-selection: "<green>Showing your pending claim selection border.</green> <gray>Color: <yellow><color></yellow>."
     border-claim: "<green>Showing this claim border."

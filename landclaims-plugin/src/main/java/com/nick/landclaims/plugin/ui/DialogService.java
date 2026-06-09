@@ -41,7 +41,9 @@ public final class DialogService {
         for (ClaimFlagEditorRow row : editor.rows()) {
             player.sendMessage(messageService.render("claim.flag-editor.row", Map.of(
                     "flag", row.key(),
+                    "label", row.label(),
                     "category", row.category(),
+                    "description", row.description(),
                     "state", row.stateLabel(),
                     "next_state", row.nextStateLabel()
             )).clickEvent(ClickEvent.runCommand(row.toggleCommand())));

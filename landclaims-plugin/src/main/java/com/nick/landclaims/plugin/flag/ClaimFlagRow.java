@@ -1,4 +1,11 @@
 package com.nick.landclaims.plugin.flag;
 
-public record ClaimFlagRow(String key, String category, boolean enabled, String editPermission) {
+public record ClaimFlagRow(
+        String key,
+        String category,
+        String label,
+        String description,
+        boolean enabled,
+        String editPermission
+) {
 }

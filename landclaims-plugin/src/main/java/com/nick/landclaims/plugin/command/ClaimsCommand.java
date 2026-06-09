@@ -346,7 +346,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         for (ClaimFlagRow row : claimFlagService.listFlags(claim)) {
             player.sendMessage(message("claim.flag.list-entry", Map.of(
                     "flag", row.key(),
+                    "label", row.label(),
                     "category", row.category(),
+                    "description", row.description(),
                     "value", String.valueOf(row.enabled())
             )));
         }

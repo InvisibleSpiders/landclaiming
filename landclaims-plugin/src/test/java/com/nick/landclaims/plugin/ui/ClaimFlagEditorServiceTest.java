@@ -12,8 +12,8 @@ class ClaimFlagEditorServiceTest {
         ClaimFlagEditorService service = new ClaimFlagEditorService();
 
         ClaimFlagEditor editor = service.buildEditor("Home", List.of(
-                new ClaimFlagRow("build", "access", true, "landclaims.flag.build"),
-                new ClaimFlagRow("fluid_flow", "environment", false, "landclaims.flag.fluid_flow")
+                new ClaimFlagRow("build", "Access", "Build", "Allow block placement.", true, "landclaims.flag.build"),
+                new ClaimFlagRow("fluid_flow", "Environment", "Fluid Flow", "Allow water and lava.", false, "landclaims.flag.fluid_flow")
         ));
 
         assertThat(editor.claimName()).isEqualTo("Home");
@@ -23,5 +23,9 @@ class ClaimFlagEditorServiceTest {
                 .containsExactly("ON", "OFF");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::nextStateLabel)
                 .containsExactly("OFF", "ON");
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::label)
+                .containsExactly("Build", "Fluid Flow");
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::description)
+                .containsExactly("Allow block placement.", "Allow water and lava.");
     }
 }

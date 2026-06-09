@@ -8,6 +8,7 @@ import com.nick.landclaims.plugin.claim.ClaimMemberService;
 import com.nick.landclaims.plugin.claim.ClaimService;
 import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.command.ClaimsCommand;
+import com.nick.landclaims.plugin.entity.EntityControlService;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
 import com.nick.landclaims.plugin.economy.HavenEconomyServiceAdapter;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
@@ -16,6 +17,7 @@ import com.nick.landclaims.plugin.limit.ClaimCostConfig;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
+import com.nick.landclaims.plugin.listener.EntityControlListener;
 import com.nick.landclaims.plugin.listener.ProtectionListener;
 import com.nick.landclaims.plugin.message.MessageConfigurationLoader;
 import com.nick.landclaims.plugin.message.MessageService;
@@ -52,6 +54,7 @@ import org.bukkit.plugin.ServicePriority;
 public final class LandClaimsPlugin extends JavaPlugin {
     private LandClaimsApi landClaimsApi;
     private ChunkBorderVisualService chunkBorderVisualService;
+    private EntityControlService entityControlService;
 
     @Override
     public void onEnable() {
@@ -103,6 +106,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 () -> getServer().getCurrentTick()
         );
         chunkBorderVisualService = createChunkBorderVisualService();
+        entityControlService = createEntityControlService(claimIndex);
         landClaimsApi = new BukkitLandClaimsApi(claimRepository, claimIndex, protectionService);
         getServer().getServicesManager().register(LandClaimsApi.class, landClaimsApi, this, ServicePriority.Normal);
         new ClaimToolRecipeService(this, claimToolService).register(loadYamlResource("recipes.yml"));
@@ -125,6 +129,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 new ProtectionListener(protectionService, claimIndex, messageService),
                 this
         );
+        if (entityControlService != null) {
+            getServer().getPluginManager().registerEvents(new EntityControlListener(entityControlService), this);
+            entityControlService.start(getConfig().getLong("advanced.entity-control.cleanup-interval-ticks", 200L));
+        }
         ClaimsCommand claimsCommand = new ClaimsCommand(
                         claimToolService,
                         selectionService,
@@ -156,6 +164,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.clearAll();
             chunkBorderVisualService = null;
+        }
+        if (entityControlService != null) {
+            entityControlService.stop();
+            entityControlService = null;
         }
         if (landClaimsApi != null) {
             getServer().getServicesManager().unregister(LandClaimsApi.class, landClaimsApi);
@@ -207,6 +219,18 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         (float) getConfig().getDouble("visuals.border.view-range", 96.0D)
                 ),
                 getConfig().getInt("visuals.border.duration-ticks", 0)
+        );
+    }
+
+    private EntityControlService createEntityControlService(ClaimIndex claimIndex) {
+        if (!getConfig().getBoolean("advanced.entity-control.enabled", true)) {
+            return null;
+        }
+        return new EntityControlService(
+                this,
+                claimIndex,
+                getConfig().getBoolean("advanced.entity-control.preserve-named-entities", true),
+                getConfig().getBoolean("advanced.entity-control.preserve-tamed-entities", true)
         );
     }
 
