@@ -18,7 +18,7 @@ public final class ClaimMemberService {
 
     public ClaimMemberResult addMember(UUID actorId, Claim claim, UUID memberId, ClaimRole role) {
         Objects.requireNonNull(role, "role");
-        ClaimMemberResult validationResult = validateOwnerMutation(actorId, claim, memberId);
+        ClaimMemberResult validationResult = validateMutation(actorId, claim, memberId, role);
         if (!validationResult.allowed()) {
             return validationResult;
         }
@@ -31,7 +31,7 @@ public final class ClaimMemberService {
     }
 
     public ClaimMemberResult removeMember(UUID actorId, Claim claim, UUID memberId) {
-        ClaimMemberResult validationResult = validateOwnerMutation(actorId, claim, memberId);
+        ClaimMemberResult validationResult = validateMutation(actorId, claim, memberId, null);
         if (!validationResult.allowed()) {
             return validationResult;
         }
@@ -42,14 +42,30 @@ public final class ClaimMemberService {
         return ClaimMemberResult.success();
     }
 
-    private ClaimMemberResult validateOwnerMutation(UUID actorId, Claim claim, UUID memberId) {
+    private ClaimMemberResult validateMutation(UUID actorId, Claim claim, UUID memberId, ClaimRole targetRole) {
         Objects.requireNonNull(actorId, "actorId");
         Objects.requireNonNull(claim, "claim");
         Objects.requireNonNull(memberId, "memberId");
-        if (!actorId.equals(claim.ownerUuid())) {
-            return ClaimMemberResult.denied("claim.member.not-owner");
+
+        boolean actorIsOwner = actorId.equals(claim.ownerUuid());
+        if (!actorIsOwner) {
+            boolean actorIsManager = claim.members().stream()
+                    .anyMatch(m -> m.memberUuid().equals(actorId) && m.role() == ClaimRole.MANAGER);
+            if (!actorIsManager) {
+                return ClaimMemberResult.denied("claim.member.not-owner");
+            }
+            // Managers may only add/remove MEMBER-role members, not other MANAGERs.
+            if (targetRole != null && targetRole != ClaimRole.MEMBER) {
+                return ClaimMemberResult.denied("claim.member.manager-cannot-promote");
+            }
+            boolean targetIsManager = claim.members().stream()
+                    .anyMatch(m -> m.memberUuid().equals(memberId) && m.role() == ClaimRole.MANAGER);
+            if (targetIsManager) {
+                return ClaimMemberResult.denied("claim.member.manager-cannot-remove-manager");
+            }
         }
-        if (actorId.equals(memberId)) {
+
+        if (claim.ownerUuid() != null && claim.ownerUuid().equals(memberId)) {
             return ClaimMemberResult.denied("claim.member.owner-is-not-member");
         }
         return ClaimMemberResult.success();

@@ -7,5 +7,7 @@ public interface EconomyService {
 
     boolean withdraw(UUID playerId, double amount);
 
+    boolean deposit(UUID playerId, double amount);
+
     String format(double amount);
 }

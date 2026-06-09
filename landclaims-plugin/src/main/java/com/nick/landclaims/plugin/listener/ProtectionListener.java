@@ -10,7 +10,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.bukkit.Chunk;
+import org.bukkit.Material;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -50,9 +54,30 @@ public final class ProtectionListener implements Listener {
             return;
         }
 
-        if (isDenied(clickedBlock, event.getPlayer(), "interact")) {
+        String flagKey = resolveInteractFlag(clickedBlock);
+        if (isDenied(clickedBlock, event.getPlayer(), flagKey)) {
             event.setCancelled(true);
         }
+    }
+
+    // Maps the interacted block to the most-specific protection flag so each flag can be
+    // toggled independently (e.g. allow doors but not containers).
+    static String resolveInteractFlag(Block block) {
+        Material material = block.getType();
+        if (Tag.DOORS.isTagged(material) || Tag.TRAPDOORS.isTagged(material) || Tag.FENCE_GATES.isTagged(material)) {
+            return "door_access";
+        }
+        if (Tag.BUTTONS.isTagged(material) || Tag.PRESSURE_PLATES.isTagged(material)) {
+            return "switch_access";
+        }
+        if (material == Material.REPEATER || material == Material.COMPARATOR) {
+            return "redstone_access";
+        }
+        BlockState state = block.getState();
+        if (state instanceof Container || material == Material.ENDER_CHEST) {
+            return "container_access";
+        }
+        return "interact";
     }
 
     Optional<ClaimProtectionResult> checkProtection(

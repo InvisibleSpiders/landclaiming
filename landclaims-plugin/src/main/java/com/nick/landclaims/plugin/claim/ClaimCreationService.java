@@ -4,6 +4,7 @@ import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,13 +57,40 @@ public final class ClaimCreationService {
             return validationResult;
         }
 
-        List<Claim> mergeTargets = findMergeTargets(ownerUuid, trimmedName, chunks);
+        return persistClaim(ownerUuid, trimmedName, chunks, findMergeTargets(ownerUuid, trimmedName, chunks));
+    }
+
+    // Accepts pre-computed merge targets to avoid a redundant findMergeTargets() scan when the
+    // caller already has them (e.g. to decide whether to show a merge-confirmation prompt).
+    public ClaimValidationResult createPlayerClaim(
+            UUID ownerUuid, String name, Set<ClaimChunk> chunks, List<Claim> mergeTargets) {
+        Objects.requireNonNull(ownerUuid, "ownerUuid");
+        Objects.requireNonNull(name, "name");
+        Objects.requireNonNull(chunks, "chunks");
+        Objects.requireNonNull(mergeTargets, "mergeTargets");
+
+        String trimmedName = name.trim();
+        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks);
+        if (!validationResult.isAllowed()) {
+            return validationResult;
+        }
+
+        return persistClaim(ownerUuid, trimmedName, chunks, mergeTargets);
+    }
+
+    private ClaimValidationResult persistClaim(
+            UUID ownerUuid, String trimmedName, Set<ClaimChunk> chunks, List<Claim> mergeTargets) {
         Instant now = Instant.now();
         if (!mergeTargets.isEmpty()) {
             Claim existingClaim = mergeTargets.get(0);
             Set<ClaimChunk> mergedChunks = new HashSet<>();
+            // Union flags and members from ALL targets so nothing is silently dropped.
+            Map<String, Boolean> mergedFlags = new HashMap<>(defaultFlags());
+            Set<ClaimMember> mergedMembers = new HashSet<>();
             for (Claim mergeTarget : mergeTargets) {
                 mergedChunks.addAll(mergeTarget.claimChunks());
+                mergedFlags.putAll(mergeTarget.flags());
+                mergedMembers.addAll(mergeTarget.members());
             }
             mergedChunks.addAll(chunks);
             Claim mergedClaim = new Claim(
@@ -72,8 +100,8 @@ public final class ClaimCreationService {
                     existingClaim.ownerUuid(),
                     existingClaim.worldId(),
                     mergedChunks,
-                    existingClaim.flags(),
-                    existingClaim.members(),
+                    mergedFlags,
+                    mergedMembers,
                     existingClaim.createdAt(),
                     now
             );
@@ -161,8 +189,11 @@ public final class ClaimCreationService {
             return ClaimValidationResult.denied("claims.overlap");
         }
 
+        // Snapshot once — findAll() rebuilds the distinct list, so calling it inside the loop
+        // would re-scan the entire chunk map on every proposed-chunk iteration.
+        List<Claim> allClaims = claimIndex.findAll();
         for (ClaimChunk proposedChunk : chunks) {
-            for (Claim existingClaim : claimIndex.findAll()) {
+            for (Claim existingClaim : allClaims) {
                 ClaimValidationResult bufferResult = validateBuffer(ownerUuid, proposedChunk, existingClaim);
                 if (!bufferResult.isAllowed()) {
                     return bufferResult;

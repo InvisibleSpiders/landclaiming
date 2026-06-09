@@ -127,7 +127,7 @@ class ClaimBorderColorServiceTest {
                     32
             );
             ClaimCostService claimCostService = new ClaimCostService(
-                    repository,
+                    claimIndex,
                     new LimitService(defaultLimit, permissionLimits),
                     new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
             );
@@ -146,10 +146,6 @@ class ClaimBorderColorServiceTest {
 
     private static final class FakeClaimRepository implements ClaimRepository {
         private final List<Claim> claims = new ArrayList<>();
-
-        @Override
-        public void initialize() {
-        }
 
         @Override
         public void saveClaim(Claim claim) {

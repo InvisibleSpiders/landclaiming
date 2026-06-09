@@ -46,9 +46,9 @@ Base command: `/claims`. Aliases: `/claim`, `/lc`.
 | `/claims flag list` | `landclaims.gui` | Opens the same flag editor as `/claims flags`. |
 | `/claims flag set <flag> <true\|false>` | Claim owner plus `landclaims.flag.<flag>` | Sets a claim flag directly. Also accepts `on/off` and `yes/no`. |
 | `/claims flag toggle <flag>` | Claim owner plus `landclaims.flag.<flag>` | Toggles a claim flag and redraws the flag editor. |
-| `/claims member list` | Claim owner | Lists members for the claim at the player's current chunk. |
-| `/claims member add <player> [member\|manager]` | Claim owner | Adds a member or manager to the claim at the player's current chunk. |
-| `/claims member remove <player>` | Claim owner | Removes a member from the claim at the player's current chunk. |
+| `/claims member list` | Any player in claim | Lists members for the claim at the player's current chunk. |
+| `/claims member add <player> [member\|manager]` | Claim owner or manager | Adds an online player to the claim. Managers can only add `member` role entries. |
+| `/claims member remove <player>` | Claim owner or manager | Removes an existing claim member. Managers cannot remove other managers. |
 | `/claims info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
 | `/claims cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
 | `/claims mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |

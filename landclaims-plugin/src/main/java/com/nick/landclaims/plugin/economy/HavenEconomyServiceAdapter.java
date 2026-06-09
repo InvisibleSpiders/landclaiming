@@ -26,6 +26,16 @@ public final class HavenEconomyServiceAdapter implements EconomyService {
     }
 
     @Override
+    public boolean deposit(UUID playerId, double amount) {
+        Objects.requireNonNull(playerId, "playerId");
+        if (!available()) {
+            return false;
+        }
+        havenEconomyService.deposit(playerId, amount);
+        return true;
+    }
+
+    @Override
     public String format(double amount) {
         return havenEconomyService.format(amount);
     }

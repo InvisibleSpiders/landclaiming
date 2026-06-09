@@ -1,23 +1,23 @@
 package com.nick.landclaims.plugin.limit;
 
 import com.nick.landclaims.plugin.claim.ClaimChunk;
+import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.OwnerType;
-import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
 public final class ClaimCostService {
-    private final ClaimRepository claimRepository;
+    private final ClaimIndex claimIndex;
     private final LimitService limitService;
     private final ClaimCostConfig claimCostConfig;
 
     public ClaimCostService(
-            ClaimRepository claimRepository,
+            ClaimIndex claimIndex,
             LimitService limitService,
             ClaimCostConfig claimCostConfig
     ) {
-        this.claimRepository = Objects.requireNonNull(claimRepository, "claimRepository");
+        this.claimIndex = Objects.requireNonNull(claimIndex, "claimIndex");
         this.limitService = Objects.requireNonNull(limitService, "limitService");
         this.claimCostConfig = Objects.requireNonNull(claimCostConfig, "claimCostConfig");
     }
@@ -28,7 +28,8 @@ public final class ClaimCostService {
         Objects.requireNonNull(selectedChunks, "selectedChunks");
 
         int allowedChunks = limitService.resolveLimit(permissions);
-        int existingChunks = claimRepository.findClaimsByOwner(OwnerType.PLAYER, ownerId).stream()
+        int existingChunks = claimIndex.findAll().stream()
+                .filter(claim -> claim.owner() == OwnerType.PLAYER && ownerId.equals(claim.ownerUuid()))
                 .mapToInt(claim -> claim.claimChunks().size())
                 .sum();
         int proposedTotalChunks = existingChunks + selectedChunks.size();

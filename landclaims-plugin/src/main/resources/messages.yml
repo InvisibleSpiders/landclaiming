@@ -31,9 +31,13 @@ claim:
     cancelled: "<yellow>Claim merge cancelled."
   member:
     usage: "<red>Usage: /claims member <add|remove|list> <player> [member|manager]"
-    not-owner: "<red>Only the claim owner can manage members right now."
+    not-owner: "<red>Only the claim owner or a manager can manage members."
     owner-is-not-member: "<red>The claim owner already has full access and cannot be added as a member."
     invalid-role: "<red>Role must be <yellow>member</yellow> or <yellow>manager</yellow>."
+    player-not-found: "<red>Player <yellow><player></yellow> is not online. They must be online to be added."
+    not-found: "<red><yellow><player></yellow> is not a member of this claim."
+    manager-cannot-promote: "<red>Managers can only add members with the 'member' role, not managers."
+    manager-cannot-remove-manager: "<red>Managers cannot remove other managers."
     added: "<green>Added <yellow><player></yellow> as <yellow><role></yellow>."
     removed: "<green>Removed <yellow><player></yellow> from this claim."
     list-empty: "<yellow>This claim has no members."
@@ -41,7 +45,7 @@ claim:
     list-entry: "<gray>- <yellow><player></yellow> <gray>(<role>)</gray>"
   flag:
     usage: "<red>Usage: /claims flag <list|set> <flag> <true|false>"
-    not-owner: "<red>Only the claim owner can edit flags right now."
+    not-owner: "<red>Only the claim owner or a manager can edit flags."
     unknown: "<red>Unknown claim flag: <yellow><flag></yellow>"
     no-permission: "<red>You do not have permission to edit <yellow><flag></yellow>."
     invalid-value: "<red>Flag value must be <yellow>true</yellow> or <yellow>false</yellow>."

@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.Component;
@@ -335,8 +336,15 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
 
-        OfflinePlayer target = player.getServer().getOfflinePlayer(args[2]);
         if (args[1].equalsIgnoreCase("add")) {
+            // Require the target to be currently online to guarantee we get the correct Mojang UUID.
+            // getOfflinePlayer(String) returns a name-derived UUID for players who have never joined,
+            // which would persist the wrong UUID as a member on online-mode servers.
+            Player target = player.getServer().getPlayerExact(args[2]);
+            if (target == null) {
+                player.sendMessage(message("claim.member.player-not-found", Map.of("player", args[2])));
+                return true;
+            }
             ClaimRole role = args.length >= 4 ? parseRole(args[3]).orElse(null) : ClaimRole.MEMBER;
             if (role == null) {
                 player.sendMessage(message("claim.member.invalid-role"));
@@ -353,22 +361,29 @@ public class ClaimsCommand implements CommandExecutor {
                 return true;
             }
             player.sendMessage(message("claim.member.added", Map.of(
-                    "player", memberName(target),
+                    "player", target.getName(),
                     "role", role.name().toLowerCase()
             )));
             return true;
         }
         if (args[1].equalsIgnoreCase("remove")) {
+            Optional<ClaimMember> targetMember = findExistingMember(claim.orElseThrow(), player, args[2]);
+            if (targetMember.isEmpty()) {
+                player.sendMessage(message("claim.member.not-found", Map.of("player", args[2])));
+                return true;
+            }
             ClaimMemberResult result = claimMemberService.removeMember(
                     player.getUniqueId(),
                     claim.orElseThrow(),
-                    target.getUniqueId()
+                    targetMember.orElseThrow().memberUuid()
             );
             if (!result.allowed()) {
                 player.sendMessage(message(result.messageKey()));
                 return true;
             }
-            player.sendMessage(message("claim.member.removed", Map.of("player", memberName(target))));
+            player.sendMessage(message("claim.member.removed", Map.of(
+                    "player", memberName(player.getServer().getOfflinePlayer(targetMember.orElseThrow().memberUuid()))
+            )));
             return true;
         }
 
@@ -407,6 +422,40 @@ public class ClaimsCommand implements CommandExecutor {
 
     private String memberName(OfflinePlayer player) {
         return player.getName() == null ? player.getUniqueId().toString() : player.getName();
+    }
+
+    private Optional<ClaimMember> findExistingMember(Claim claim, Player actor, String input) {
+        Optional<UUID> inputUuid = parseUuid(input);
+        if (inputUuid.isPresent()) {
+            return claim.members().stream()
+                    .filter(member -> member.memberUuid().equals(inputUuid.orElseThrow()))
+                    .findFirst();
+        }
+
+        Player onlinePlayer = actor.getServer().getPlayerExact(input);
+        if (onlinePlayer != null) {
+            Optional<ClaimMember> onlineMember = claim.members().stream()
+                    .filter(member -> member.memberUuid().equals(onlinePlayer.getUniqueId()))
+                    .findFirst();
+            if (onlineMember.isPresent()) {
+                return onlineMember;
+            }
+        }
+
+        return claim.members().stream()
+                .filter(member -> {
+                    OfflinePlayer offlinePlayer = actor.getServer().getOfflinePlayer(member.memberUuid());
+                    return offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(input);
+                })
+                .findFirst();
+    }
+
+    private Optional<UUID> parseUuid(String value) {
+        try {
+            return Optional.of(UUID.fromString(value));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
     }
 
     private boolean previewClaimCost(Player player) {
@@ -491,8 +540,9 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
 
+        ClaimCostQuote quote = null;
         if (claimCostService != null && claimPaymentService != null) {
-            ClaimCostQuote quote = claimCostService.quotePlayerClaim(player.getUniqueId(), permissionNodes(player), chunks);
+            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), permissionNodes(player), chunks);
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
             if (!paymentResult.allowed()) {
                 showBorder(player, chunks, BorderColor.AQUA);
@@ -506,8 +556,14 @@ public class ClaimsCommand implements CommandExecutor {
             }
         }
 
-        ClaimValidationResult result = claimCreationService.createPlayerClaim(player.getUniqueId(), claimName, chunks);
+        // Pass the already-computed mergeTargets to avoid a redundant index scan inside createPlayerClaim.
+        ClaimValidationResult result = claimCreationService.createPlayerClaim(
+                player.getUniqueId(), claimName, chunks, mergeTargets);
         if (!result.isAllowed()) {
+            // Refund the payment — the creation failed (e.g. concurrent overlap) after we charged.
+            if (quote != null && claimPaymentService != null) {
+                claimPaymentService.refund(player.getUniqueId(), quote);
+            }
             player.sendMessage(claimCreateDenied(result.messageKey().orElse("claims.denied")));
             return true;
         }

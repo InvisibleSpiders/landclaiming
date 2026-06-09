@@ -3,6 +3,7 @@ package com.nick.landclaims.plugin.protection;
 import com.nick.landclaims.api.claim.ClaimView;
 import com.nick.landclaims.api.protection.ClaimProtectionResult;
 import com.nick.landclaims.plugin.claim.Claim;
+import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import java.util.Objects;
 import java.util.Set;
@@ -33,6 +34,10 @@ public final class ProtectionService {
             return ClaimProtectionResult.ALLOW;
         }
 
+        if (actorUuid != null && isClaimManager(claim, actorUuid)) {
+            return ClaimProtectionResult.ALLOW;
+        }
+
         if (actorUuid != null && MEMBER_ACCESS_FLAGS.contains(flagKey) && isClaimMember(claim, actorUuid)) {
             return ClaimProtectionResult.ALLOW;
         }
@@ -46,5 +51,13 @@ public final class ProtectionService {
             return false;
         }
         return landClaim.members().stream().anyMatch(member -> member.memberUuid().equals(actorUuid));
+    }
+
+    private boolean isClaimManager(ClaimView claim, UUID actorUuid) {
+        if (!(claim instanceof Claim landClaim)) {
+            return false;
+        }
+        return landClaim.members().stream()
+                .anyMatch(member -> member.memberUuid().equals(actorUuid) && member.role() == ClaimRole.MANAGER);
     }
 }
