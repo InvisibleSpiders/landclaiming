@@ -17,6 +17,7 @@ import com.nick.landclaims.plugin.limit.ClaimCostConfig;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
+import com.nick.landclaims.plugin.listener.ClaimBoundaryNotificationListener;
 import com.nick.landclaims.plugin.listener.EntityControlListener;
 import com.nick.landclaims.plugin.listener.ProtectionListener;
 import com.nick.landclaims.plugin.message.MessageConfigurationLoader;
@@ -127,6 +128,17 @@ public final class LandClaimsPlugin extends JavaPlugin {
         );
         getServer().getPluginManager().registerEvents(
                 new ProtectionListener(protectionService, claimIndex, messageService),
+                this
+        );
+        getServer().getPluginManager().registerEvents(
+                new ClaimBoundaryNotificationListener(
+                        claimIndex,
+                        messageService,
+                        getConfig().getBoolean("notifications.claim-boundary.enabled", true),
+                        getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
+                        getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
+                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar")
+                ),
                 this
         );
         if (entityControlService != null) {

@@ -30,6 +30,10 @@ This branch is an MVP foundation. The current build includes claim-tool selectio
 - Run `/claims viewborder` to show the current selection, claim, or chunk border.
 - Switch away from the claim tool or double crouch within the configured window to clear an active selection.
 
+## Persistence
+
+Created claims are saved through the configured SQL repository when `/claims create` succeeds. On server startup, LandClaims loads saved claims into the in-memory claim index, so claims persist through restarts as long as the configured database is retained.
+
 ## Commands
 
 Base command: `/claims`. Aliases: `/claim`, `/lc`.
@@ -93,6 +97,23 @@ visuals:
     thickness: 0.08
     view-range: 96.0
 ```
+
+## Boundary Notifications
+
+Players can receive configurable enter and exit messages when crossing claimed-land boundaries.
+
+```yaml
+notifications:
+  claim-boundary:
+    enabled: true
+    delivery: action_bar
+    enter:
+      enabled: true
+    exit:
+      enabled: true
+```
+
+`notifications.claim-boundary.delivery` accepts `action_bar`, `chat`, or `both`.
 
 ## Permissions
 

@@ -31,6 +31,17 @@ ui:
   # Use inventory menus for dense or item-based flows.
   use-inventory-fallbacks: true
 
+notifications:
+  claim-boundary:
+    # Shows a configurable message when players enter or exit claimed land.
+    enabled: true
+    # Options: action_bar, chat, both.
+    delivery: action_bar
+    enter:
+      enabled: true
+    exit:
+      enabled: true
+
 advanced:
   entity-control:
     # Enables claim flags that automatically remove hostile or passive entities.
