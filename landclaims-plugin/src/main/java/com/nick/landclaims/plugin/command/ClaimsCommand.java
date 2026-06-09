@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.Component;
@@ -335,15 +336,15 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
 
-        // Require the target to be currently online to guarantee we get the correct Mojang UUID.
-        // getOfflinePlayer(String) returns a name-derived UUID for players who have never joined,
-        // which would persist the wrong UUID as a member on online-mode servers.
-        Player target = player.getServer().getPlayerExact(args[2]);
-        if (target == null) {
-            player.sendMessage(message("claim.member.player-not-found", Map.of("player", args[2])));
-            return true;
-        }
         if (args[1].equalsIgnoreCase("add")) {
+            // Require the target to be currently online to guarantee we get the correct Mojang UUID.
+            // getOfflinePlayer(String) returns a name-derived UUID for players who have never joined,
+            // which would persist the wrong UUID as a member on online-mode servers.
+            Player target = player.getServer().getPlayerExact(args[2]);
+            if (target == null) {
+                player.sendMessage(message("claim.member.player-not-found", Map.of("player", args[2])));
+                return true;
+            }
             ClaimRole role = args.length >= 4 ? parseRole(args[3]).orElse(null) : ClaimRole.MEMBER;
             if (role == null) {
                 player.sendMessage(message("claim.member.invalid-role"));
@@ -366,16 +367,23 @@ public class ClaimsCommand implements CommandExecutor {
             return true;
         }
         if (args[1].equalsIgnoreCase("remove")) {
+            Optional<ClaimMember> targetMember = findExistingMember(claim.orElseThrow(), player, args[2]);
+            if (targetMember.isEmpty()) {
+                player.sendMessage(message("claim.member.not-found", Map.of("player", args[2])));
+                return true;
+            }
             ClaimMemberResult result = claimMemberService.removeMember(
                     player.getUniqueId(),
                     claim.orElseThrow(),
-                    target.getUniqueId()
+                    targetMember.orElseThrow().memberUuid()
             );
             if (!result.allowed()) {
                 player.sendMessage(message(result.messageKey()));
                 return true;
             }
-            player.sendMessage(message("claim.member.removed", Map.of("player", target.getName())));
+            player.sendMessage(message("claim.member.removed", Map.of(
+                    "player", memberName(player.getServer().getOfflinePlayer(targetMember.orElseThrow().memberUuid()))
+            )));
             return true;
         }
 
@@ -414,6 +422,40 @@ public class ClaimsCommand implements CommandExecutor {
 
     private String memberName(OfflinePlayer player) {
         return player.getName() == null ? player.getUniqueId().toString() : player.getName();
+    }
+
+    private Optional<ClaimMember> findExistingMember(Claim claim, Player actor, String input) {
+        Optional<UUID> inputUuid = parseUuid(input);
+        if (inputUuid.isPresent()) {
+            return claim.members().stream()
+                    .filter(member -> member.memberUuid().equals(inputUuid.orElseThrow()))
+                    .findFirst();
+        }
+
+        Player onlinePlayer = actor.getServer().getPlayerExact(input);
+        if (onlinePlayer != null) {
+            Optional<ClaimMember> onlineMember = claim.members().stream()
+                    .filter(member -> member.memberUuid().equals(onlinePlayer.getUniqueId()))
+                    .findFirst();
+            if (onlineMember.isPresent()) {
+                return onlineMember;
+            }
+        }
+
+        return claim.members().stream()
+                .filter(member -> {
+                    OfflinePlayer offlinePlayer = actor.getServer().getOfflinePlayer(member.memberUuid());
+                    return offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(input);
+                })
+                .findFirst();
+    }
+
+    private Optional<UUID> parseUuid(String value) {
+        try {
+            return Optional.of(UUID.fromString(value));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
     }
 
     private boolean previewClaimCost(Player player) {

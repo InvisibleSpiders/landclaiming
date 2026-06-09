@@ -65,7 +65,7 @@ public final class ClaimMemberService {
             }
         }
 
-        if (actorId.equals(memberId)) {
+        if (claim.ownerUuid() != null && claim.ownerUuid().equals(memberId)) {
             return ClaimMemberResult.denied("claim.member.owner-is-not-member");
         }
         return ClaimMemberResult.success();

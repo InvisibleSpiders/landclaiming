@@ -81,6 +81,21 @@ class ClaimMemberServiceTest {
     }
 
     @Test
+    void managerCannotAddOwnerAsMember() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimMemberService service = new ClaimMemberService(repository, new ClaimIndex());
+        UUID ownerId = UUID.randomUUID();
+        UUID managerId = UUID.randomUUID();
+        Claim claim = claim(ownerId, UUID.randomUUID(), Set.of(new ClaimMember(managerId, ClaimRole.MANAGER)));
+
+        ClaimMemberResult result = service.addMember(managerId, claim, ownerId, ClaimRole.MEMBER);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.member.owner-is-not-member");
+        assertThat(repository.claims).isEmpty();
+    }
+
+    @Test
     void managerCanAddMemberToClaim() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
