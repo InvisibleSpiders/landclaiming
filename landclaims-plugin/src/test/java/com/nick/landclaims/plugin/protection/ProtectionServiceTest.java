@@ -95,7 +95,7 @@ class ProtectionServiceTest {
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         assertThat(service.checkClaimFlag(claim, UUID.randomUUID(), "piston_protection"))
-                .isEqualTo(ClaimProtectionResult.ALLOW);
+                .isEqualTo(ClaimProtectionResult.DENY_WITH_MESSAGE);
         assertThat(service.checkClaimFlag(claim, UUID.randomUUID(), "build"))
                 .isEqualTo(ClaimProtectionResult.DENY_WITH_MESSAGE);
     }

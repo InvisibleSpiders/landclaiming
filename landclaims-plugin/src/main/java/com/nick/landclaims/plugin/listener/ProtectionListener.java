@@ -16,6 +16,7 @@ import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
@@ -87,14 +88,14 @@ public final class ProtectionListener implements Listener {
 
     @EventHandler
     public void onBlockPistonExtend(BlockPistonExtendEvent event) {
-        if (pistonTouchesProtectedClaim(event.getBlocks(), event.getDirection())) {
+        if (pistonTouchesProtectedClaim(event.getBlock(), event.getBlocks(), event.getDirection(), true)) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onBlockPistonRetract(BlockPistonRetractEvent event) {
-        if (pistonTouchesProtectedClaim(event.getBlocks(), event.getDirection())) {
+        if (pistonTouchesProtectedClaim(event.getBlock(), event.getBlocks(), event.getDirection().getOppositeFace(), false)) {
             event.setCancelled(true);
         }
     }
@@ -111,14 +112,14 @@ public final class ProtectionListener implements Listener {
 
     @EventHandler
     public void onBlockSpread(BlockSpreadEvent event) {
-        if (isDenied(event.getBlock(), null, permission -> false, "fire_spread")) {
+        if (isDeniedEnteringClaim(claimChunk(event.getSource()), claimChunk(event.getBlock()), "fire_spread")) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onBlockFromTo(BlockFromToEvent event) {
-        if (isDenied(event.getToBlock(), null, permission -> false, "fluid_flow")) {
+        if (isDeniedEnteringClaim(claimChunk(event.getBlock()), claimChunk(event.getToBlock()), "fluid_flow")) {
             event.setCancelled(true);
         }
     }
@@ -212,7 +213,10 @@ public final class ProtectionListener implements Listener {
     }
 
     private boolean isDenied(Block block, UUID actorUuid, Predicate<String> permissionCheck, String flagKey) {
-        ClaimChunk claimChunk = claimChunk(block);
+        return isDenied(claimChunk(block), actorUuid, permissionCheck, flagKey);
+    }
+
+    private boolean isDenied(ClaimChunk claimChunk, UUID actorUuid, Predicate<String> permissionCheck, String flagKey) {
         return checkProtection(claimChunk, actorUuid, permissionCheck, flagKey)
                 .filter(result -> result != ClaimProtectionResult.ALLOW)
                 .isPresent();
@@ -227,14 +231,48 @@ public final class ProtectionListener implements Listener {
         return new ClaimChunk(block.getWorld().getUID(), chunk.getX(), chunk.getZ());
     }
 
-    private boolean pistonTouchesProtectedClaim(java.util.List<Block> movedBlocks, org.bukkit.block.BlockFace direction) {
-        for (Block movedBlock : movedBlocks) {
-            if (isDenied(movedBlock, null, permission -> false, "piston_protection")
-                    || isDenied(movedBlock.getRelative(direction), null, permission -> false, "piston_protection")) {
+    private boolean pistonTouchesProtectedClaim(
+            Block pistonBlock,
+            java.util.List<Block> movedBlocks,
+            BlockFace movementDirection,
+            boolean includePistonHeadDestination
+    ) {
+        java.util.List<ClaimChunk> sourceChunks = movedBlocks.stream()
+                .map(this::claimChunk)
+                .toList();
+        java.util.List<ClaimChunk> destinationChunks = new java.util.ArrayList<>(movedBlocks.stream()
+                .map(block -> claimChunk(block.getRelative(movementDirection)))
+                .toList());
+        if (includePistonHeadDestination) {
+            destinationChunks.add(claimChunk(pistonBlock.getRelative(movementDirection)));
+        }
+        return pistonTouchesProtectedClaim(sourceChunks, destinationChunks);
+    }
+
+    boolean pistonTouchesProtectedClaim(java.util.List<ClaimChunk> sourceChunks, java.util.List<ClaimChunk> destinationChunks) {
+        for (ClaimChunk sourceChunk : sourceChunks) {
+            if (isDenied(sourceChunk, null, permission -> false, "piston_protection")) {
+                return true;
+            }
+        }
+        for (ClaimChunk destinationChunk : destinationChunks) {
+            if (isDenied(destinationChunk, null, permission -> false, "piston_protection")) {
                 return true;
             }
         }
         return false;
+    }
+
+    boolean isDeniedEnteringClaim(ClaimChunk sourceChunk, ClaimChunk destinationChunk, String flagKey) {
+        Optional<Claim> destinationClaim = claimIndex.findAt(destinationChunk);
+        if (destinationClaim.isEmpty()) {
+            return false;
+        }
+        Optional<Claim> sourceClaim = claimIndex.findAt(sourceChunk);
+        if (sourceClaim.isPresent() && sourceClaim.orElseThrow().id().equals(destinationClaim.orElseThrow().id())) {
+            return false;
+        }
+        return isDenied(destinationChunk, null, permission -> false, flagKey);
     }
 
     private void removeProtectedBlocks(java.util.List<Block> blocks, String flagKey) {
