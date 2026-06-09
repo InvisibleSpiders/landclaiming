@@ -191,6 +191,11 @@ Default flags are locked down unless configured otherwise by the claim owner.
 | `item_pickup` | item | `false` | Controls item pickup in claimed chunks. |
 | `item_drop` | item | `false` | Controls player item drops in claimed chunks and external plugin checks. |
 
+Protection edge behavior:
+
+- `piston_protection: true` blocks piston movement that would move blocks from, into, or through claimed chunks, including an empty piston head extending into a protected claim.
+- `fluid_flow: false` and `fire_spread: false` block flow or spread entering a claim from outside that same claim. Movement within the same claim is not blocked by those boundary checks.
+
 ## Advanced Entity Control
 
 Advanced entity-control flags are claim-level customizations. They are off by default, can be toggled from `/claims flags`, and are designed to become part of the future claim upgrade UI.

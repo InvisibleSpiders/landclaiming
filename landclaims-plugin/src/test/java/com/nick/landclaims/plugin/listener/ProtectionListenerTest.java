@@ -10,6 +10,7 @@ import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.protection.ProtectionService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -76,6 +77,69 @@ class ProtectionListenerTest {
         assertThat(result).contains(ClaimProtectionResult.DENY_WITH_MESSAGE);
     }
 
+    @Test
+    void blocksPistonWhenMovedBlockDestinationWouldEnterProtectedClaim() {
+        UUID worldId = UUID.randomUUID();
+        ClaimChunk source = new ClaimChunk(worldId, 0, 0);
+        ClaimChunk destination = new ClaimChunk(worldId, 1, 0);
+        ProtectionListener listener = listener(Map.of(destination, claim(destination, Map.of("piston_protection", true))));
+
+        boolean blocked = listener.pistonTouchesProtectedClaim(List.of(source), List.of(destination));
+
+        assertThat(blocked).isTrue();
+    }
+
+    @Test
+    void allowsPistonMovementIntoClaimWhenPistonProtectionIsDisabled() {
+        UUID worldId = UUID.randomUUID();
+        ClaimChunk source = new ClaimChunk(worldId, 0, 0);
+        ClaimChunk destination = new ClaimChunk(worldId, 1, 0);
+        ProtectionListener listener = listener(Map.of(destination, claim(destination, Map.of("piston_protection", false))));
+
+        boolean blocked = listener.pistonTouchesProtectedClaim(List.of(source), List.of(destination));
+
+        assertThat(blocked).isFalse();
+    }
+
+    @Test
+    void blocksPistonHeadEnteringProtectedClaimEvenWithoutMovedBlocks() {
+        UUID worldId = UUID.randomUUID();
+        ClaimChunk pistonHeadDestination = new ClaimChunk(worldId, 1, 0);
+        ProtectionListener listener = listener(Map.of(
+                pistonHeadDestination,
+                claim(pistonHeadDestination, Map.of("piston_protection", true))
+        ));
+
+        boolean blocked = listener.pistonTouchesProtectedClaim(List.of(), List.of(pistonHeadDestination));
+
+        assertThat(blocked).isTrue();
+    }
+
+    @Test
+    void blocksFluidFlowFromOutsideIntoProtectedClaim() {
+        UUID worldId = UUID.randomUUID();
+        ClaimChunk outside = new ClaimChunk(worldId, 0, 0);
+        ClaimChunk inside = new ClaimChunk(worldId, 1, 0);
+        ProtectionListener listener = listener(Map.of(inside, claim(inside, Map.of("fluid_flow", false))));
+
+        boolean blocked = listener.isDeniedEnteringClaim(outside, inside, "fluid_flow");
+
+        assertThat(blocked).isTrue();
+    }
+
+    @Test
+    void allowsFluidFlowWithinSameClaimEvenWhenExternalFlowIsBlocked() {
+        UUID worldId = UUID.randomUUID();
+        ClaimChunk first = new ClaimChunk(worldId, 1, 0);
+        ClaimChunk second = new ClaimChunk(worldId, 1, 1);
+        Claim claim = claim(first, Map.of("fluid_flow", false), Set.of(first, second));
+        ProtectionListener listener = listener(Map.of(first, claim, second, claim));
+
+        boolean blocked = listener.isDeniedEnteringClaim(first, second, "fluid_flow");
+
+        assertThat(blocked).isFalse();
+    }
+
     private static ProtectionListener listener(Map<ClaimChunk, Claim> claims) {
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.load(claims.values());
@@ -86,6 +150,10 @@ class ProtectionListenerTest {
     }
 
     private static Claim claim(ClaimChunk chunk, Map<String, Boolean> flags) {
+        return claim(chunk, flags, Set.of(chunk));
+    }
+
+    private static Claim claim(ClaimChunk chunk, Map<String, Boolean> flags, Set<ClaimChunk> chunks) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
@@ -93,7 +161,7 @@ class ProtectionListenerTest {
                 OwnerType.PLAYER,
                 UUID.randomUUID(),
                 chunk.worldId(),
-                Set.of(chunk),
+                chunks,
                 flags,
                 now,
                 now

@@ -43,6 +43,9 @@ public final class ProtectionService {
         }
 
         boolean allowed = claim.flags().getOrDefault(flagKey, flagRegistry.defaultValue(flagKey));
+        if ("piston_protection".equals(flagKey)) {
+            return allowed ? ClaimProtectionResult.DENY_WITH_MESSAGE : ClaimProtectionResult.ALLOW;
+        }
         return allowed ? ClaimProtectionResult.ALLOW : ClaimProtectionResult.DENY_WITH_MESSAGE;
     }
 
