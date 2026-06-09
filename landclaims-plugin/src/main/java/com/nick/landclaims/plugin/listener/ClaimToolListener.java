@@ -125,7 +125,7 @@ public class ClaimToolListener implements Listener {
                     } else {
                         showBorder(player, chunks, previewColor(player, chunks));
                     }
-                    player.sendMessage(Component.text("First claim corner selected.", NamedTextColor.YELLOW));
+                    player.sendMessage(message("claim.tool.first-corner-selected"));
                 }
         );
     }
@@ -182,7 +182,12 @@ public class ClaimToolListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        clearBorder(event.getPlayer());
+        Player player = event.getPlayer();
+        selectionService.clear(player);
+        if (doubleCrouchClearService != null) {
+            doubleCrouchClearService.clear(player.getUniqueId());
+        }
+        clearBorder(player);
     }
 
     private boolean isSelectionAction(Action action) {
@@ -199,17 +204,17 @@ public class ClaimToolListener implements Listener {
     }
 
     private void sendSelectionComplete(Player player, Set<ClaimChunk> chunks) {
-        player.sendMessage(Component.text("Claim selection contains ", NamedTextColor.GREEN)
-                .append(Component.text(chunks.size(), NamedTextColor.YELLOW))
-                .append(Component.text(" chunks.", NamedTextColor.GREEN)));
+        player.sendMessage(message("claim.tool.selection-complete", java.util.Map.of(
+                "chunk_count", String.valueOf(chunks.size())
+        )));
     }
 
     private void sendMissingPermission(Player player) {
-        player.sendMessage(Component.text("You do not have permission to use the claim tool.", NamedTextColor.RED));
+        player.sendMessage(message("command.tool.no-permission"));
     }
 
     private void sendSelectionCleared(Player player) {
-        player.sendMessage(Component.text("Claim selection cleared.", NamedTextColor.YELLOW));
+        player.sendMessage(message("command.selection.cleared"));
     }
 
     private Set<ClaimChunk> normalizeSelection(Player player, Set<ClaimChunk> chunks) {
@@ -261,10 +266,14 @@ public class ClaimToolListener implements Listener {
     }
 
     private Component message(String key) {
+        return message(key, java.util.Map.of());
+    }
+
+    private Component message(String key, java.util.Map<String, String> placeholders) {
         if (messageService == null) {
             return Component.text(key, NamedTextColor.YELLOW);
         }
-        return messageService.render(key, java.util.Map.of());
+        return messageService.render(key, placeholders);
     }
 
     private void clearBorder(Player player) {

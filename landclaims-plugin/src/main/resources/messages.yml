@@ -9,7 +9,12 @@ claim:
   selection-required: "<red>Select two chunks with the claim tool first."
   hold-tool: "<red>Hold your claim tool to create a claim."
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
+  boundary:
+    enter: "<gold>Entering <yellow><claim_name></yellow></gold>"
+    exit: "<gray>Leaving claimed land.</gray>"
   tool:
+    first-corner-selected: "<yellow>First claim corner selected."
+    selection-complete: "<green>Claim selection contains <yellow><chunk_count></yellow> chunks."
     point-claimed-own: "<yellow>That chunk is already in one of your claims. It can be used as an expansion anchor."
     point-claimed-other: "<red>That chunk is already claimed by someone else."
     selection-existing-trimmed: "<yellow>Existing chunks from your claim were removed from the pending selection."
@@ -37,6 +42,7 @@ claim:
   member:
     usage: "<red>Usage: /claims member <add|remove|list> <player> [member|manager]"
     not-owner: "<red>Only the claim owner or a manager can manage members."
+    admin-claim: "<red>Admin claims do not support player members."
     owner-is-not-member: "<red>The claim owner already has full access and cannot be added as a member."
     invalid-role: "<red>Role must be <yellow>member</yellow> or <yellow>manager</yellow>."
     player-not-found: "<red>Player <yellow><player></yellow> is not online. They must be online to be added."
@@ -57,10 +63,10 @@ claim:
     set: "<green>Set <yellow><flag></yellow> to <yellow><value></yellow>."
     toggled: "<green>Toggled <yellow><flag></yellow>."
     list-header: "<gold>Claim flags:"
-    list-entry: "<gray>- <yellow><flag></yellow> <gray>(<category>): <value></gray>"
+    list-entry: "<gray>- <yellow><label></yellow> <dark_gray>(<flag>, <category>)</dark_gray>: <white><value></white> <dark_gray>- <description></dark_gray>"
   flag-editor:
     title: "<gold>Flags for <yellow><claim_name></yellow>"
-    row: "<gray>- <yellow><flag></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Toggle to <next_state>]</green>"
+    row: "<gray>- <yellow><label></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Toggle to <next_state>]</green> <dark_gray>- <description></dark_gray>"
   visual:
     border-selection: "<green>Showing your pending claim selection border.</green> <gray>Color: <yellow><color></yellow>."
     border-claim: "<green>Showing this claim border."

@@ -112,12 +112,18 @@ class ClaimFlagServiceTest {
                 .anySatisfy(row -> {
                     assertThat(row.key()).isEqualTo("build");
                     assertThat(row.enabled()).isTrue();
-                    assertThat(row.category()).isEqualTo("access");
+                    assertThat(row.category()).isEqualTo("Access");
+                    assertThat(row.label()).isEqualTo("Build");
                 })
                 .anySatisfy(row -> {
                     assertThat(row.key()).isEqualTo("piston_protection");
                     assertThat(row.enabled()).isTrue();
-                    assertThat(row.category()).isEqualTo("protection");
+                    assertThat(row.category()).isEqualTo("Protection");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.key()).isEqualTo("remove_hostile_entities");
+                    assertThat(row.category()).isEqualTo("Entity Control");
+                    assertThat(row.description()).contains("hostile");
                 });
     }
 

@@ -2,7 +2,7 @@
 
 LandClaims is a Paper land claiming plugin that protects land by chunks. It uses a charged golden hoe claim tool, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
 
-This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing, a claim menu shell, core block protection, and the public `LandClaimsApi` service for other plugins.
+This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing with descriptions, a claim menu shell, enforced claim protection flags, advanced entity-control flags, and the public `LandClaimsApi` service for other plugins.
 
 ## Requirements
 
@@ -29,6 +29,10 @@ This branch is an MVP foundation. The current build includes claim-tool selectio
 - Run `/claims flags` while standing in a claim to open clickable flag toggles.
 - Run `/claims viewborder` to show the current selection, claim, or chunk border.
 - Switch away from the claim tool or double crouch within the configured window to clear an active selection.
+
+## Persistence
+
+Created claims are saved through the configured SQL repository when `/claims create` succeeds. On server startup, LandClaims loads saved claims into the in-memory claim index, so claims persist through restarts as long as the configured database is retained.
 
 ## Commands
 
@@ -94,6 +98,23 @@ visuals:
     view-range: 96.0
 ```
 
+## Boundary Notifications
+
+Players can receive configurable enter and exit messages when crossing claimed-land boundaries.
+
+```yaml
+notifications:
+  claim-boundary:
+    enabled: true
+    delivery: action_bar
+    enter:
+      enabled: true
+    exit:
+      enabled: true
+```
+
+`notifications.claim-boundary.delivery` accepts `action_bar`, `chat`, or `both`.
+
 ## Permissions
 
 | Permission | Default | Description |
@@ -135,19 +156,40 @@ Default flags are locked down unless configured otherwise by the claim owner.
 | `build` | access | `false` | Controls block placement by non-owners. |
 | `break` | access | `false` | Controls block breaking by non-owners. |
 | `interact` | access | `false` | Controls generic block interaction by non-owners. |
-| `container_access` | access | `false` | Reserved for chest and container access. |
-| `door_access` | access | `false` | Reserved for door and gate access. |
-| `switch_access` | access | `false` | Reserved for button, lever, and pressure plate access. |
-| `redstone_access` | access | `false` | Reserved for redstone interaction. |
-| `piston_protection` | protection | `true` | Reserved for piston movement protection. |
-| `fluid_flow` | environment | `false` | Reserved for water and lava flow protection. |
-| `explosion_damage` | environment | `false` | Reserved for explosion damage protection. |
-| `fire_spread` | environment | `false` | Reserved for fire spread protection. |
-| `mob_griefing` | environment | `false` | Reserved for mob grief behavior. |
-| `crop_trample` | entity | `false` | Reserved for crop trampling. |
-| `entity_damage` | entity | `false` | Reserved for damaging entities in claims. |
-| `item_pickup` | item | `false` | Reserved for item pickup in claims. |
-| `item_drop` | item | `false` | Reserved for item drops in claims and external plugin checks. |
+| `container_access` | access | `false` | Controls chest, barrel, furnace, hopper, shulker, and similar container access. |
+| `door_access` | access | `false` | Controls doors, trapdoors, and fence gates. |
+| `switch_access` | access | `false` | Controls buttons, levers, and pressure plates. |
+| `redstone_access` | access | `false` | Controls repeater and comparator interaction. |
+| `piston_protection` | protection | `true` | Controls piston movement touching claimed chunks. |
+| `fluid_flow` | environment | `false` | Controls water and lava flowing into claimed chunks. |
+| `explosion_damage` | environment | `false` | Controls explosion damage to claimed blocks. |
+| `fire_spread` | environment | `false` | Controls fire spread into claimed chunks. |
+| `mob_griefing` | environment | `false` | Controls entity block changes such as mob griefing. |
+| `crop_trample` | entity | `false` | Controls farmland trampling in claimed chunks. |
+| `entity_damage` | entity | `false` | Controls damaging entities in claimed chunks. |
+| `remove_hostile_entities` | entity control | `false` | Removes hostile entities from claimed chunks when enabled. |
+| `remove_passive_entities` | entity control | `false` | Removes passive entities from claimed chunks when enabled. |
+| `item_pickup` | item | `false` | Controls item pickup in claimed chunks. |
+| `item_drop` | item | `false` | Controls player item drops in claimed chunks and external plugin checks. |
+
+## Advanced Entity Control
+
+Advanced entity-control flags are claim-level customizations. They are off by default, can be toggled from `/claims flags`, and are designed to become part of the future claim upgrade UI.
+
+Relevant config:
+
+```yaml
+advanced:
+  entity-control:
+    enabled: true
+    cleanup-interval-ticks: 200
+    preserve-named-entities: true
+    preserve-tamed-entities: true
+```
+
+- Spawned hostile or passive entities are removed immediately when the matching claim flag is enabled.
+- Existing entities are checked on the configured cleanup interval.
+- Named and tamed entities are preserved by default as a safety guard.
 
 ## Plugin API
 

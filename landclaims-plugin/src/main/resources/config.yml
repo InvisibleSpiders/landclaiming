@@ -31,6 +31,28 @@ ui:
   # Use inventory menus for dense or item-based flows.
   use-inventory-fallbacks: true
 
+notifications:
+  claim-boundary:
+    # Shows a configurable message when players enter or exit claimed land.
+    enabled: true
+    # Options: action_bar, chat, both.
+    delivery: action_bar
+    enter:
+      enabled: true
+    exit:
+      enabled: true
+
+advanced:
+  entity-control:
+    # Enables claim flags that automatically remove hostile or passive entities.
+    enabled: true
+    # How often existing entities inside claims are checked.
+    cleanup-interval-ticks: 200
+    # Avoid removing named entities even when a removal flag is enabled.
+    preserve-named-entities: true
+    # Avoid removing tamed entities even when a removal flag is enabled.
+    preserve-tamed-entities: true
+
 visuals:
   border:
     # Uses temporary glowing BlockDisplay entities for player-visible chunk outlines.

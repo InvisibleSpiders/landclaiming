@@ -27,6 +27,8 @@ class FlagRegistryTest {
                 "mob_griefing",
                 "crop_trample",
                 "entity_damage",
+                "remove_hostile_entities",
+                "remove_passive_entities",
                 "item_pickup",
                 "item_drop"
         );
@@ -45,6 +47,8 @@ class FlagRegistryTest {
                 .get()
                 .satisfies(definition -> {
                     assertThat(definition.key()).isEqualTo("piston_protection");
+                    assertThat(definition.label()).isEqualTo("Piston Protection");
+                    assertThat(definition.description()).contains("piston");
                     assertThat(definition.defaultValue()).isTrue();
                 });
     }

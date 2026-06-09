@@ -100,6 +100,8 @@ public final class ClaimFlagService {
                 .map(definition -> new ClaimFlagRow(
                         definition.key(),
                         definition.category(),
+                        definition.label(),
+                        definition.description(),
                         claim.flags().getOrDefault(definition.key(), definition.defaultValue()),
                         definition.editPermission()
                 ))
