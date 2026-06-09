@@ -25,4 +25,9 @@ public final class DoubleCrouchClearService {
         Long previousTick = lastCrouchTicks.put(playerId, currentTick);
         return previousTick != null && currentTick - previousTick <= windowTicks;
     }
+
+    public void clear(UUID playerId) {
+        Objects.requireNonNull(playerId, "playerId");
+        lastCrouchTicks.remove(playerId);
+    }
 }

@@ -10,6 +10,8 @@ claim:
   hold-tool: "<red>Hold your claim tool to create a claim."
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
   tool:
+    first-corner-selected: "<yellow>First claim corner selected."
+    selection-complete: "<green>Claim selection contains <yellow><chunk_count></yellow> chunks."
     point-claimed-own: "<yellow>That chunk is already in one of your claims. It can be used as an expansion anchor."
     point-claimed-other: "<red>That chunk is already claimed by someone else."
     selection-existing-trimmed: "<yellow>Existing chunks from your claim were removed from the pending selection."
@@ -37,6 +39,7 @@ claim:
   member:
     usage: "<red>Usage: /claims member <add|remove|list> <player> [member|manager]"
     not-owner: "<red>Only the claim owner can manage members right now."
+    admin-claim: "<red>Admin claims do not support player members."
     owner-is-not-member: "<red>The claim owner already has full access and cannot be added as a member."
     invalid-role: "<red>Role must be <yellow>member</yellow> or <yellow>manager</yellow>."
     added: "<green>Added <yellow><player></yellow> as <yellow><role></yellow>."

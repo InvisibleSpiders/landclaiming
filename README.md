@@ -2,7 +2,7 @@
 
 LandClaims is a Paper land claiming plugin that protects land by chunks. It uses a charged golden hoe claim tool, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
 
-This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing, a claim menu shell, core block protection, and the public `LandClaimsApi` service for other plugins.
+This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing, a claim menu shell, enforced claim protection flags, and the public `LandClaimsApi` service for other plugins.
 
 ## Requirements
 
@@ -135,19 +135,19 @@ Default flags are locked down unless configured otherwise by the claim owner.
 | `build` | access | `false` | Controls block placement by non-owners. |
 | `break` | access | `false` | Controls block breaking by non-owners. |
 | `interact` | access | `false` | Controls generic block interaction by non-owners. |
-| `container_access` | access | `false` | Reserved for chest and container access. |
-| `door_access` | access | `false` | Reserved for door and gate access. |
-| `switch_access` | access | `false` | Reserved for button, lever, and pressure plate access. |
-| `redstone_access` | access | `false` | Reserved for redstone interaction. |
-| `piston_protection` | protection | `true` | Reserved for piston movement protection. |
-| `fluid_flow` | environment | `false` | Reserved for water and lava flow protection. |
-| `explosion_damage` | environment | `false` | Reserved for explosion damage protection. |
-| `fire_spread` | environment | `false` | Reserved for fire spread protection. |
-| `mob_griefing` | environment | `false` | Reserved for mob grief behavior. |
-| `crop_trample` | entity | `false` | Reserved for crop trampling. |
-| `entity_damage` | entity | `false` | Reserved for damaging entities in claims. |
-| `item_pickup` | item | `false` | Reserved for item pickup in claims. |
-| `item_drop` | item | `false` | Reserved for item drops in claims and external plugin checks. |
+| `container_access` | access | `false` | Controls chest, barrel, furnace, hopper, shulker, and similar container access. |
+| `door_access` | access | `false` | Controls doors, trapdoors, and fence gates. |
+| `switch_access` | access | `false` | Controls buttons, levers, and pressure plates. |
+| `redstone_access` | access | `false` | Controls repeater and comparator interaction. |
+| `piston_protection` | protection | `true` | Controls piston movement touching claimed chunks. |
+| `fluid_flow` | environment | `false` | Controls water and lava flowing into claimed chunks. |
+| `explosion_damage` | environment | `false` | Controls explosion damage to claimed blocks. |
+| `fire_spread` | environment | `false` | Controls fire spread into claimed chunks. |
+| `mob_griefing` | environment | `false` | Controls entity block changes such as mob griefing. |
+| `crop_trample` | entity | `false` | Controls farmland trampling in claimed chunks. |
+| `entity_damage` | entity | `false` | Controls damaging entities in claimed chunks. |
+| `item_pickup` | item | `false` | Controls item pickup in claimed chunks. |
+| `item_drop` | item | `false` | Controls player item drops in claimed chunks and external plugin checks. |
 
 ## Plugin API
 

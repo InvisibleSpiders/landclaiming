@@ -46,6 +46,9 @@ public final class ClaimMemberService {
         Objects.requireNonNull(actorId, "actorId");
         Objects.requireNonNull(claim, "claim");
         Objects.requireNonNull(memberId, "memberId");
+        if (claim.owner() == OwnerType.ADMIN) {
+            return ClaimMemberResult.denied("claim.member.admin-claim");
+        }
         if (!actorId.equals(claim.ownerUuid())) {
             return ClaimMemberResult.denied("claim.member.not-owner");
         }

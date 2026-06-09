@@ -122,7 +122,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 this
         );
         getServer().getPluginManager().registerEvents(
-                new ProtectionListener(protectionService, claimIndex),
+                new ProtectionListener(protectionService, claimIndex, messageService),
                 this
         );
         ClaimsCommand claimsCommand = new ClaimsCommand(

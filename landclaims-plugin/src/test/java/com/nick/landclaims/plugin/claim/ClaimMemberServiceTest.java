@@ -81,6 +81,19 @@ class ClaimMemberServiceTest {
     }
 
     @Test
+    void adminClaimsCannotHaveMembersMutated() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimMemberService service = new ClaimMemberService(repository, new ClaimIndex());
+        Claim claim = claim(OwnerType.ADMIN, null, UUID.randomUUID(), Set.of());
+
+        ClaimMemberResult result = service.addMember(UUID.randomUUID(), claim, UUID.randomUUID(), ClaimRole.MEMBER);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.member.admin-claim");
+        assertThat(repository.claims).isEmpty();
+    }
+
+    @Test
     void ownerCanRemoveMemberFromClaim() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
@@ -98,11 +111,15 @@ class ClaimMemberServiceTest {
     }
 
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimMember> members) {
+        return claim(OwnerType.PLAYER, ownerId, worldId, members);
+    }
+
+    private static Claim claim(OwnerType ownerType, UUID ownerId, UUID worldId, Set<ClaimMember> members) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
                 "Home",
-                OwnerType.PLAYER,
+                ownerType,
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 0, 0)),
