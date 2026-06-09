@@ -118,6 +118,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         doubleCrouchClearService,
                         chunkBorderVisualService,
                         claimBorderColorService,
+                        claimIndex,
+                        messageService,
                         getConfig().getBoolean("selection.clear-on-tool-switch", true),
                         getConfig().getBoolean("selection.double-crouch-clear.enabled", true)
                 ),
@@ -127,8 +129,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 new ProtectionListener(protectionService, claimIndex),
                 this
         );
-        Objects.requireNonNull(getCommand("claims"), "claims command is not defined in plugin.yml")
-                .setExecutor(new ClaimsCommand(
+        ClaimsCommand claimsCommand = new ClaimsCommand(
                         claimToolService,
                         selectionService,
                         claimCreationService,
@@ -145,7 +146,11 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         new InventoryGuiFallbackService(),
                         chunkBorderVisualService,
                         claimBorderColorService
-                ));
+                );
+        Objects.requireNonNull(getCommand("claims"), "claims command is not defined in plugin.yml")
+                .setExecutor(claimsCommand);
+        Objects.requireNonNull(getCommand("claims"), "claims command is not defined in plugin.yml")
+                .setTabCompleter(claimsCommand);
 
         getLogger().info("LandClaims enabled.");
     }
@@ -205,7 +210,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         getConfig().getDouble("visuals.border.thickness", 0.08D),
                         (float) getConfig().getDouble("visuals.border.view-range", 96.0D)
                 ),
-                getConfig().getInt("visuals.border.duration-ticks", 160)
+                getConfig().getInt("visuals.border.duration-ticks", 0)
         );
     }
 

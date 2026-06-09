@@ -46,13 +46,27 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 
-public class ClaimsCommand implements CommandExecutor {
+public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
     private static final String CLAIM_MENU_PERMISSION = "landclaims.gui";
+    private static final List<String> ROOT_SUGGESTIONS = List.of(
+            "tool",
+            "create",
+            "cost",
+            "quote",
+            "menu",
+            "flags",
+            "viewborder",
+            "flag",
+            "member",
+            "cancel",
+            "info"
+    );
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
@@ -157,6 +171,40 @@ public class ClaimsCommand implements CommandExecutor {
 
         sendHelp(player);
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 0) {
+            return ROOT_SUGGESTIONS;
+        }
+        if (args.length == 1) {
+            return matching(ROOT_SUGGESTIONS, args[0]);
+        }
+
+        String subcommand = args[0].toLowerCase();
+        if (args.length == 2 && subcommand.equals("member")) {
+            return matching(List.of("add", "remove", "list"), args[1]);
+        }
+        if (args.length == 2 && subcommand.equals("flag")) {
+            return matching(List.of("list", "set", "toggle"), args[1]);
+        }
+        if (args.length == 4 && subcommand.equals("flag") && args[1].equalsIgnoreCase("set")) {
+            return matching(List.of("true", "false", "on", "off", "yes", "no"), args[3]);
+        }
+        if (args.length == 4 && subcommand.equals("member") && args[1].equalsIgnoreCase("add")) {
+            return matching(Arrays.stream(ClaimRole.values())
+                    .map(role -> role.name().toLowerCase())
+                    .toList(), args[3]);
+        }
+        return List.of();
+    }
+
+    private List<String> matching(List<String> options, String prefix) {
+        String normalizedPrefix = prefix.toLowerCase();
+        return options.stream()
+                .filter(option -> option.toLowerCase().startsWith(normalizedPrefix))
+                .toList();
     }
 
     private boolean viewBorder(Player player) {

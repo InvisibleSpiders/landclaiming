@@ -1,6 +1,10 @@
 package com.nick.landclaims.plugin.listener;
 
+import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
+import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.OwnerType;
+import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.selection.DoubleCrouchClearService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
@@ -37,11 +41,13 @@ public class ClaimToolListener implements Listener {
     private final DoubleCrouchClearService doubleCrouchClearService;
     private final ChunkBorderVisualService chunkBorderVisualService;
     private final ClaimBorderColorService claimBorderColorService;
+    private final ClaimIndex claimIndex;
+    private final MessageService messageService;
     private final boolean clearOnToolSwitch;
     private final boolean doubleCrouchClearEnabled;
 
     public ClaimToolListener(ClaimToolService claimToolService, SelectionService selectionService) {
-        this(claimToolService, selectionService, null, null, null, false, false);
+        this(claimToolService, selectionService, null, null, null, null, null, false, false);
     }
 
     public ClaimToolListener(
@@ -50,6 +56,8 @@ public class ClaimToolListener implements Listener {
             DoubleCrouchClearService doubleCrouchClearService,
             ChunkBorderVisualService chunkBorderVisualService,
             ClaimBorderColorService claimBorderColorService,
+            ClaimIndex claimIndex,
+            MessageService messageService,
             boolean clearOnToolSwitch,
             boolean doubleCrouchClearEnabled
     ) {
@@ -58,6 +66,8 @@ public class ClaimToolListener implements Listener {
         this.doubleCrouchClearService = doubleCrouchClearService;
         this.chunkBorderVisualService = chunkBorderVisualService;
         this.claimBorderColorService = claimBorderColorService;
+        this.claimIndex = claimIndex;
+        this.messageService = messageService;
         this.clearOnToolSwitch = clearOnToolSwitch;
         this.doubleCrouchClearEnabled = doubleCrouchClearEnabled;
     }
@@ -81,14 +91,40 @@ public class ClaimToolListener implements Listener {
         }
 
         Chunk chunk = selectionChunk(event.getClickedBlock(), player.getLocation().getChunk());
+        ClaimChunk selectedChunk = new ClaimChunk(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
+        Optional<Claim> clickedClaim = claimAt(selectedChunk);
+        if (clickedClaim.isPresent() && !isOwnerClaim(player, clickedClaim.orElseThrow())) {
+            showBorder(player, Set.of(selectedChunk), BorderColor.RED);
+            player.sendMessage(message("claim.tool.point-claimed-other"));
+            return;
+        }
+        if (clickedClaim.isPresent()) {
+            player.sendMessage(message("claim.tool.point-claimed-own"));
+        }
+
         selectionService.select(player, chunk).ifPresentOrElse(
                 chunks -> {
-                    showBorder(player, chunks, previewColor(player, chunks));
-                    sendSelectionComplete(player, chunks);
+                    Set<ClaimChunk> normalizedChunks = normalizeSelection(player, chunks);
+                    if (normalizedChunks.isEmpty()) {
+                        selectionService.replacePendingSelection(player.getUniqueId(), Set.of());
+                        clickedClaim.ifPresent(claim -> showBorder(player, claim.claimChunks(), BorderColor.GOLD));
+                        player.sendMessage(message("claim.tool.selection-only-existing"));
+                        return;
+                    }
+                    if (!normalizedChunks.equals(chunks)) {
+                        selectionService.replacePendingSelection(player.getUniqueId(), normalizedChunks);
+                        player.sendMessage(message("claim.tool.selection-existing-trimmed"));
+                    }
+                    showBorder(player, normalizedChunks, previewColor(player, normalizedChunks));
+                    sendSelectionComplete(player, normalizedChunks);
                 },
                 () -> {
-                    Set<ClaimChunk> chunks = Set.of(new ClaimChunk(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ()));
-                    showBorder(player, chunks, previewColor(player, chunks));
+                    Set<ClaimChunk> chunks = Set.of(selectedChunk);
+                    if (clickedClaim.isPresent()) {
+                        showBorder(player, clickedClaim.orElseThrow().claimChunks(), BorderColor.GOLD);
+                    } else {
+                        showBorder(player, chunks, previewColor(player, chunks));
+                    }
                     player.sendMessage(Component.text("First claim corner selected.", NamedTextColor.YELLOW));
                 }
         );
@@ -176,6 +212,29 @@ public class ClaimToolListener implements Listener {
         player.sendMessage(Component.text("Claim selection cleared.", NamedTextColor.YELLOW));
     }
 
+    private Set<ClaimChunk> normalizeSelection(Player player, Set<ClaimChunk> chunks) {
+        if (claimIndex == null) {
+            return chunks;
+        }
+        Set<ClaimChunk> newChunks = chunks.stream()
+                .filter(chunk -> claimAt(chunk)
+                        .filter(claim -> isOwnerClaim(player, claim))
+                        .isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
+        return newChunks.size() == chunks.size() ? chunks : newChunks;
+    }
+
+    private Optional<Claim> claimAt(ClaimChunk chunk) {
+        if (claimIndex == null) {
+            return Optional.empty();
+        }
+        return claimIndex.findAt(chunk);
+    }
+
+    private boolean isOwnerClaim(Player player, Claim claim) {
+        return claim.owner() == OwnerType.PLAYER && player.getUniqueId().equals(claim.ownerUuid());
+    }
+
     private void showBorder(Player player, Set<ClaimChunk> chunks, BorderColor color) {
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.showSelection(player, chunks, color);
@@ -199,6 +258,13 @@ public class ClaimToolListener implements Listener {
                 .filter(PermissionAttachmentInfo::getValue)
                 .map(PermissionAttachmentInfo::getPermission)
                 .collect(Collectors.toUnmodifiableSet());
+    }
+
+    private Component message(String key) {
+        if (messageService == null) {
+            return Component.text(key, NamedTextColor.YELLOW);
+        }
+        return messageService.render(key, java.util.Map.of());
     }
 
     private void clearBorder(Player player) {

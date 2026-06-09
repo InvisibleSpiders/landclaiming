@@ -58,14 +58,20 @@ Base command: `/claims`. Aliases: `/claim`, `/lc`.
 
 | Shortcut | Permission | Description |
 | --- | --- | --- |
-| Right-click with claim tool | `landclaims.tool.use` | Selects the first and second claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
+| Right-click with claim tool | `landclaims.tool.use` | Selects claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
 | Switch away from claim tool | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.clear-on-tool-switch` is enabled. |
 | Double crouch | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
 | Sneak + swap hand | `landclaims.gui` | Opens `/claims menu` when the claim tool is involved. |
 
+## Selection Behavior
+
+- After two points are selected, another right-click replaces the second point and recalculates from the original first point.
+- Clicking one of your own claimed chunks warns you and can use that claim as an expansion anchor. Existing owned chunks are removed from the pending selection so only new chunks are claimed.
+- Clicking another player's claimed chunk warns you and does not set a selection point.
+
 ## Visuals
 
-Chunk borders use temporary glowing `BlockDisplay` entities. There is no native Paper chunk glow API, so LandClaims draws short-lived display-entity line segments for the viewing player and removes them on timeout, selection clear, logout, plugin disable, or replacement.
+Chunk borders use temporary glowing `BlockDisplay` entities. There is no native Paper chunk glow API, so LandClaims draws display-entity line segments for the viewing player and removes them on timeout when configured, selection clear, logout, plugin disable, or replacement.
 
 Claim preview border colors:
 
@@ -83,7 +89,7 @@ Relevant config:
 visuals:
   border:
     enabled: true
-    duration-ticks: 160
+    duration-ticks: 0
     thickness: 0.08
     view-range: 96.0
 ```
