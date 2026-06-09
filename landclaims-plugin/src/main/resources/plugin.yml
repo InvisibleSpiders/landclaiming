@@ -35,6 +35,9 @@ permissions:
   landclaims.member.manage:
     description: Allows managing claim members.
     default: true
+  landclaims.deny.manage:
+    description: Allows managing claim denied-player lists.
+    default: true
   landclaims.bypass.claim-limit:
     description: Bypasses claim allowance limits.
     default: op
@@ -43,6 +46,9 @@ permissions:
     default: op
   landclaims.bypass.protection:
     description: Bypasses claim protection checks.
+    default: op
+  landclaims.bypass.entry-deny:
+    description: Bypasses claim denied-entry checks.
     default: op
   landclaims.admin:
     description: Grants all LandClaims admin permissions.

@@ -53,6 +53,9 @@ Base command: `/claims`. Aliases: `/claim`, `/lc`.
 | `/claims member list` | Any player in claim | Lists members for the claim at the player's current chunk. |
 | `/claims member add <player> [member\|manager]` | Claim owner or manager | Adds an online player to the claim. Managers can only add `member` role entries. |
 | `/claims member remove <player>` | Claim owner or manager | Removes an existing claim member. Managers cannot remove other managers. |
+| `/claims deny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Denies a player from entering the claim at the player's current chunk. Names must be online; UUIDs are accepted. |
+| `/claims undeny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Removes a player from the current claim's denied-entry list. |
+| `/claims denied` | `landclaims.deny.manage` | Lists players denied from entering the current claim. |
 | `/claims info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
 | `/claims cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
 | `/claims mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
@@ -115,6 +118,20 @@ notifications:
 
 `notifications.claim-boundary.delivery` accepts `action_bar`, `chat`, or `both`.
 
+## Denied Entry
+
+Claim owners and managers can deny specific players from entering a claim. Denied players are pushed back to their last allowed location when they cross into the claim. If they are already inside a denied claim, LandClaims sends them to the nearest bordering unclaimed chunk it can find.
+
+Relevant config:
+
+```yaml
+access-denial:
+  enabled: true
+  knockback:
+    enabled: true
+    strength: 0.65
+```
+
 ## Permissions
 
 | Permission | Default | Description |
@@ -126,6 +143,7 @@ notifications:
 | `landclaims.tool.craft` | `true` | Allows crafting the claim tool when the recipe is enabled. |
 | `landclaims.tool.recharge` | `true` | Reserved for claim tool recharge flows. |
 | `landclaims.member.manage` | `true` | Reserved for broader member management permission gating. Current member commands are owner-gated. |
+| `landclaims.deny.manage` | `true` | Allows using denied-entry management commands. Claim ownership or manager role is still required. |
 | `landclaims.limit.default` | Registered from `permissions.yml` | Grants the default configured chunk allowance, currently 10. |
 | `landclaims.limit.member` | Registered from `permissions.yml` | Grants the member configured chunk allowance, currently 25. |
 | `landclaims.limit.vip` | Registered from `permissions.yml` | Grants the VIP configured chunk allowance, currently 75. |
@@ -135,6 +153,7 @@ notifications:
 | `landclaims.bypass.claim-buffer` | `op` | Bypasses configured claim buffer distance checks. |
 | `landclaims.bypass.protection` | `op` | Bypasses all protection checks. |
 | `landclaims.bypass.protection.<flag>` | `op` by convention | Bypasses one protection flag check through the public API and internal protection checks. |
+| `landclaims.bypass.entry-deny` | `op` | Allows staff to enter claims even when listed as denied. |
 | `landclaims.admin` | `op` | Parent permission for planned admin claim and user-claim tools. |
 | `landclaims.admin.claim.create` | child of `landclaims.admin` | Planned admin claim creation. |
 | `landclaims.admin.claim.edit` | child of `landclaims.admin` | Planned admin claim editing. |

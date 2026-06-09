@@ -15,3 +15,8 @@ flag-edit:
     - explosion_damage
     - fire_spread
     - mob_griefing
+
+commands:
+  landclaims.deny.manage: "Allows claim owners and managers to use /claims deny, /claims undeny, and /claims denied."
+bypass:
+  landclaims.bypass.entry-deny: "Allows staff to enter claims even when listed as denied."

@@ -41,6 +41,7 @@ public class SqlClaimRepository implements ClaimRepository {
                 insertChunks(connection, claim);
                 insertFlags(connection, claim);
                 insertMembers(connection, claim);
+                insertDeniedPlayers(connection, claim);
                 connection.commit();
             } catch (SQLException exception) {
                 connection.rollback();
@@ -133,6 +134,7 @@ public class SqlClaimRepository implements ClaimRepository {
 
     private void deleteClaim(Connection connection, UUID claimId) throws SQLException {
         executeDelete(connection, "DELETE FROM claim_members WHERE claim_id = ?", claimId);
+        executeDelete(connection, "DELETE FROM claim_denied_players WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claim_flags WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claim_chunks WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claims WHERE id = ?", claimId);
@@ -202,6 +204,18 @@ public class SqlClaimRepository implements ClaimRepository {
         }
     }
 
+    private void insertDeniedPlayers(Connection connection, Claim claim) throws SQLException {
+        String sql = "INSERT INTO claim_denied_players (claim_id, player_uuid) VALUES (?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (UUID deniedPlayer : claim.deniedPlayers()) {
+                statement.setString(1, claim.id().toString());
+                statement.setString(2, deniedPlayer.toString());
+                statement.addBatch();
+            }
+            statement.executeBatch();
+        }
+    }
+
     private List<Claim> mapClaims(Connection connection, PreparedStatement statement) throws SQLException {
         List<Claim> claims = new ArrayList<>();
         try (ResultSet resultSet = statement.executeQuery()) {
@@ -224,6 +238,7 @@ public class SqlClaimRepository implements ClaimRepository {
                 loadChunks(connection, claimId),
                 loadFlags(connection, claimId),
                 loadMembers(connection, claimId),
+                loadDeniedPlayers(connection, claimId),
                 Instant.parse(resultSet.getString("created_at")),
                 Instant.parse(resultSet.getString("updated_at"))
         );
@@ -279,6 +294,21 @@ public class SqlClaimRepository implements ClaimRepository {
             }
         }
         return Set.copyOf(members);
+    }
+
+    private Set<UUID> loadDeniedPlayers(Connection connection, UUID claimId) throws SQLException {
+        Set<UUID> deniedPlayers = new HashSet<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT player_uuid FROM claim_denied_players WHERE claim_id = ?"
+        )) {
+            statement.setString(1, claimId.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    deniedPlayers.add(UUID.fromString(resultSet.getString("player_uuid")));
+                }
+            }
+        }
+        return Set.copyOf(deniedPlayers);
     }
 
     private UUID nullableUuid(String value) {
