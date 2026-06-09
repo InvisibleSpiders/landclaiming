@@ -127,6 +127,26 @@ class ClaimFlagServiceTest {
                 });
     }
 
+    @Test
+    void flagRowsUsePlayerFocusedCategoryOrder() {
+        ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
+        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of());
+
+        List<String> categories = service.listFlags(claim).stream()
+                .map(ClaimFlagRow::category)
+                .distinct()
+                .toList();
+
+        assertThat(categories).containsExactly(
+                "Access",
+                "Protection",
+                "Environment",
+                "Entity",
+                "Entity Control",
+                "Items"
+        );
+    }
+
     private static Claim claim(UUID ownerId, UUID worldId, Map<String, Boolean> flags) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
         return new Claim(

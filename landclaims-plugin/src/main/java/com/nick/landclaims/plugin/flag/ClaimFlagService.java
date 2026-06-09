@@ -15,6 +15,15 @@ import java.util.UUID;
 import java.util.function.Predicate;
 
 public final class ClaimFlagService {
+    private static final List<String> CATEGORY_ORDER = List.of(
+            "Access",
+            "Protection",
+            "Environment",
+            "Entity",
+            "Entity Control",
+            "Items"
+    );
+
     private final ClaimRepository claimRepository;
     private final ClaimIndex claimIndex;
     private final FlagRegistry flagRegistry;
@@ -96,7 +105,10 @@ public final class ClaimFlagService {
     public List<ClaimFlagRow> listFlags(Claim claim) {
         Objects.requireNonNull(claim, "claim");
         return flagRegistry.definitions().stream()
-                .sorted(Comparator.comparing(ClaimFlagDefinition::category).thenComparing(ClaimFlagDefinition::key))
+                .sorted(Comparator
+                        .comparingInt((ClaimFlagDefinition definition) -> categoryIndex(definition.category()))
+                        .thenComparing(ClaimFlagDefinition::category)
+                        .thenComparing(ClaimFlagDefinition::key))
                 .map(definition -> new ClaimFlagRow(
                         definition.key(),
                         definition.category(),
@@ -106,5 +118,10 @@ public final class ClaimFlagService {
                         definition.editPermission()
                 ))
                 .toList();
+    }
+
+    private int categoryIndex(String category) {
+        int index = CATEGORY_ORDER.indexOf(category);
+        return index < 0 ? CATEGORY_ORDER.size() : index;
     }
 }
