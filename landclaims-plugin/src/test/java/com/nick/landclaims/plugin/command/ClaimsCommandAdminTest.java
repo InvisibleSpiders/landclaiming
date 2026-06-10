@@ -11,6 +11,7 @@ import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.OwnerType;
+import com.nick.landclaims.plugin.flag.ClaimFlagService;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
@@ -52,7 +53,15 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", "userclaims", ""}))
-                .containsExactlyInAnyOrder("list", "view", "delete", "teleport", "transfer");
+                .containsExactlyInAnyOrder("list", "view", "delete", "teleport", "transfer", "flag");
+    }
+
+    @Test
+    void adminUserclaimsFlagTabCompletionIncludesFlagSubcommands() {
+        ClaimsCommand command = command(new AdminClaimService());
+
+        assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", "userclaims", "flag", ""}))
+                .containsExactlyInAnyOrder("list", "set", "toggle");
     }
 
     @Test
@@ -205,7 +214,130 @@ class ClaimsCommandAdminTest {
                 .containsExactly("Player NotOnline is not online. Use a UUID to transfer offline players.");
     }
 
+    @Test
+    void adminUserclaimsFlagSetRequiresEditPermission() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{
+                "admin",
+                "userclaims",
+                "flag",
+                "set",
+                UUID.randomUUID().toString(),
+                "build",
+                "true"
+        });
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("You do not have permission to edit user claims.");
+    }
+
+    @Test
+    void adminUserclaimsFlagSetUpdatesPlayerClaimWhenAllowed() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim home = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(home);
+        claimIndex.add(home);
+        FlagRegistry flagRegistry = FlagRegistry.createDefault();
+        AdminClaimService adminClaimService = new AdminClaimService(repository, claimIndex, flagRegistry, 32);
+        ClaimFlagService claimFlagService = new ClaimFlagService(repository, claimIndex, flagRegistry);
+        ClaimsCommand command = command(adminClaimService, claimFlagService);
+        Player player = mock(Player.class);
+        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{
+                "admin",
+                "userclaims",
+                "flag",
+                "set",
+                home.id().toString(),
+                "build",
+                "true"
+        });
+
+        Claim updated = repository.findClaimById(home.id()).orElseThrow();
+        assertThat(updated.flags()).containsEntry("build", true);
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("Set build to true for Home.");
+    }
+
+    @Test
+    void adminUserclaimsFlagToggleUpdatesPlayerClaimWhenAllowed() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim home = playerClaim("Home", ownerId, worldId, 0, Map.of("build", true));
+        repository.claims.add(home);
+        claimIndex.add(home);
+        FlagRegistry flagRegistry = FlagRegistry.createDefault();
+        AdminClaimService adminClaimService = new AdminClaimService(repository, claimIndex, flagRegistry, 32);
+        ClaimFlagService claimFlagService = new ClaimFlagService(repository, claimIndex, flagRegistry);
+        ClaimsCommand command = command(adminClaimService, claimFlagService);
+        Player player = mock(Player.class);
+        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{
+                "admin",
+                "userclaims",
+                "flag",
+                "toggle",
+                home.id().toString(),
+                "build"
+        });
+
+        Claim updated = repository.findClaimById(home.id()).orElseThrow();
+        assertThat(updated.flags()).containsEntry("build", false);
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("Toggled build for Home.");
+    }
+
+    @Test
+    void adminUserclaimsFlagListShowsClaimFlagsWhenAllowed() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim home = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(home);
+        claimIndex.add(home);
+        FlagRegistry flagRegistry = FlagRegistry.createDefault();
+        AdminClaimService adminClaimService = new AdminClaimService(repository, claimIndex, flagRegistry, 32);
+        ClaimFlagService claimFlagService = new ClaimFlagService(repository, claimIndex, flagRegistry);
+        ClaimsCommand command = command(adminClaimService, claimFlagService);
+        Player player = mock(Player.class);
+        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{
+                "admin",
+                "userclaims",
+                "flag",
+                "list",
+                home.id().toString()
+        });
+
+        List<String> plainMessages = messages.stream()
+                .map(PlainTextComponentSerializer.plainText()::serialize)
+                .toList();
+        assertThat(plainMessages).first().isEqualTo("Flags for Home:");
+        assertThat(plainMessages).anyMatch(message -> message.contains("build") && message.contains("false"));
+    }
+
     private static ClaimsCommand command(AdminClaimService adminClaimService) {
+        return command(adminClaimService, null);
+    }
+
+    private static ClaimsCommand command(AdminClaimService adminClaimService, ClaimFlagService claimFlagService) {
         return new ClaimsCommand(
                 mock(ClaimToolService.class),
                 null,
@@ -214,20 +346,25 @@ class ClaimsCommandAdminTest {
                 null,
                 null,
                 null,
-                new MessageService(Map.of(
-                        "admin.claim.list-header", "<gold>Admin claims:",
-                        "admin.claim.list-empty", "<yellow>No admin claims exist.",
-                        "admin.claim.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>",
-                        "admin.claim.no-permission", "<red>You do not have permission to manage admin claims.",
-                        "admin.userclaims.list-header", "<gold>Claims for <yellow><player></yellow>:",
-                        "admin.userclaims.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>",
-                        "admin.userclaims.no-permission", "<red>You do not have permission to manage user claims.",
-                        "admin.userclaims.transfer-player-not-found", "<red>Player <player> is not online. Use a UUID to transfer offline players.",
-                        "admin.userclaims.transferred", "<green>Transferred <claim_name> to <player>."
+                new MessageService(Map.ofEntries(
+                        Map.entry("admin.claim.list-header", "<gold>Admin claims:"),
+                        Map.entry("admin.claim.list-empty", "<yellow>No admin claims exist."),
+                        Map.entry("admin.claim.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>"),
+                        Map.entry("admin.claim.no-permission", "<red>You do not have permission to manage admin claims."),
+                        Map.entry("admin.userclaims.list-header", "<gold>Claims for <yellow><player></yellow>:"),
+                        Map.entry("admin.userclaims.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>"),
+                        Map.entry("admin.userclaims.no-permission", "<red>You do not have permission to manage user claims."),
+                        Map.entry("admin.userclaims.transfer-player-not-found", "<red>Player <player> is not online. Use a UUID to transfer offline players."),
+                        Map.entry("admin.userclaims.transferred", "<green>Transferred <claim_name> to <player>."),
+                        Map.entry("admin.userclaims.edit-no-permission", "<red>You do not have permission to edit user claims."),
+                        Map.entry("admin.userclaims.flag-list-header", "<gold>Flags for <claim_name>:"),
+                        Map.entry("admin.userclaims.flag-list-entry", "<gray>- <flag>: <value>"),
+                        Map.entry("admin.userclaims.flag-set", "<green>Set <flag> to <value> for <claim_name>."),
+                        Map.entry("admin.userclaims.flag-toggled", "<green>Toggled <flag> for <claim_name>.")
                 )),
                 null,
                 null,
-                null,
+                claimFlagService,
                 null,
                 null,
                 null,
@@ -263,6 +400,10 @@ class ClaimsCommandAdminTest {
     }
 
     private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
+        return playerClaim(name, ownerId, worldId, chunkX, Map.of());
+    }
+
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX, Map<String, Boolean> flags) {
         Instant now = Instant.parse("2026-06-10T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
@@ -271,7 +412,7 @@ class ClaimsCommandAdminTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, chunkX, 0)),
-                Map.of(),
+                flags,
                 now,
                 now
         );

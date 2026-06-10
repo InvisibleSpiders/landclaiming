@@ -79,7 +79,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "info"
     );
     private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims");
-    private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport", "transfer");
+    private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport", "transfer", "flag");
+    private static final List<String> ADMIN_USERCLAIM_FLAG_SUGGESTIONS = List.of("list", "set", "toggle");
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
@@ -225,6 +226,19 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3 && subcommand.equals("admin") && args[1].equalsIgnoreCase("userclaims")) {
             return matching(ADMIN_USERCLAIMS_SUGGESTIONS, args[2]);
         }
+        if (args.length == 4
+                && subcommand.equals("admin")
+                && args[1].equalsIgnoreCase("userclaims")
+                && args[2].equalsIgnoreCase("flag")) {
+            return matching(ADMIN_USERCLAIM_FLAG_SUGGESTIONS, args[3]);
+        }
+        if (args.length == 7
+                && subcommand.equals("admin")
+                && args[1].equalsIgnoreCase("userclaims")
+                && args[2].equalsIgnoreCase("flag")
+                && args[3].equalsIgnoreCase("set")) {
+            return matching(List.of("true", "false", "on", "off", "yes", "no"), args[6]);
+        }
         if (args.length == 4 && subcommand.equals("flag") && args[1].equalsIgnoreCase("set")) {
             return matching(List.of("true", "false", "on", "off", "yes", "no"), args[3]);
         }
@@ -288,6 +302,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (action.equals("transfer")) {
             return transferPlayerClaim(player, args);
+        }
+        if (action.equals("flag")) {
+            return manageAdminUserClaimFlags(player, args);
         }
 
         player.sendMessage(message("admin.userclaims.usage"));
@@ -424,12 +441,136 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean manageAdminUserClaimFlags(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.userclaims.edit")) {
+            player.sendMessage(message("admin.userclaims.edit-no-permission"));
+            return true;
+        }
+        if (claimFlagService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        if (args.length < 5) {
+            player.sendMessage(message("admin.userclaims.flag-usage"));
+            return true;
+        }
+
+        String action = args[3].toLowerCase();
+        if (action.equals("list")) {
+            return listPlayerClaimFlags(player, args);
+        }
+        if (action.equals("set")) {
+            return setPlayerClaimFlag(player, args);
+        }
+        if (action.equals("toggle")) {
+            return togglePlayerClaimFlag(player, args);
+        }
+
+        player.sendMessage(message("admin.userclaims.flag-usage"));
+        return true;
+    }
+
+    private boolean listPlayerClaimFlags(Player player, String[] args) {
+        Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.flag-list-usage", 4);
+        if (claim.isEmpty()) {
+            return true;
+        }
+        Claim foundClaim = claim.orElseThrow();
+        player.sendMessage(message("admin.userclaims.flag-list-header", Map.of(
+                "claim_name", foundClaim.name(),
+                "claim_id", foundClaim.id().toString()
+        )));
+        for (ClaimFlagRow row : claimFlagService.listFlags(foundClaim)) {
+            player.sendMessage(message("admin.userclaims.flag-list-entry", Map.of(
+                    "flag", row.key(),
+                    "label", row.label(),
+                    "category", row.category(),
+                    "description", row.description(),
+                    "value", String.valueOf(row.enabled())
+            )));
+        }
+        return true;
+    }
+
+    private boolean setPlayerClaimFlag(Player player, String[] args) {
+        if (args.length != 7) {
+            player.sendMessage(message("admin.userclaims.flag-set-usage"));
+            return true;
+        }
+        Optional<Boolean> enabled = parseBoolean(args[6]);
+        if (enabled.isEmpty()) {
+            player.sendMessage(message("claim.flag.invalid-value"));
+            return true;
+        }
+        Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.flag-set-usage", 4);
+        if (claim.isEmpty()) {
+            return true;
+        }
+
+        Claim foundClaim = claim.orElseThrow();
+        ClaimFlagResult result = claimFlagService.setFlag(
+                foundClaim.ownerUuid(),
+                foundClaim,
+                args[5],
+                enabled.orElseThrow(),
+                permission -> true
+        );
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey(), Map.of("flag", args[5])));
+            return true;
+        }
+        player.sendMessage(message("admin.userclaims.flag-set", Map.of(
+                "claim_name", foundClaim.name(),
+                "claim_id", foundClaim.id().toString(),
+                "flag", args[5],
+                "value", String.valueOf(enabled.orElseThrow())
+        )));
+        return true;
+    }
+
+    private boolean togglePlayerClaimFlag(Player player, String[] args) {
+        if (args.length != 6) {
+            player.sendMessage(message("admin.userclaims.flag-toggle-usage"));
+            return true;
+        }
+        Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.flag-toggle-usage", 4);
+        if (claim.isEmpty()) {
+            return true;
+        }
+
+        Claim foundClaim = claim.orElseThrow();
+        ClaimFlagResult result = claimFlagService.toggleFlag(
+                foundClaim.ownerUuid(),
+                foundClaim,
+                args[5],
+                permission -> true
+        );
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey(), Map.of("flag", args[5])));
+            return true;
+        }
+        player.sendMessage(message("admin.userclaims.flag-toggled", Map.of(
+                "claim_name", foundClaim.name(),
+                "claim_id", foundClaim.id().toString(),
+                "flag", args[5]
+        )));
+        return true;
+    }
+
     private Optional<Claim> playerClaimFromArgs(Player player, String[] args, String usageMessageKey) {
         if (args.length != 4) {
             player.sendMessage(message(usageMessageKey));
             return Optional.empty();
         }
-        Optional<UUID> claimId = parseUuid(args[3]);
+        return playerClaimFromArgs(player, args, usageMessageKey, 3);
+    }
+
+    private Optional<Claim> playerClaimFromArgs(Player player, String[] args, String usageMessageKey, int claimIdIndex) {
+        if (args.length <= claimIdIndex) {
+            player.sendMessage(message(usageMessageKey));
+            return Optional.empty();
+        }
+        Optional<UUID> claimId = parseUuid(args[claimIdIndex]);
         if (claimId.isEmpty()) {
             player.sendMessage(message("admin.claim.invalid-id"));
             return Optional.empty();
