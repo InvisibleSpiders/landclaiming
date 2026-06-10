@@ -84,34 +84,39 @@ public final class ClaimCreationService {
         if (!mergeTargets.isEmpty()) {
             Claim existingClaim = mergeTargets.get(0);
             Set<ClaimChunk> mergedChunks = new HashSet<>();
-            // Union flags and members from ALL targets so nothing is silently dropped.
+            // Union flags, members, and deniedPlayers from ALL targets so nothing is silently dropped.
             Map<String, Boolean> mergedFlags = new HashMap<>(defaultFlags());
             Set<ClaimMember> mergedMembers = new HashSet<>();
+            Set<UUID> mergedDeniedPlayers = new HashSet<>();
             for (Claim mergeTarget : mergeTargets) {
                 mergedChunks.addAll(mergeTarget.claimChunks());
                 mergedFlags.putAll(mergeTarget.flags());
                 mergedMembers.addAll(mergeTarget.members());
+                mergedDeniedPlayers.addAll(mergeTarget.deniedPlayers());
             }
             mergedChunks.addAll(chunks);
             Claim mergedClaim = new Claim(
                     existingClaim.id(),
-                    existingClaim.name(),
+                    trimmedName,
                     existingClaim.owner(),
                     existingClaim.ownerUuid(),
                     existingClaim.worldId(),
                     mergedChunks,
                     mergedFlags,
                     mergedMembers,
+                    mergedDeniedPlayers,
                     existingClaim.createdAt(),
                     now
             );
+            // Save the merged claim before deleting redundant ones so a DB failure
+            // cannot leave the player with no claim at all.
+            claimRepository.saveClaim(mergedClaim);
+            claimIndex.replace(mergedClaim);
             for (int index = 1; index < mergeTargets.size(); index++) {
                 Claim redundantClaim = mergeTargets.get(index);
                 claimRepository.deleteClaim(redundantClaim.id());
                 claimIndex.remove(redundantClaim.id());
             }
-            claimRepository.saveClaim(mergedClaim);
-            claimIndex.replace(mergedClaim);
             return ClaimValidationResult.allowed();
         }
 

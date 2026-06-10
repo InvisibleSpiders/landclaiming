@@ -73,9 +73,13 @@ public final class ClaimDenyService {
         Objects.requireNonNull(permissionCheck, "permissionCheck");
 
         if (claim.owner() == OwnerType.ADMIN) {
-            return permissionCheck.test(ADMIN_EDIT_PERMISSION)
-                    ? ClaimDenyResult.success()
-                    : ClaimDenyResult.denied("claim.deny.admin-claim");
+            if (!permissionCheck.test(ADMIN_EDIT_PERMISSION)) {
+                return ClaimDenyResult.denied("claim.deny.admin-claim");
+            }
+            if (claim.ownerUuid() != null && claim.ownerUuid().equals(deniedPlayerId)) {
+                return ClaimDenyResult.denied("claim.deny.owner-is-not-deniable");
+            }
+            return ClaimDenyResult.success();
         }
 
         if (claim.ownerUuid() != null && claim.ownerUuid().equals(deniedPlayerId)) {

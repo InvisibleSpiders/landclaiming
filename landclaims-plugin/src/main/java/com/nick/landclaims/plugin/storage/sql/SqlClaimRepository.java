@@ -58,7 +58,17 @@ public class SqlClaimRepository implements ClaimRepository {
     public void deleteClaim(UUID claimId) {
         Objects.requireNonNull(claimId, "claimId");
         try (Connection connection = dataSource.getConnection()) {
-            deleteClaim(connection, claimId);
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                deleteClaim(connection, claimId);
+                connection.commit();
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed to delete claim.", exception);
         }
