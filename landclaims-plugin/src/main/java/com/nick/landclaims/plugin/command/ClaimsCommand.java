@@ -1,5 +1,7 @@
 package com.nick.landclaims.plugin.command;
 
+import com.nick.landclaims.plugin.admin.AdminClaimResult;
+import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
@@ -44,7 +46,9 @@ import java.util.stream.Collectors;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -70,9 +74,11 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "deny",
             "undeny",
             "denied",
+            "admin",
             "cancel",
             "info"
     );
+    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport");
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
@@ -91,9 +97,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final InventoryGuiFallbackService inventoryGuiFallbackService;
     private final ChunkBorderVisualService chunkBorderVisualService;
     private final ClaimBorderColorService claimBorderColorService;
+    private final AdminClaimService adminClaimService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null);
     }
 
     public ClaimsCommand(
@@ -113,7 +120,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             DialogService dialogService,
             InventoryGuiFallbackService inventoryGuiFallbackService,
             ChunkBorderVisualService chunkBorderVisualService,
-            ClaimBorderColorService claimBorderColorService
+            ClaimBorderColorService claimBorderColorService,
+            AdminClaimService adminClaimService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -132,6 +140,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.inventoryGuiFallbackService = inventoryGuiFallbackService;
         this.chunkBorderVisualService = chunkBorderVisualService;
         this.claimBorderColorService = claimBorderColorService;
+        this.adminClaimService = adminClaimService;
     }
 
     @Override
@@ -166,6 +175,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("flag")) {
             return manageFlags(player, args);
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("admin")) {
+            return manageAdminClaims(player, args);
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("mergeconfirm")) {
             return confirmPendingMerge(player);
@@ -206,6 +218,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && subcommand.equals("flag")) {
             return matching(List.of("list", "set", "toggle"), args[1]);
         }
+        if (args.length == 2 && subcommand.equals("admin")) {
+            return matching(ADMIN_SUGGESTIONS, args[1]);
+        }
         if (args.length == 4 && subcommand.equals("flag") && args[1].equalsIgnoreCase("set")) {
             return matching(List.of("true", "false", "on", "off", "yes", "no"), args[3]);
         }
@@ -215,6 +230,174 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                     .toList(), args[3]);
         }
         return List.of();
+    }
+
+    private boolean manageAdminClaims(Player player, String[] args) {
+        if (adminClaimService == null) {
+            player.sendMessage(message("admin.claim.unavailable"));
+            return true;
+        }
+        if (args.length < 2) {
+            player.sendMessage(message("admin.claim.usage"));
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+        if (action.equals("create")) {
+            return createAdminClaim(player, args);
+        }
+        if (action.equals("list")) {
+            return listAdminClaims(player);
+        }
+        if (action.equals("delete")) {
+            return deleteAdminClaim(player, args);
+        }
+        if (action.equals("teleport")) {
+            return teleportToAdminClaim(player, args);
+        }
+
+        player.sendMessage(message("admin.claim.usage"));
+        return true;
+    }
+
+    private boolean createAdminClaim(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.claim.create")) {
+            player.sendMessage(message("admin.claim.no-permission"));
+            return true;
+        }
+        if (selectionService == null) {
+            player.sendMessage(message("command.unavailable.claim-creation"));
+            return true;
+        }
+        if (args.length < 3) {
+            player.sendMessage(message("admin.claim.create-usage"));
+            return true;
+        }
+
+        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        if (pendingSelection.isEmpty()) {
+            player.sendMessage(message("claim.selection-required"));
+            return true;
+        }
+
+        String claimName = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
+        AdminClaimResult result = adminClaimService.createAdminClaim(claimName, chunks);
+        if (!result.allowed()) {
+            showBorder(player, chunks, BorderColor.RED);
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+
+        selectionService.consumeSelection(player.getUniqueId());
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.showSelection(player, chunks, BorderColor.GOLD);
+        }
+        player.sendMessage(message("admin.claim.created", Map.of(
+                "claim_name", result.claim().name(),
+                "claim_id", result.claim().id().toString(),
+                "chunk_count", String.valueOf(result.claim().claimChunks().size())
+        )));
+        return true;
+    }
+
+    private boolean listAdminClaims(Player player) {
+        if (!player.hasPermission("landclaims.admin.claim.list")) {
+            player.sendMessage(message("admin.claim.no-permission"));
+            return true;
+        }
+
+        List<Claim> adminClaims = adminClaimService.listAdminClaims();
+        if (adminClaims.isEmpty()) {
+            player.sendMessage(message("admin.claim.list-empty"));
+            return true;
+        }
+
+        player.sendMessage(message("admin.claim.list-header"));
+        adminClaims.forEach(claim -> player.sendMessage(message("admin.claim.list-entry", Map.of(
+                "claim_name", claim.name(),
+                "claim_id", claim.id().toString(),
+                "chunk_count", String.valueOf(claim.claimChunks().size())
+        ))));
+        return true;
+    }
+
+    private boolean deleteAdminClaim(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.claim.delete")) {
+            player.sendMessage(message("admin.claim.no-permission"));
+            return true;
+        }
+        if (args.length != 3) {
+            player.sendMessage(message("admin.claim.delete-usage"));
+            return true;
+        }
+
+        Optional<UUID> claimId = parseUuid(args[2]);
+        if (claimId.isEmpty()) {
+            player.sendMessage(message("admin.claim.invalid-id"));
+            return true;
+        }
+
+        AdminClaimResult result = adminClaimService.deleteAdminClaim(claimId.orElseThrow());
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("admin.claim.deleted", Map.of(
+                "claim_name", result.claim().name(),
+                "claim_id", result.claim().id().toString()
+        )));
+        return true;
+    }
+
+    private boolean teleportToAdminClaim(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.claim.teleport")) {
+            player.sendMessage(message("admin.claim.no-permission"));
+            return true;
+        }
+        if (args.length != 3) {
+            player.sendMessage(message("admin.claim.teleport-usage"));
+            return true;
+        }
+
+        Optional<UUID> claimId = parseUuid(args[2]);
+        if (claimId.isEmpty()) {
+            player.sendMessage(message("admin.claim.invalid-id"));
+            return true;
+        }
+        Optional<Claim> claim = adminClaimService.findAdminClaim(claimId.orElseThrow());
+        if (claim.isEmpty()) {
+            player.sendMessage(message("admin.claim.not-found"));
+            return true;
+        }
+
+        Optional<Location> target = teleportTarget(player, claim.orElseThrow());
+        if (target.isEmpty()) {
+            player.sendMessage(message("admin.claim.world-not-found"));
+            return true;
+        }
+
+        player.teleport(target.orElseThrow());
+        player.sendMessage(message("admin.teleported", Map.of("claim_name", claim.orElseThrow().name())));
+        return true;
+    }
+
+    private Optional<Location> teleportTarget(Player player, Claim claim) {
+        return claim.claimChunks().stream()
+                .sorted(java.util.Comparator
+                        .comparingInt(ClaimChunk::chunkX)
+                        .thenComparingInt(ClaimChunk::chunkZ))
+                .findFirst()
+                .flatMap(chunk -> {
+                    World world = player.getServer().getWorld(chunk.worldId());
+                    if (world == null) {
+                        return Optional.empty();
+                    }
+                    int x = (chunk.chunkX() << 4) + 8;
+                    int z = (chunk.chunkZ() << 4) + 8;
+                    int y = world.getHighestBlockYAt(x, z) + 1;
+                    return Optional.of(new Location(world, x + 0.5D, y, z + 0.5D));
+                });
     }
 
     private List<String> matching(List<String> options, String prefix) {
@@ -891,6 +1074,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("command.help.cost"));
         player.sendMessage(message("command.help.cancel"));
         player.sendMessage(message("command.help.info"));
+        player.sendMessage(message("command.help.admin"));
     }
 
     private Component claimCreateDenied(String reason) {

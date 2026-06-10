@@ -6,7 +6,7 @@ subprojects {
     apply(plugin = "java")
 
     group = "com.nick"
-    version = "1.6.1-SNAPSHOT"
+    version = "1.7.0-SNAPSHOT"
 
     extensions.configure<JavaPluginExtension> {
         toolchain.languageVersion.set(JavaLanguageVersion.of(25))

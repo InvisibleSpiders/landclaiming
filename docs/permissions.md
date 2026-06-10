@@ -17,6 +17,7 @@ Admin permissions:
 - `landclaims.admin.claim.edit`
 - `landclaims.admin.claim.delete`
 - `landclaims.admin.claim.list`
+- `landclaims.admin.claim.teleport`
 - `landclaims.admin.userclaims.view`
 - `landclaims.admin.userclaims.edit`
 - `landclaims.admin.userclaims.delete`

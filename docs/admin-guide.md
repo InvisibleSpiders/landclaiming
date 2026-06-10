@@ -1,19 +1,23 @@
 # Admin Guide
 
-Admin claims are server-owned claims for spawn, arenas, roads, shops, and event spaces.
+Admin claims are server-owned claims for spawn, arenas, roads, shops, and event spaces. They use the same chunk storage and protection flags as player claims, but their owner type is `ADMIN` and they are not tied to a player UUID.
 
-Admin management is scaffolded in this MVP foundation, but the command flows are not complete in the current build. Today, `/claim tool` is available for claim-tool selection testing, and most other `/claim` paths return the coming-soon menu message.
+## Commands
 
-Planned admin commands:
+| Command | Permission | Description |
+| --- | --- | --- |
+| `/claim admin create <name>` | `landclaims.admin.claim.create` | Creates an admin claim from the current completed claim-tool selection. |
+| `/claim admin list` | `landclaims.admin.claim.list` | Lists admin claim names, chunk counts, and UUIDs. |
+| `/claim admin delete <claim-id>` | `landclaims.admin.claim.delete` | Deletes an admin claim by UUID. |
+| `/claim admin teleport <claim-id>` | `landclaims.admin.claim.teleport` | Teleports to the center of the first chunk in an admin claim. |
+
+Admin claim creation does not charge economy currency or spend claim-tool charges. It rejects blank names, empty selections, and overlaps with any existing claim.
+
+## Still Planned
 
 - `/claim admin mode`
-- `/claim admin create <name>`
-- `/claim admin list`
 - `/claim admin list <player>`
 - `/claim admin view <claim-id>`
-- `/claim admin teleport <claim-id>`
 - `/claim admin edit <claim-id>`
-- `/claim admin delete <claim-id>`
 - `/claim admin reload`
-
-Planned admin edits to user claims will be written to the claim audit log.
+- Admin edits to player claims and future claim audit logging.
