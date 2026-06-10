@@ -25,6 +25,7 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.command.Command;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
 
@@ -42,7 +43,15 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", ""}))
-                .containsExactlyInAnyOrder("create", "list", "delete", "teleport");
+                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims");
+    }
+
+    @Test
+    void adminUserclaimsTabCompletionIncludesManagementSubcommands() {
+        ClaimsCommand command = command(new AdminClaimService());
+
+        assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", "userclaims", ""}))
+                .containsExactlyInAnyOrder("list", "view", "delete", "teleport");
     }
 
     @Test
@@ -76,6 +85,49 @@ class ClaimsCommandAdminTest {
         );
     }
 
+    @Test
+    void adminUserclaimsListShowsPlayerClaimsWhenAllowed() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim home = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(home);
+        AdminClaimService adminClaimService = new AdminClaimService(repository, claimIndex, FlagRegistry.createDefault(), 32);
+        ClaimsCommand command = command(adminClaimService);
+        Player player = mock(Player.class);
+        org.bukkit.Server server = mock(org.bukkit.Server.class);
+        OfflinePlayer offlinePlayer = mock(OfflinePlayer.class);
+        when(player.hasPermission("landclaims.admin.userclaims.view")).thenReturn(true);
+        when(player.getServer()).thenReturn(server);
+        when(server.getOfflinePlayer(ownerId)).thenReturn(offlinePlayer);
+        when(offlinePlayer.getUniqueId()).thenReturn(ownerId);
+        when(offlinePlayer.getName()).thenReturn("Builder");
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"admin", "userclaims", "list", ownerId.toString()});
+
+        List<String> plainMessages = messages.stream()
+                .map(PlainTextComponentSerializer.plainText()::serialize)
+                .toList();
+        assertThat(plainMessages).containsExactly(
+                "Claims for Builder:",
+                "- Home (1 chunks) " + home.id()
+        );
+    }
+
+    @Test
+    void adminUserclaimsDeleteRequiresDeletePermission() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"admin", "userclaims", "delete", UUID.randomUUID().toString()});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("You do not have permission to manage user claims.");
+    }
+
     private static ClaimsCommand command(AdminClaimService adminClaimService) {
         return new ClaimsCommand(
                 mock(ClaimToolService.class),
@@ -89,7 +141,10 @@ class ClaimsCommandAdminTest {
                         "admin.claim.list-header", "<gold>Admin claims:",
                         "admin.claim.list-empty", "<yellow>No admin claims exist.",
                         "admin.claim.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>",
-                        "admin.claim.no-permission", "<red>You do not have permission to manage admin claims."
+                        "admin.claim.no-permission", "<red>You do not have permission to manage admin claims.",
+                        "admin.userclaims.list-header", "<gold>Claims for <yellow><player></yellow>:",
+                        "admin.userclaims.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>",
+                        "admin.userclaims.no-permission", "<red>You do not have permission to manage user claims."
                 )),
                 null,
                 null,
@@ -104,6 +159,15 @@ class ClaimsCommandAdminTest {
         );
     }
 
+    private static List<Component> captureMessages(Player player) {
+        List<Component> messages = new ArrayList<>();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            messages.add(invocation.getArgument(0));
+            return null;
+        }).when(player).sendMessage(any(Component.class));
+        return messages;
+    }
+
     private static Claim claim(String name, UUID worldId, int chunkX) {
         Instant now = Instant.parse("2026-06-10T00:00:00Z");
         return new Claim(
@@ -111,6 +175,21 @@ class ClaimsCommandAdminTest {
                 name,
                 OwnerType.ADMIN,
                 null,
+                worldId,
+                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                Map.of(),
+                now,
+                now
+        );
+    }
+
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
+        Instant now = Instant.parse("2026-06-10T00:00:00Z");
+        return new Claim(
+                UUID.randomUUID(),
+                name,
+                OwnerType.PLAYER,
+                ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, chunkX, 0)),
                 Map.of(),
@@ -146,7 +225,10 @@ class ClaimsCommandAdminTest {
 
         @Override
         public List<Claim> findClaimsByOwner(OwnerType ownerType, UUID ownerUuid) {
-            return List.of();
+            return claims.stream()
+                    .filter(claim -> claim.owner() == ownerType)
+                    .filter(claim -> ownerUuid == null || ownerUuid.equals(claim.ownerUuid()))
+                    .toList();
         }
 
         @Override

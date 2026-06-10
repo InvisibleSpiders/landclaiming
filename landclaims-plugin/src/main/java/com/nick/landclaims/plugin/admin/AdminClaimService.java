@@ -104,6 +104,35 @@ public final class AdminClaimService {
                 .filter(claim -> claim.owner() == OwnerType.ADMIN);
     }
 
+    public List<Claim> listPlayerClaims(UUID ownerId) {
+        requireStorage();
+        Objects.requireNonNull(ownerId, "ownerId");
+        return sortForAdminList(claimRepository.findClaimsByOwner(OwnerType.PLAYER, ownerId));
+    }
+
+    public Optional<Claim> findPlayerClaim(UUID claimId) {
+        requireStorage();
+        Objects.requireNonNull(claimId, "claimId");
+        return claimRepository.findClaimById(claimId)
+                .filter(claim -> claim.owner() == OwnerType.PLAYER);
+    }
+
+    public AdminClaimResult deletePlayerClaim(UUID claimId) {
+        requireStorage();
+        Objects.requireNonNull(claimId, "claimId");
+
+        return claimRepository.findClaimById(claimId)
+                .map(claim -> {
+                    if (claim.owner() != OwnerType.PLAYER) {
+                        return AdminClaimResult.denied("admin.userclaims.not-player");
+                    }
+                    claimRepository.deleteClaim(claim.id());
+                    claimIndex.remove(claim.id());
+                    return AdminClaimResult.success(claim);
+                })
+                .orElseGet(() -> AdminClaimResult.denied("admin.userclaims.not-found"));
+    }
+
     public List<Claim> sortForAdminList(List<Claim> claims) {
         Objects.requireNonNull(claims, "claims");
         return claims.stream()

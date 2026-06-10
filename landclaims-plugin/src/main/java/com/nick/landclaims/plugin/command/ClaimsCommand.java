@@ -78,7 +78,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "cancel",
             "info"
     );
-    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport");
+    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims");
+    private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport");
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
@@ -221,6 +222,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && subcommand.equals("admin")) {
             return matching(ADMIN_SUGGESTIONS, args[1]);
         }
+        if (args.length == 3 && subcommand.equals("admin") && args[1].equalsIgnoreCase("userclaims")) {
+            return matching(ADMIN_USERCLAIMS_SUGGESTIONS, args[2]);
+        }
         if (args.length == 4 && subcommand.equals("flag") && args[1].equalsIgnoreCase("set")) {
             return matching(List.of("true", "false", "on", "off", "yes", "no"), args[3]);
         }
@@ -255,9 +259,159 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (action.equals("teleport")) {
             return teleportToAdminClaim(player, args);
         }
+        if (action.equals("userclaims")) {
+            return manageAdminUserClaims(player, args);
+        }
 
         player.sendMessage(message("admin.claim.usage"));
         return true;
+    }
+
+    private boolean manageAdminUserClaims(Player player, String[] args) {
+        if (args.length < 3) {
+            player.sendMessage(message("admin.userclaims.usage"));
+            return true;
+        }
+
+        String action = args[2].toLowerCase();
+        if (action.equals("list")) {
+            return listPlayerClaims(player, args);
+        }
+        if (action.equals("view")) {
+            return viewPlayerClaim(player, args);
+        }
+        if (action.equals("delete")) {
+            return deletePlayerClaim(player, args);
+        }
+        if (action.equals("teleport")) {
+            return teleportToPlayerClaim(player, args);
+        }
+
+        player.sendMessage(message("admin.userclaims.usage"));
+        return true;
+    }
+
+    private boolean listPlayerClaims(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.userclaims.view")) {
+            player.sendMessage(message("admin.userclaims.no-permission"));
+            return true;
+        }
+        if (args.length != 4) {
+            player.sendMessage(message("admin.userclaims.list-usage"));
+            return true;
+        }
+
+        OfflinePlayer target = resolveOfflinePlayer(player, args[3]);
+        List<Claim> claims = adminClaimService.listPlayerClaims(target.getUniqueId());
+        if (claims.isEmpty()) {
+            player.sendMessage(message("admin.userclaims.list-empty", Map.of("player", memberName(target))));
+            return true;
+        }
+
+        player.sendMessage(message("admin.userclaims.list-header", Map.of("player", memberName(target))));
+        claims.forEach(claim -> player.sendMessage(message("admin.userclaims.list-entry", Map.of(
+                "claim_name", claim.name(),
+                "claim_id", claim.id().toString(),
+                "chunk_count", String.valueOf(claim.claimChunks().size())
+        ))));
+        return true;
+    }
+
+    private boolean viewPlayerClaim(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.userclaims.view")) {
+            player.sendMessage(message("admin.userclaims.no-permission"));
+            return true;
+        }
+        Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.view-usage");
+        if (claim.isEmpty()) {
+            return true;
+        }
+        Claim foundClaim = claim.orElseThrow();
+        player.sendMessage(message("admin.userclaims.view-name", Map.of(
+                "claim_name", foundClaim.name(),
+                "claim_id", foundClaim.id().toString()
+        )));
+        player.sendMessage(message("admin.userclaims.view-owner", Map.of(
+                "owner", foundClaim.ownerUuid() == null ? "unknown" : playerName(player, foundClaim.ownerUuid())
+        )));
+        player.sendMessage(message("admin.userclaims.view-chunks", Map.of(
+                "chunk_count", String.valueOf(foundClaim.claimChunks().size())
+        )));
+        return true;
+    }
+
+    private boolean deletePlayerClaim(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.userclaims.delete")) {
+            player.sendMessage(message("admin.userclaims.no-permission"));
+            return true;
+        }
+        if (args.length != 4) {
+            player.sendMessage(message("admin.userclaims.delete-usage"));
+            return true;
+        }
+        Optional<UUID> claimId = parseUuid(args[3]);
+        if (claimId.isEmpty()) {
+            player.sendMessage(message("admin.claim.invalid-id"));
+            return true;
+        }
+
+        AdminClaimResult result = adminClaimService.deletePlayerClaim(claimId.orElseThrow());
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("admin.userclaims.deleted", Map.of(
+                "claim_name", result.claim().name(),
+                "claim_id", result.claim().id().toString()
+        )));
+        return true;
+    }
+
+    private boolean teleportToPlayerClaim(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.userclaims.teleport")) {
+            player.sendMessage(message("admin.userclaims.no-permission"));
+            return true;
+        }
+        Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.teleport-usage");
+        if (claim.isEmpty()) {
+            return true;
+        }
+
+        Optional<Location> target = teleportTarget(player, claim.orElseThrow());
+        if (target.isEmpty()) {
+            player.sendMessage(message("admin.claim.world-not-found"));
+            return true;
+        }
+
+        player.teleport(target.orElseThrow());
+        player.sendMessage(message("admin.userclaims.teleported", Map.of("claim_name", claim.orElseThrow().name())));
+        return true;
+    }
+
+    private Optional<Claim> playerClaimFromArgs(Player player, String[] args, String usageMessageKey) {
+        if (args.length != 4) {
+            player.sendMessage(message(usageMessageKey));
+            return Optional.empty();
+        }
+        Optional<UUID> claimId = parseUuid(args[3]);
+        if (claimId.isEmpty()) {
+            player.sendMessage(message("admin.claim.invalid-id"));
+            return Optional.empty();
+        }
+        Optional<Claim> claim = adminClaimService.findPlayerClaim(claimId.orElseThrow());
+        if (claim.isEmpty()) {
+            player.sendMessage(message("admin.userclaims.not-found"));
+        }
+        return claim;
+    }
+
+    private OfflinePlayer resolveOfflinePlayer(Player actor, String input) {
+        Optional<UUID> uuid = parseUuid(input);
+        if (uuid.isPresent()) {
+            return actor.getServer().getOfflinePlayer(uuid.orElseThrow());
+        }
+        Player onlinePlayer = actor.getServer().getPlayerExact(input);
+        return onlinePlayer == null ? actor.getServer().getOfflinePlayer(input) : onlinePlayer;
     }
 
     private boolean createAdminClaim(Player player, String[] args) {

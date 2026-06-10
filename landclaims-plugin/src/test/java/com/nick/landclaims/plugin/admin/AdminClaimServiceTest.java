@@ -94,6 +94,63 @@ class AdminClaimServiceTest {
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 1, 0))).contains(playerClaim);
     }
 
+    @Test
+    void listsPlayerClaimsForOwnerSortedByName() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        AdminClaimService service = service(repository, claimIndex);
+        UUID ownerId = UUID.randomUUID();
+        UUID otherOwnerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim beta = playerClaim("beta", ownerId, worldId, 0);
+        Claim alpha = playerClaim("Alpha", ownerId, worldId, 1);
+        Claim other = playerClaim("Other", otherOwnerId, worldId, 2);
+        Claim admin = claim("Spawn", worldId, Set.of(new ClaimChunk(worldId, 3, 0)), OwnerType.ADMIN);
+        repository.claims.addAll(List.of(beta, alpha, other, admin));
+
+        List<Claim> claims = service.listPlayerClaims(ownerId);
+
+        assertThat(claims).containsExactly(alpha, beta);
+    }
+
+    @Test
+    void deletesOnlyPlayerClaimsThroughUserClaimAdminFlow() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        AdminClaimService service = service(repository, claimIndex);
+        UUID worldId = UUID.randomUUID();
+        Claim adminClaim = claim("Spawn", worldId, Set.of(new ClaimChunk(worldId, 0, 0)), OwnerType.ADMIN);
+        Claim playerClaim = playerClaim("Home", UUID.randomUUID(), worldId, 1);
+        repository.claims.add(adminClaim);
+        repository.claims.add(playerClaim);
+        claimIndex.add(adminClaim);
+        claimIndex.add(playerClaim);
+
+        AdminClaimResult adminResult = service.deletePlayerClaim(adminClaim.id());
+        AdminClaimResult playerResult = service.deletePlayerClaim(playerClaim.id());
+
+        assertThat(adminResult.allowed()).isFalse();
+        assertThat(adminResult.messageKey()).isEqualTo("admin.userclaims.not-player");
+        assertThat(playerResult.allowed()).isTrue();
+        assertThat(repository.deletedClaimIds).containsExactly(playerClaim.id());
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 1, 0))).isEmpty();
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(adminClaim);
+    }
+
+    @Test
+    void findPlayerClaimOnlyReturnsPlayerClaims() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        AdminClaimService service = service(repository, new ClaimIndex());
+        UUID worldId = UUID.randomUUID();
+        Claim adminClaim = claim("Spawn", worldId, Set.of(new ClaimChunk(worldId, 0, 0)), OwnerType.ADMIN);
+        Claim playerClaim = playerClaim("Home", UUID.randomUUID(), worldId, 1);
+        repository.claims.add(adminClaim);
+        repository.claims.add(playerClaim);
+
+        assertThat(service.findPlayerClaim(playerClaim.id())).contains(playerClaim);
+        assertThat(service.findPlayerClaim(adminClaim.id())).isEmpty();
+    }
+
     private static Claim claim(String name) {
         UUID worldId = UUID.randomUUID();
         return claim(name, worldId, Set.of(), OwnerType.PLAYER);
@@ -107,6 +164,20 @@ class AdminClaimServiceTest {
                 ownerType == OwnerType.ADMIN ? null : UUID.randomUUID(),
                 worldId,
                 chunks,
+                Map.of(),
+                Instant.parse("2026-06-07T00:00:00Z"),
+                Instant.parse("2026-06-07T00:00:00Z")
+        );
+    }
+
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
+        return new Claim(
+                UUID.randomUUID(),
+                name,
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, chunkX, 0)),
                 Map.of(),
                 Instant.parse("2026-06-07T00:00:00Z"),
                 Instant.parse("2026-06-07T00:00:00Z")
