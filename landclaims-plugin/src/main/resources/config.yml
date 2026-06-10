@@ -60,7 +60,8 @@ advanced:
     enabled: true
     # How often existing entities inside claims are checked.
     cleanup-interval-ticks: 200
-    # Avoid removing named entities even when a removal flag is enabled.
+    # Avoid removing entities explicitly named by a player/admin name tag even when a removal flag is enabled.
+    # Plugin display/custom names alone do not count as name-tagged protection.
     preserve-named-entities: true
     # Avoid removing tamed entities even when a removal flag is enabled.
     preserve-tamed-entities: true
