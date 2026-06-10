@@ -36,12 +36,7 @@ public class SqlClaimRepository implements ClaimRepository {
             boolean previousAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
-                deleteClaim(connection, claim.id());
-                insertClaim(connection, claim);
-                insertChunks(connection, claim);
-                insertFlags(connection, claim);
-                insertMembers(connection, claim);
-                insertDeniedPlayers(connection, claim);
+                replaceClaim(connection, claim);
                 connection.commit();
             } catch (SQLException exception) {
                 connection.rollback();
@@ -55,10 +50,44 @@ public class SqlClaimRepository implements ClaimRepository {
     }
 
     @Override
+    public void replaceClaims(Claim replacementClaim, List<UUID> deletedClaimIds) {
+        Objects.requireNonNull(replacementClaim, "replacementClaim");
+        Objects.requireNonNull(deletedClaimIds, "deletedClaimIds");
+        try (Connection connection = dataSource.getConnection()) {
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                for (UUID deletedClaimId : deletedClaimIds) {
+                    deleteClaim(connection, deletedClaimId);
+                }
+                replaceClaim(connection, replacementClaim);
+                connection.commit();
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed to replace claims.", exception);
+        }
+    }
+
+    @Override
     public void deleteClaim(UUID claimId) {
         Objects.requireNonNull(claimId, "claimId");
         try (Connection connection = dataSource.getConnection()) {
-            deleteClaim(connection, claimId);
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                deleteClaim(connection, claimId);
+                connection.commit();
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed to delete claim.", exception);
         }
@@ -138,6 +167,15 @@ public class SqlClaimRepository implements ClaimRepository {
         executeDelete(connection, "DELETE FROM claim_flags WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claim_chunks WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claims WHERE id = ?", claimId);
+    }
+
+    private void replaceClaim(Connection connection, Claim claim) throws SQLException {
+        deleteClaim(connection, claim.id());
+        insertClaim(connection, claim);
+        insertChunks(connection, claim);
+        insertFlags(connection, claim);
+        insertMembers(connection, claim);
+        insertDeniedPlayers(connection, claim);
     }
 
     private void executeDelete(Connection connection, String sql, UUID claimId) throws SQLException {

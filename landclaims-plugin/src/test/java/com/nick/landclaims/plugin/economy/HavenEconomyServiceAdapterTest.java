@@ -1,6 +1,7 @@
 package com.nick.landclaims.plugin.economy;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +54,19 @@ class HavenEconomyServiceAdapterTest {
         when(havenEconomyService.isMoneyAvailable()).thenReturn(false);
 
         assertThat(adapter.deposit(UUID.randomUUID(), 50.0)).isFalse();
+    }
+
+    @Test
+    void returnsFalseWhenDepositThrows() {
+        HavenEconomyService havenEconomyService = mock(HavenEconomyService.class);
+        HavenEconomyServiceAdapter adapter = new HavenEconomyServiceAdapter(havenEconomyService);
+        UUID playerId = UUID.randomUUID();
+        when(havenEconomyService.isMoneyAvailable()).thenReturn(true);
+        doThrow(new IllegalStateException("provider failed"))
+                .when(havenEconomyService)
+                .deposit(playerId, 50.0);
+
+        assertThat(adapter.deposit(playerId, 50.0)).isFalse();
     }
 
     @Test

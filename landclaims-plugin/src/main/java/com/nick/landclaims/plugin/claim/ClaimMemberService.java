@@ -84,6 +84,7 @@ public final class ClaimMemberService {
                 claim.claimChunks(),
                 claim.flags(),
                 members,
+                claim.deniedPlayers(),
                 claim.createdAt(),
                 Instant.now()
         );
