@@ -98,6 +98,25 @@ class ClaimDenyServiceTest {
         assertThat(repository.claims.get(0).deniedPlayers()).containsExactly(deniedId);
     }
 
+    @Test
+    void adminClaimsCannotDenyTheirOwnerUuid() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimDenyService service = new ClaimDenyService(repository, new ClaimIndex());
+        UUID adminId = UUID.randomUUID();
+        Claim claim = claim(OwnerType.ADMIN, adminId, UUID.randomUUID(), Set.of(), Set.of());
+
+        ClaimDenyResult result = service.denyPlayer(
+                adminId,
+                claim,
+                adminId,
+                permission -> permission.equals("landclaims.admin.claim.edit")
+        );
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.deny.owner-is-not-deniable");
+        assertThat(repository.claims).isEmpty();
+    }
+
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimMember> members, Set<UUID> deniedPlayers) {
         return claim(OwnerType.PLAYER, ownerId, worldId, members, deniedPlayers);
     }

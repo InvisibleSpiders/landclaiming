@@ -108,15 +108,15 @@ public final class ClaimCreationService {
                     existingClaim.createdAt(),
                     now
             );
-            // Save the merged claim before deleting redundant ones so a DB failure
-            // cannot leave the player with no claim at all.
-            claimRepository.saveClaim(mergedClaim);
-            claimIndex.replace(mergedClaim);
-            for (int index = 1; index < mergeTargets.size(); index++) {
-                Claim redundantClaim = mergeTargets.get(index);
-                claimRepository.deleteClaim(redundantClaim.id());
-                claimIndex.remove(redundantClaim.id());
+            List<UUID> redundantClaimIds = mergeTargets.stream()
+                    .skip(1)
+                    .map(Claim::id)
+                    .toList();
+            claimRepository.replaceClaims(mergedClaim, redundantClaimIds);
+            for (UUID redundantClaimId : redundantClaimIds) {
+                claimIndex.remove(redundantClaimId);
             }
+            claimIndex.replace(mergedClaim);
             return ClaimValidationResult.allowed();
         }
 

@@ -4,9 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
+import com.nick.landclaims.plugin.claim.ClaimCreationService;
+import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimMember;
 import com.nick.landclaims.plugin.claim.ClaimRole;
+import com.nick.landclaims.plugin.claim.ClaimService;
+import com.nick.landclaims.plugin.claim.ClaimValidationResult;
 import com.nick.landclaims.plugin.claim.OwnerType;
+import com.nick.landclaims.plugin.flag.FlagRegistry;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -88,6 +93,72 @@ class SqlClaimRepositoryTest {
         assertThat(repository.findClaimAt(worldId, 1, 2)).isEmpty();
         assertThat(repository.findClaimById(claimId)).isEmpty();
         assertThat(repository.findAllClaims()).isEmpty();
+    }
+
+    @Test
+    void mergesClaimsWithoutConflictingWithRedundantClaimChunks(@TempDir Path tempDirectory) throws Exception {
+        SQLiteDataSource dataSource = new SQLiteDataSource();
+        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        applyMigrations(dataSource);
+        SqlClaimRepository repository = new SqlClaimRepository(dataSource);
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService service = new ClaimCreationService(
+                repository,
+                claimIndex,
+                new ClaimService(),
+                FlagRegistry.createDefault(),
+                3,
+                3,
+                32
+        );
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        UUID deniedId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-06-07T00:00:00Z");
+        Claim first = new Claim(
+                UUID.randomUUID(),
+                "home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                Map.of("build", false),
+                Set.of(),
+                Set.of(deniedId),
+                createdAt,
+                createdAt
+        );
+        Claim second = new Claim(
+                UUID.randomUUID(),
+                "home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 2, 0)),
+                Map.of("container_access", false),
+                Set.of(),
+                Set.of(),
+                createdAt,
+                createdAt
+        );
+        repository.saveClaim(first);
+        repository.saveClaim(second);
+        claimIndex.add(first);
+        claimIndex.add(second);
+
+        ClaimValidationResult result = service.createPlayerClaim(ownerId, "Home", Set.of(new ClaimChunk(worldId, 1, 0)));
+
+        assertThat(result.isAllowed()).isTrue();
+        assertThat(repository.findAllClaims()).hasSize(1);
+        Claim merged = repository.findAllClaims().get(0);
+        assertThat(merged.id()).isEqualTo(first.id());
+        assertThat(merged.name()).isEqualTo("Home");
+        assertThat(merged.deniedPlayers()).containsExactly(deniedId);
+        assertThat(merged.claimChunks()).containsExactlyInAnyOrder(
+                new ClaimChunk(worldId, 0, 0),
+                new ClaimChunk(worldId, 1, 0),
+                new ClaimChunk(worldId, 2, 0)
+        );
     }
 
     private static void applyMigrations(DataSource dataSource) throws Exception {

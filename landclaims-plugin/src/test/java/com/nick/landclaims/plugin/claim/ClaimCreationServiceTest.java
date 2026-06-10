@@ -210,6 +210,53 @@ class ClaimCreationServiceTest {
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 2, 0))).contains(merged);
     }
 
+    @Test
+    void mergePreservesDeniedPlayersAndUsesRequestedNameCasing() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService service = service(repository, claimIndex);
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        UUID firstDeniedId = UUID.randomUUID();
+        UUID secondDeniedId = UUID.randomUUID();
+        Claim first = existingClaim(
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                OwnerType.PLAYER,
+                "home",
+                Set.of(firstDeniedId)
+        );
+        Claim second = existingClaim(
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 2, 0)),
+                OwnerType.PLAYER,
+                "HOME",
+                Set.of(secondDeniedId)
+        );
+        repository.savedClaims.add(first);
+        repository.savedClaims.add(second);
+        claimIndex.add(first);
+        claimIndex.add(second);
+
+        ClaimValidationResult result = service.createPlayerClaim(
+                ownerId,
+                "Home",
+                Set.of(new ClaimChunk(worldId, 1, 0))
+        );
+
+        assertThat(result.isAllowed()).isTrue();
+        Claim merged = repository.savedClaims.get(0);
+        assertThat(merged.name()).isEqualTo("Home");
+        assertThat(merged.deniedPlayers()).containsExactlyInAnyOrder(firstDeniedId, secondDeniedId);
+        assertThat(merged.claimChunks()).containsExactlyInAnyOrder(
+                new ClaimChunk(worldId, 0, 0),
+                new ClaimChunk(worldId, 1, 0),
+                new ClaimChunk(worldId, 2, 0)
+        );
+    }
+
     private static ClaimCreationService service(FakeClaimRepository repository, ClaimIndex claimIndex) {
         return new ClaimCreationService(
                 repository,
@@ -227,8 +274,31 @@ class ClaimCreationServiceTest {
     }
 
     private static Claim existingClaim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks, OwnerType ownerType, String name) {
+        return existingClaim(ownerId, worldId, chunks, ownerType, name, Set.of());
+    }
+
+    private static Claim existingClaim(
+            UUID ownerId,
+            UUID worldId,
+            Set<ClaimChunk> chunks,
+            OwnerType ownerType,
+            String name,
+            Set<UUID> deniedPlayers
+    ) {
         java.time.Instant now = java.time.Instant.parse("2026-06-07T00:00:00Z");
-        return new Claim(UUID.randomUUID(), name, ownerType, ownerId, worldId, chunks, Map.of("build", false), now, now);
+        return new Claim(
+                UUID.randomUUID(),
+                name,
+                ownerType,
+                ownerId,
+                worldId,
+                chunks,
+                Map.of("build", false),
+                Set.of(),
+                deniedPlayers,
+                now,
+                now
+        );
     }
 
     private static final class FakeClaimRepository implements ClaimRepository {

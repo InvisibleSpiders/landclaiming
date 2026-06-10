@@ -31,7 +31,12 @@ public final class HavenEconomyServiceAdapter implements EconomyService {
         if (!available()) {
             return false;
         }
-        return havenEconomyService.deposit(playerId, amount);
+        try {
+            havenEconomyService.deposit(playerId, amount);
+            return true;
+        } catch (RuntimeException exception) {
+            return false;
+        }
     }
 
     @Override

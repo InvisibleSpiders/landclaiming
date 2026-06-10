@@ -34,6 +34,25 @@ class ClaimMemberServiceTest {
     }
 
     @Test
+    void addingMemberPreservesDeniedPlayers() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimMemberService service = new ClaimMemberService(repository, claimIndex);
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        UUID deniedId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(ownerId, worldId, Set.of(), Set.of(deniedId));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+
+        ClaimMemberResult result = service.addMember(ownerId, claim, memberId, ClaimRole.MEMBER);
+
+        assertThat(result.allowed()).isTrue();
+        assertThat(repository.claims.get(0).deniedPlayers()).containsExactly(deniedId);
+    }
+
+    @Test
     void ownerCanPromoteExistingMemberToManager() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
@@ -201,10 +220,24 @@ class ClaimMemberServiceTest {
     }
 
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimMember> members) {
-        return claim(OwnerType.PLAYER, ownerId, worldId, members);
+        return claim(ownerId, worldId, members, Set.of());
+    }
+
+    private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimMember> members, Set<UUID> deniedPlayers) {
+        return claim(OwnerType.PLAYER, ownerId, worldId, members, deniedPlayers);
     }
 
     private static Claim claim(OwnerType ownerType, UUID ownerId, UUID worldId, Set<ClaimMember> members) {
+        return claim(ownerType, ownerId, worldId, members, Set.of());
+    }
+
+    private static Claim claim(
+            OwnerType ownerType,
+            UUID ownerId,
+            UUID worldId,
+            Set<ClaimMember> members,
+            Set<UUID> deniedPlayers
+    ) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
@@ -215,6 +248,7 @@ class ClaimMemberServiceTest {
                 Set.of(new ClaimChunk(worldId, 0, 0)),
                 Map.of("build", false),
                 members,
+                deniedPlayers,
                 now,
                 now
         );
