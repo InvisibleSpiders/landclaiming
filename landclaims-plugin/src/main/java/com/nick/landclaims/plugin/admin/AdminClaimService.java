@@ -133,6 +133,36 @@ public final class AdminClaimService {
                 .orElseGet(() -> AdminClaimResult.denied("admin.userclaims.not-found"));
     }
 
+    public AdminClaimResult transferPlayerClaim(UUID claimId, UUID newOwnerId) {
+        requireStorage();
+        Objects.requireNonNull(claimId, "claimId");
+        Objects.requireNonNull(newOwnerId, "newOwnerId");
+
+        return claimRepository.findClaimById(claimId)
+                .map(claim -> {
+                    if (claim.owner() != OwnerType.PLAYER) {
+                        return AdminClaimResult.denied("admin.userclaims.not-player");
+                    }
+                    Claim transferred = new Claim(
+                            claim.id(),
+                            claim.name(),
+                            claim.owner(),
+                            newOwnerId,
+                            claim.worldId(),
+                            claim.claimChunks(),
+                            claim.flags(),
+                            claim.members(),
+                            claim.deniedPlayers(),
+                            claim.createdAt(),
+                            Instant.now()
+                    );
+                    claimRepository.saveClaim(transferred);
+                    claimIndex.replace(transferred);
+                    return AdminClaimResult.success(transferred);
+                })
+                .orElseGet(() -> AdminClaimResult.denied("admin.userclaims.not-found"));
+    }
+
     public List<Claim> sortForAdminList(List<Claim> claims) {
         Objects.requireNonNull(claims, "claims");
         return claims.stream()

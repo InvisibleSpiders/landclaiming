@@ -151,6 +151,43 @@ class AdminClaimServiceTest {
         assertThat(service.findPlayerClaim(adminClaim.id())).isEmpty();
     }
 
+    @Test
+    void transfersPlayerClaimToNewOwner() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        AdminClaimService service = service(repository, claimIndex);
+        UUID worldId = UUID.randomUUID();
+        UUID originalOwnerId = UUID.randomUUID();
+        UUID newOwnerId = UUID.randomUUID();
+        Claim playerClaim = playerClaim("Home", originalOwnerId, worldId, 1);
+        repository.claims.add(playerClaim);
+        claimIndex.add(playerClaim);
+
+        AdminClaimResult result = service.transferPlayerClaim(playerClaim.id(), newOwnerId);
+
+        assertThat(result.allowed()).isTrue();
+        Claim transferred = result.claim();
+        assertThat(transferred.id()).isEqualTo(playerClaim.id());
+        assertThat(transferred.ownerUuid()).isEqualTo(newOwnerId);
+        assertThat(transferred.claimChunks()).isEqualTo(playerClaim.claimChunks());
+        assertThat(repository.findClaimById(playerClaim.id())).contains(transferred);
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 1, 0))).contains(transferred);
+    }
+
+    @Test
+    void transferRejectsAdminClaims() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        AdminClaimService service = service(repository, new ClaimIndex());
+        UUID worldId = UUID.randomUUID();
+        Claim adminClaim = claim("Spawn", worldId, Set.of(new ClaimChunk(worldId, 0, 0)), OwnerType.ADMIN);
+        repository.claims.add(adminClaim);
+
+        AdminClaimResult result = service.transferPlayerClaim(adminClaim.id(), UUID.randomUUID());
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("admin.userclaims.not-player");
+    }
+
     private static Claim claim(String name) {
         UUID worldId = UUID.randomUUID();
         return claim(name, worldId, Set.of(), OwnerType.PLAYER);

@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -51,7 +52,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", "userclaims", ""}))
-                .containsExactlyInAnyOrder("list", "view", "delete", "teleport");
+                .containsExactlyInAnyOrder("list", "view", "delete", "teleport", "transfer");
     }
 
     @Test
@@ -128,6 +129,82 @@ class ClaimsCommandAdminTest {
                 .containsExactly("You do not have permission to manage user claims.");
     }
 
+    @Test
+    void adminUserclaimsTransferRequiresTransferPermission() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{
+                "admin",
+                "userclaims",
+                "transfer",
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString()
+        });
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("You do not have permission to manage user claims.");
+    }
+
+    @Test
+    void adminUserclaimsTransferMovesClaimToOnlinePlayerWhenAllowed() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID newOwnerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim home = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(home);
+        claimIndex.add(home);
+        AdminClaimService adminClaimService = new AdminClaimService(repository, claimIndex, FlagRegistry.createDefault(), 32);
+        ClaimsCommand command = command(adminClaimService);
+        Player player = mock(Player.class);
+        Player target = mock(Player.class);
+        Server server = mock(Server.class);
+        when(player.hasPermission("landclaims.admin.userclaims.transfer")).thenReturn(true);
+        when(player.getServer()).thenReturn(server);
+        when(server.getPlayerExact("NewOwner")).thenReturn(target);
+        when(target.getUniqueId()).thenReturn(newOwnerId);
+        when(target.getName()).thenReturn("NewOwner");
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{
+                "admin",
+                "userclaims",
+                "transfer",
+                home.id().toString(),
+                "NewOwner"
+        });
+
+        Claim transferred = repository.findClaimById(home.id()).orElseThrow();
+        assertThat(transferred.ownerUuid()).isEqualTo(newOwnerId);
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(transferred);
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("Transferred Home to NewOwner.");
+    }
+
+    @Test
+    void adminUserclaimsTransferRejectsUnknownPlayerNames() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        Server server = mock(Server.class);
+        when(player.hasPermission("landclaims.admin.userclaims.transfer")).thenReturn(true);
+        when(player.getServer()).thenReturn(server);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{
+                "admin",
+                "userclaims",
+                "transfer",
+                UUID.randomUUID().toString(),
+                "NotOnline"
+        });
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("Player NotOnline is not online. Use a UUID to transfer offline players.");
+    }
+
     private static ClaimsCommand command(AdminClaimService adminClaimService) {
         return new ClaimsCommand(
                 mock(ClaimToolService.class),
@@ -144,7 +221,9 @@ class ClaimsCommandAdminTest {
                         "admin.claim.no-permission", "<red>You do not have permission to manage admin claims.",
                         "admin.userclaims.list-header", "<gold>Claims for <yellow><player></yellow>:",
                         "admin.userclaims.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>",
-                        "admin.userclaims.no-permission", "<red>You do not have permission to manage user claims."
+                        "admin.userclaims.no-permission", "<red>You do not have permission to manage user claims.",
+                        "admin.userclaims.transfer-player-not-found", "<red>Player <player> is not online. Use a UUID to transfer offline players.",
+                        "admin.userclaims.transferred", "<green>Transferred <claim_name> to <player>."
                 )),
                 null,
                 null,
@@ -203,6 +282,7 @@ class ClaimsCommandAdminTest {
 
         @Override
         public void saveClaim(Claim claim) {
+            claims.removeIf(existing -> existing.id().equals(claim.id()));
             claims.add(claim);
         }
 

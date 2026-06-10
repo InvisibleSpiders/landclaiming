@@ -68,6 +68,7 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 | `/claim admin userclaims view <claim-id>` | `landclaims.admin.userclaims.view` | Shows a player claim by UUID from anywhere. |
 | `/claim admin userclaims delete <claim-id>` | `landclaims.admin.userclaims.delete` | Deletes a player claim by UUID. |
 | `/claim admin userclaims teleport <claim-id>` | `landclaims.admin.userclaims.teleport` | Teleports to the center of a player claim's first chunk. |
+| `/claim admin userclaims transfer <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.transfer` | Transfers player claim ownership. Names must be online; UUIDs are accepted. |
 | `/claim info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
 | `/claim cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
 | `/claim mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
@@ -178,7 +179,7 @@ access-denial:
 | `landclaims.admin.userclaims.edit` | child of `landclaims.admin` | Planned user claim editing. |
 | `landclaims.admin.userclaims.delete` | child of `landclaims.admin` | Allows deleting player claims by UUID. |
 | `landclaims.admin.userclaims.teleport` | child of `landclaims.admin` | Allows teleporting to player claims by UUID. |
-| `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Planned claim ownership transfer. |
+| `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Allows transferring player claim ownership by UUID. |
 | `landclaims.admin.reload` | child of `landclaims.admin` | Planned runtime reload command. |
 
 ## Flags

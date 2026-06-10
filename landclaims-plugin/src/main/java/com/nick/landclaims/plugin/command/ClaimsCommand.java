@@ -79,7 +79,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "info"
     );
     private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims");
-    private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport");
+    private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport", "transfer");
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
@@ -286,6 +286,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (action.equals("teleport")) {
             return teleportToPlayerClaim(player, args);
         }
+        if (action.equals("transfer")) {
+            return transferPlayerClaim(player, args);
+        }
 
         player.sendMessage(message("admin.userclaims.usage"));
         return true;
@@ -385,6 +388,39 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         player.teleport(target.orElseThrow());
         player.sendMessage(message("admin.userclaims.teleported", Map.of("claim_name", claim.orElseThrow().name())));
+        return true;
+    }
+
+    private boolean transferPlayerClaim(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.userclaims.transfer")) {
+            player.sendMessage(message("admin.userclaims.no-permission"));
+            return true;
+        }
+        if (args.length != 5) {
+            player.sendMessage(message("admin.userclaims.transfer-usage"));
+            return true;
+        }
+        Optional<UUID> claimId = parseUuid(args[3]);
+        if (claimId.isEmpty()) {
+            player.sendMessage(message("admin.claim.invalid-id"));
+            return true;
+        }
+        Optional<UUID> newOwnerId = resolveOnlinePlayerOrUuid(player, args[4]);
+        if (newOwnerId.isEmpty()) {
+            player.sendMessage(message("admin.userclaims.transfer-player-not-found", Map.of("player", args[4])));
+            return true;
+        }
+
+        AdminClaimResult result = adminClaimService.transferPlayerClaim(claimId.orElseThrow(), newOwnerId.orElseThrow());
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("admin.userclaims.transferred", Map.of(
+                "claim_name", result.claim().name(),
+                "claim_id", result.claim().id().toString(),
+                "player", transferTargetName(player, args[4], newOwnerId.orElseThrow())
+        )));
         return true;
     }
 
@@ -912,6 +948,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
     private String playerName(Player viewer, UUID playerId) {
         return memberName(viewer.getServer().getOfflinePlayer(playerId));
+    }
+
+    private String transferTargetName(Player viewer, String input, UUID playerId) {
+        return parseUuid(input).isPresent() ? playerName(viewer, playerId) : input;
     }
 
     private Optional<UUID> resolveOnlinePlayerOrUuid(Player actor, String input) {
