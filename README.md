@@ -72,6 +72,9 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 | `/claim admin userclaims flag list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists flags for a player claim by UUID. |
 | `/claim admin userclaims flag set <claim-id> <flag> <true\|false>` | `landclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
 | `/claim admin userclaims flag toggle <claim-id> <flag>` | `landclaims.admin.userclaims.edit` | Toggles a player claim flag by UUID. |
+| `/claim admin userclaims member list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
+| `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `landclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
+| `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
 | `/claim info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
 | `/claim cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
 | `/claim mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
@@ -179,7 +182,7 @@ access-denial:
 | `landclaims.admin.claim.list` | child of `landclaims.admin` | Allows listing server-owned admin claims. |
 | `landclaims.admin.claim.teleport` | child of `landclaims.admin` | Allows teleporting to server-owned admin claims. |
 | `landclaims.admin.userclaims.view` | child of `landclaims.admin` | Allows browsing player claims from anywhere. |
-| `landclaims.admin.userclaims.edit` | child of `landclaims.admin` | Allows editing player claim flags by UUID. |
+| `landclaims.admin.userclaims.edit` | child of `landclaims.admin` | Allows editing player claim flags and members by UUID. |
 | `landclaims.admin.userclaims.delete` | child of `landclaims.admin` | Allows deleting player claims by UUID. |
 | `landclaims.admin.userclaims.teleport` | child of `landclaims.admin` | Allows teleporting to player claims by UUID. |
 | `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Allows transferring player claim ownership by UUID. |

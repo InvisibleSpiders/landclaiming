@@ -25,7 +25,7 @@ admin:
   landclaims.admin.claim.list: "Allows staff to list server-owned admin claims."
   landclaims.admin.claim.teleport: "Allows staff to teleport to server-owned admin claims."
   landclaims.admin.userclaims.view: "Allows staff to browse player claims."
-  landclaims.admin.userclaims.edit: "Allows staff to edit player claim flags."
+  landclaims.admin.userclaims.edit: "Allows staff to edit player claim flags and members."
   landclaims.admin.userclaims.delete: "Allows staff to delete player claims."
   landclaims.admin.userclaims.teleport: "Allows staff to teleport to player claims."
   landclaims.admin.userclaims.transfer: "Allows staff to transfer player claims."
