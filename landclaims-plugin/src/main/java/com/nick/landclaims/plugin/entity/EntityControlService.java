@@ -3,8 +3,10 @@ package com.nick.landclaims.plugin.entity;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import java.util.Locale;
 import java.util.Objects;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.entity.Ambient;
 import org.bukkit.entity.Animals;
@@ -16,15 +18,18 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.WaterMob;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
 public final class EntityControlService {
     private static final String REMOVE_HOSTILE_FLAG = "remove_hostile_entities";
     private static final String REMOVE_PASSIVE_FLAG = "remove_passive_entities";
+    private static final String PLAYER_NAMED_ENTITY_KEY = "player_named_entity";
 
     private final Plugin plugin;
     private final ClaimIndex claimIndex;
+    private final NamespacedKey playerNamedEntityKey;
     private final boolean preserveNamedEntities;
     private final boolean preserveTamedEntities;
     private BukkitTask cleanupTask;
@@ -37,6 +42,7 @@ public final class EntityControlService {
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.claimIndex = Objects.requireNonNull(claimIndex, "claimIndex");
+        this.playerNamedEntityKey = new NamespacedKey(plugin.getName().toLowerCase(Locale.ROOT), PLAYER_NAMED_ENTITY_KEY);
         this.preserveNamedEntities = preserveNamedEntities;
         this.preserveTamedEntities = preserveTamedEntities;
     }
@@ -54,6 +60,11 @@ public final class EntityControlService {
             cleanupTask.cancel();
             cleanupTask = null;
         }
+    }
+
+    public void markPlayerNamedEntity(LivingEntity entity) {
+        Objects.requireNonNull(entity, "entity");
+        entity.getPersistentDataContainer().set(playerNamedEntityKey, PersistentDataType.BYTE, (byte) 1);
     }
 
     public boolean removeIfBlocked(LivingEntity entity) {
@@ -95,7 +106,8 @@ public final class EntityControlService {
     }
 
     private boolean shouldPreserve(LivingEntity entity) {
-        if (preserveNamedEntities && entity.customName() != null) {
+        if (preserveNamedEntities
+                && entity.getPersistentDataContainer().has(playerNamedEntityKey, PersistentDataType.BYTE)) {
             return true;
         }
         return preserveTamedEntities && entity instanceof Tameable tameable && tameable.isTamed();
