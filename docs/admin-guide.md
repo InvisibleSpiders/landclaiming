@@ -1,19 +1,32 @@
 # Admin Guide
 
-Admin claims are server-owned claims for spawn, arenas, roads, shops, and event spaces.
+Admin claims are server-owned claims for spawn, arenas, roads, shops, and event spaces. They use the same chunk storage and protection flags as player claims, but their owner type is `ADMIN` and they are not tied to a player UUID.
 
-Admin management is scaffolded in this MVP foundation, but the command flows are not complete in the current build. Today, `/claim tool` is available for claim-tool selection testing, and most other `/claim` paths return the coming-soon menu message.
+## Commands
 
-Planned admin commands:
+| Command | Permission | Description |
+| --- | --- | --- |
+| `/claim admin create <name>` | `landclaims.admin.claim.create` | Creates an admin claim from the current completed claim-tool selection. |
+| `/claim admin list` | `landclaims.admin.claim.list` | Lists admin claim names, chunk counts, and UUIDs. |
+| `/claim admin delete <claim-id>` | `landclaims.admin.claim.delete` | Deletes an admin claim by UUID. |
+| `/claim admin teleport <claim-id>` | `landclaims.admin.claim.teleport` | Teleports to the center of the first chunk in an admin claim. |
+| `/claim admin userclaims list <player\|uuid>` | `landclaims.admin.userclaims.view` | Lists a player's claim names, chunk counts, and UUIDs from anywhere. |
+| `/claim admin userclaims view <claim-id>` | `landclaims.admin.userclaims.view` | Shows player claim name, owner, and chunk count by UUID. |
+| `/claim admin userclaims delete <claim-id>` | `landclaims.admin.userclaims.delete` | Deletes a player claim by UUID. |
+| `/claim admin userclaims teleport <claim-id>` | `landclaims.admin.userclaims.teleport` | Teleports to the center of the first chunk in a player claim. |
+| `/claim admin userclaims transfer <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.transfer` | Transfers player claim ownership. Names must be online; UUIDs are accepted. |
+| `/claim admin userclaims flag list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists flags for a player claim by UUID. |
+| `/claim admin userclaims flag set <claim-id> <flag> <true\|false>` | `landclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
+| `/claim admin userclaims flag toggle <claim-id> <flag>` | `landclaims.admin.userclaims.edit` | Toggles a player claim flag by UUID. |
+| `/claim admin userclaims member list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
+| `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `landclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
+| `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
+
+Admin claim creation does not charge economy currency or spend claim-tool charges. It rejects blank names, empty selections, and overlaps with any existing claim.
+
+## Still Planned
 
 - `/claim admin mode`
-- `/claim admin create <name>`
-- `/claim admin list`
-- `/claim admin list <player>`
-- `/claim admin view <claim-id>`
-- `/claim admin teleport <claim-id>`
 - `/claim admin edit <claim-id>`
-- `/claim admin delete <claim-id>`
 - `/claim admin reload`
-
-Planned admin edits to user claims will be written to the claim audit log.
+- Future claim audit logging.

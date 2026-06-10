@@ -2,6 +2,7 @@ package com.nick.landclaims.plugin;
 
 import com.nick.landclaims.api.LandClaimsApi;
 import com.nick.landclaims.plugin.api.BukkitLandClaimsApi;
+import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimDenyService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
@@ -82,6 +83,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
         PermissionBankService permissionBankService = new PermissionBankService(getServer().getPluginManager());
         permissionBankService.registerLimitPermissions(limitPermissions);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "commands", PermissionDefault.TRUE);
+        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "admin", PermissionDefault.OP);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "bypass", PermissionDefault.OP);
         LimitService limitService = new LimitService(
                 getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("landclaims.limit.default", 10)),
@@ -186,7 +188,13 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         new DialogService(),
                         new InventoryGuiFallbackService(),
                         chunkBorderVisualService,
-                        claimBorderColorService
+                        claimBorderColorService,
+                        new AdminClaimService(
+                                claimRepository,
+                                claimIndex,
+                                flagRegistry,
+                                getConfig().getInt("claiming.max-name-length", 32)
+                        )
                 );
         Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
                 .setExecutor(claimsCommand);

@@ -43,6 +43,25 @@ class ClaimFlagServiceTest {
     }
 
     @Test
+    void setFlagPreservesDeniedPlayers() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimFlagService service = new ClaimFlagService(repository, claimIndex, FlagRegistry.createDefault());
+        UUID ownerId = UUID.randomUUID();
+        UUID deniedPlayerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(ownerId, worldId, Map.of("build", false), Set.of(deniedPlayerId));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+
+        ClaimFlagResult result = service.setFlag(ownerId, claim, "build", true, permission -> true);
+
+        assertThat(result.allowed()).isTrue();
+        Claim updated = repository.claims.get(0);
+        assertThat(updated.deniedPlayers()).containsExactly(deniedPlayerId);
+    }
+
+    @Test
     void ownerCanToggleEditableFlagWhenPermissionAllowsIt() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
@@ -148,6 +167,10 @@ class ClaimFlagServiceTest {
     }
 
     private static Claim claim(UUID ownerId, UUID worldId, Map<String, Boolean> flags) {
+        return claim(ownerId, worldId, flags, Set.of());
+    }
+
+    private static Claim claim(UUID ownerId, UUID worldId, Map<String, Boolean> flags, Set<UUID> deniedPlayers) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
@@ -157,6 +180,8 @@ class ClaimFlagServiceTest {
                 worldId,
                 Set.of(new ClaimChunk(worldId, 0, 0)),
                 flags,
+                Set.of(),
+                deniedPlayers,
                 now,
                 now
         );

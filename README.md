@@ -2,7 +2,7 @@
 
 LandClaims is a Paper land claiming plugin that protects land by chunks. It uses a charged golden hoe claim tool, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
 
-This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing with descriptions, a claim menu shell, enforced claim protection flags, advanced entity-control flags, and the public `LandClaimsApi` service for other plugins.
+This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing with descriptions, a claim menu shell, enforced claim protection flags, admin claim commands, advanced entity-control flags, and the public `LandClaimsApi` service for other plugins.
 
 ## Requirements
 
@@ -60,6 +60,21 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 | `/claim deny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Denies a player from entering the claim at the player's current chunk. Names must be online; UUIDs are accepted. |
 | `/claim undeny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Removes a player from the current claim's denied-entry list. |
 | `/claim denied` | `landclaims.deny.manage` | Lists players denied from entering the current claim. |
+| `/claim admin create <name>` | `landclaims.admin.claim.create` | Creates a server-owned admin claim from the current completed selection. |
+| `/claim admin list` | `landclaims.admin.claim.list` | Lists server-owned admin claims and their IDs. |
+| `/claim admin delete <claim-id>` | `landclaims.admin.claim.delete` | Deletes a server-owned admin claim by UUID. |
+| `/claim admin teleport <claim-id>` | `landclaims.admin.claim.teleport` | Teleports to the center of an admin claim's first chunk. |
+| `/claim admin userclaims list <player\|uuid>` | `landclaims.admin.userclaims.view` | Lists a player's claims and IDs from anywhere. |
+| `/claim admin userclaims view <claim-id>` | `landclaims.admin.userclaims.view` | Shows a player claim by UUID from anywhere. |
+| `/claim admin userclaims delete <claim-id>` | `landclaims.admin.userclaims.delete` | Deletes a player claim by UUID. |
+| `/claim admin userclaims teleport <claim-id>` | `landclaims.admin.userclaims.teleport` | Teleports to the center of a player claim's first chunk. |
+| `/claim admin userclaims transfer <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.transfer` | Transfers player claim ownership. Names must be online; UUIDs are accepted. |
+| `/claim admin userclaims flag list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists flags for a player claim by UUID. |
+| `/claim admin userclaims flag set <claim-id> <flag> <true\|false>` | `landclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
+| `/claim admin userclaims flag toggle <claim-id> <flag>` | `landclaims.admin.userclaims.edit` | Toggles a player claim flag by UUID. |
+| `/claim admin userclaims member list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
+| `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `landclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
+| `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
 | `/claim info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
 | `/claim cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
 | `/claim mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
@@ -160,16 +175,17 @@ access-denial:
 | `landclaims.bypass.protection` | `op` | Bypasses all protection checks. |
 | `landclaims.bypass.protection.<flag>` | `op` by convention | Bypasses one protection flag check through the public API and internal protection checks. |
 | `landclaims.bypass.entry-deny` | `op` | Allows staff to enter claims even when listed as denied. |
-| `landclaims.admin` | `op` | Parent permission for planned admin claim and user-claim tools. |
-| `landclaims.admin.claim.create` | child of `landclaims.admin` | Planned admin claim creation. |
-| `landclaims.admin.claim.edit` | child of `landclaims.admin` | Planned admin claim editing. |
-| `landclaims.admin.claim.delete` | child of `landclaims.admin` | Planned admin claim deletion. |
-| `landclaims.admin.claim.list` | child of `landclaims.admin` | Planned admin claim listing. |
-| `landclaims.admin.userclaims.view` | child of `landclaims.admin` | Planned user claim browsing. |
-| `landclaims.admin.userclaims.edit` | child of `landclaims.admin` | Planned user claim editing. |
-| `landclaims.admin.userclaims.delete` | child of `landclaims.admin` | Planned user claim deletion. |
-| `landclaims.admin.userclaims.teleport` | child of `landclaims.admin` | Planned teleporting to user claims. |
-| `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Planned claim ownership transfer. |
+| `landclaims.admin` | `op` | Parent permission for admin claim and user-claim tools. |
+| `landclaims.admin.claim.create` | child of `landclaims.admin` | Allows creating server-owned admin claims. |
+| `landclaims.admin.claim.edit` | child of `landclaims.admin` | Reserved for admin claim editing flows beyond creation/deletion. |
+| `landclaims.admin.claim.delete` | child of `landclaims.admin` | Allows deleting server-owned admin claims. |
+| `landclaims.admin.claim.list` | child of `landclaims.admin` | Allows listing server-owned admin claims. |
+| `landclaims.admin.claim.teleport` | child of `landclaims.admin` | Allows teleporting to server-owned admin claims. |
+| `landclaims.admin.userclaims.view` | child of `landclaims.admin` | Allows browsing player claims from anywhere. |
+| `landclaims.admin.userclaims.edit` | child of `landclaims.admin` | Allows editing player claim flags and members by UUID. |
+| `landclaims.admin.userclaims.delete` | child of `landclaims.admin` | Allows deleting player claims by UUID. |
+| `landclaims.admin.userclaims.teleport` | child of `landclaims.admin` | Allows teleporting to player claims by UUID. |
+| `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Allows transferring player claim ownership by UUID. |
 | `landclaims.admin.reload` | child of `landclaims.admin` | Planned runtime reload command. |
 
 ## Flags

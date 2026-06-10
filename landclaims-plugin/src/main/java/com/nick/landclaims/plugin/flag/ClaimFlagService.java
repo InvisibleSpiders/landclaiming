@@ -70,6 +70,7 @@ public final class ClaimFlagService {
                 claim.claimChunks(),
                 flags,
                 claim.members(),
+                claim.deniedPlayers(),
                 claim.createdAt(),
                 Instant.now()
         );

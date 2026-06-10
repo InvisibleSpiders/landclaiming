@@ -58,6 +58,7 @@ permissions:
       landclaims.admin.claim.edit: true
       landclaims.admin.claim.delete: true
       landclaims.admin.claim.list: true
+      landclaims.admin.claim.teleport: true
       landclaims.admin.userclaims.view: true
       landclaims.admin.userclaims.edit: true
       landclaims.admin.userclaims.delete: true
