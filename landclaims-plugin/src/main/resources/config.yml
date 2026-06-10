@@ -1,6 +1,6 @@
 # General claim settings.
 claiming:
-  # Maximum claim name length accepted by /claims create.
+  # Maximum claim name length accepted by /claim create.
   max-name-length: 32
   # Minimum chunk gap between a player claim and another player's claim.
   player-buffer-distance: 3

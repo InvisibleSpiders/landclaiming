@@ -6,11 +6,11 @@ The next playable milestone is the core claim loop: select chunks with the claim
 
 ## Player Flow
 
-Players use the configured claim tool to right-click two chunks. The selection expands to every chunk inside the rectangle and remains stored for that player until it is claimed or deliberately cleared. The player then runs `/claims create <name>` to create a player-owned claim from the stored selection.
+Players use the configured claim tool to right-click two chunks. The selection expands to every chunk inside the rectangle and remains stored for that player until it is claimed or deliberately cleared. The player then runs `/claim create <name>` to create a player-owned claim from the stored selection.
 
 Players can clear a pending selection in three ways:
 
-- `/claims cancel`
+- `/claim cancel`
 - Switching away from the claim tool, if selection-clear-on-tool-switch is enabled.
 - Double crouching within a configurable tick window.
 
@@ -18,15 +18,15 @@ The double-crouch window will be configured in ticks because Minecraft server in
 
 ## Commands
 
-`/claims` shows the current useful commands and avoids stub-only messaging.
+`/claim` shows the current useful commands and avoids stub-only messaging.
 
-`/claims tool` gives the configured claim tool.
+`/claim tool` gives the configured claim tool.
 
-`/claims create <name>` creates a claim from the player's pending selection. If there is no pending selection, the player receives a clear message telling them to select two chunks first.
+`/claim create <name>` creates a claim from the player's pending selection. If there is no pending selection, the player receives a clear message telling them to select two chunks first.
 
-`/claims cancel` clears the player's pending selection.
+`/claim cancel` clears the player's pending selection.
 
-`/claims info` shows the claim at the player's current chunk, including name, owner, chunk count, and whether the player is owner/admin.
+`/claim info` shows the claim at the player's current chunk, including name, owner, chunk count, and whether the player is owner/admin.
 
 ## Claim Rules
 
@@ -46,7 +46,7 @@ When a claim is created, the tool spends one charge per selected chunk. If claim
 
 `ClaimRepository` will become functional for saving claims and reading them by chunk, id, owner, and all claims. SQLite is the first backend to become fully usable; the SQL implementation should stay compatible with MySQL/MariaDB syntax where practical.
 
-On plugin startup, the repository initializes schema and loads all claims into a live `ClaimIndex`. The protection listener uses the index instead of its current empty map. After `/claims create`, the new claim is saved and added to the live index without requiring a restart.
+On plugin startup, the repository initializes schema and loads all claims into a live `ClaimIndex`. The protection listener uses the index instead of its current empty map. After `/claim create`, the new claim is saved and added to the live index without requiring a restart.
 
 ## Protection Behavior
 

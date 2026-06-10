@@ -21,49 +21,49 @@ Feature PRs should follow the [development checklist](docs/development-checklist
 2. Place the jar in your Paper server `plugins` folder.
 3. Restart the server.
 4. Edit generated files in `plugins/LandClaims/`.
-5. Restart the server after configuration changes. Runtime reload via `/claims admin reload` is planned but not complete in this build.
+5. Restart the server after configuration changes. Runtime reload via `/claim admin reload` is planned but not complete in this build.
 
 ## Quick Start
 
-- Run `/claims tool` to receive the claim tool.
+- Run `/claim tool` to receive the claim tool.
 - Right-click two chunks with the tool to record selection corners.
-- Run `/claims cost` to preview allowance and over-limit cost.
-- Run `/claims create <name>` to create the claim.
-- Run `/claims menu` while standing in a claim to open the current claim management shell.
-- Run `/claims flags` while standing in a claim to open clickable flag toggles.
-- Run `/claims viewborder` to show the current selection, claim, or chunk border.
+- Run `/claim cost` to preview allowance and over-limit cost.
+- Run `/claim create <name>` to create the claim.
+- Run `/claim menu` while standing in a claim to open the current claim management shell.
+- Run `/claim flags` while standing in a claim to open clickable flag toggles.
+- Run `/claim viewborder` to show the current selection, claim, or chunk border.
 - Switch away from the claim tool or double crouch within the configured window to clear an active selection.
 
 ## Persistence
 
-Created claims are saved through the configured SQL repository when `/claims create` succeeds. On server startup, LandClaims loads saved claims into the in-memory claim index, so claims persist through restarts as long as the configured database is retained.
+Created claims are saved through the configured SQL repository when `/claim create` succeeds. On server startup, LandClaims loads saved claims into the in-memory claim index, so claims persist through restarts as long as the configured database is retained.
 
 ## Commands
 
-Base command: `/claims`. Aliases: `/claim`, `/lc`.
+Base command: `/claim`. Aliases: `/claims`, `/lc`.
 
 | Command | Permission | Description |
 | --- | --- | --- |
-| `/claims` | `landclaims.use` | Shows the command help output. |
-| `/claims tool` | `landclaims.tool.use` | Gives the configured claim tool. The default item is a charged golden hoe. |
-| `/claims create <name>` | `landclaims.claim` | Creates a player claim from the current completed two-corner selection. |
-| `/claims cost` | `landclaims.claim` | Previews selected chunks, allowance, over-limit chunks, and cost. `/claims quote` is also accepted. |
-| `/claims menu` | `landclaims.gui` | Opens the claim management menu for the claim at the player's current chunk. |
-| `/claims flags` | `landclaims.gui` | Opens the clickable flag editor for the claim at the player's current chunk. |
-| `/claims viewborder` | `landclaims.use` | Shows the pending selection border, the current claim border, or the current chunk border. |
-| `/claims flag list` | `landclaims.gui` | Opens the same flag editor as `/claims flags`. |
-| `/claims flag set <flag> <true\|false>` | Claim owner plus `landclaims.flag.<flag>` | Sets a claim flag directly. Also accepts `on/off` and `yes/no`. |
-| `/claims flag toggle <flag>` | Claim owner plus `landclaims.flag.<flag>` | Toggles a claim flag and redraws the flag editor. |
-| `/claims member list` | Any player in claim | Lists members for the claim at the player's current chunk. |
-| `/claims member add <player> [member\|manager]` | Claim owner or manager | Adds an online player to the claim. Managers can only add `member` role entries. |
-| `/claims member remove <player>` | Claim owner or manager | Removes an existing claim member. Managers cannot remove other managers. |
-| `/claims deny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Denies a player from entering the claim at the player's current chunk. Names must be online; UUIDs are accepted. |
-| `/claims undeny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Removes a player from the current claim's denied-entry list. |
-| `/claims denied` | `landclaims.deny.manage` | Lists players denied from entering the current claim. |
-| `/claims info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
-| `/claims cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
-| `/claims mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
-| `/claims mergecancel` | `landclaims.claim` | Cancels a pending same-name adjacent claim merge. Usually clicked from chat. |
+| `/claim` | `landclaims.use` | Shows the command help output. |
+| `/claim tool` | `landclaims.tool.use` | Gives the configured claim tool. The default item is a charged golden hoe. |
+| `/claim create <name>` | `landclaims.claim` | Creates a player claim from the current completed two-corner selection. |
+| `/claim cost` | `landclaims.claim` | Previews selected chunks, allowance, over-limit chunks, and cost. `/claim quote` is also accepted. |
+| `/claim menu` | `landclaims.gui` | Opens the claim management menu for the claim at the player's current chunk. |
+| `/claim flags` | `landclaims.gui` | Opens the clickable flag editor for the claim at the player's current chunk. |
+| `/claim viewborder` | `landclaims.use` | Shows the pending selection border, the current claim border, or the current chunk border. |
+| `/claim flag list` | `landclaims.gui` | Opens the same flag editor as `/claim flags`. |
+| `/claim flag set <flag> <true\|false>` | Claim owner plus `landclaims.flag.<flag>` | Sets a claim flag directly. Also accepts `on/off` and `yes/no`. |
+| `/claim flag toggle <flag>` | Claim owner plus `landclaims.flag.<flag>` | Toggles a claim flag and redraws the flag editor. |
+| `/claim member list` | Any player in claim | Lists members for the claim at the player's current chunk. |
+| `/claim member add <player> [member\|manager]` | Claim owner or manager | Adds an online player to the claim. Managers can only add `member` role entries. |
+| `/claim member remove <player>` | Claim owner or manager | Removes an existing claim member. Managers cannot remove other managers. |
+| `/claim deny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Denies a player from entering the claim at the player's current chunk. Names must be online; UUIDs are accepted. |
+| `/claim undeny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Removes a player from the current claim's denied-entry list. |
+| `/claim denied` | `landclaims.deny.manage` | Lists players denied from entering the current claim. |
+| `/claim info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
+| `/claim cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
+| `/claim mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
+| `/claim mergecancel` | `landclaims.claim` | Cancels a pending same-name adjacent claim merge. Usually clicked from chat. |
 
 ## Shortcuts
 
@@ -72,7 +72,7 @@ Base command: `/claims`. Aliases: `/claim`, `/lc`.
 | Right-click with claim tool | `landclaims.tool.use` | Selects claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
 | Switch away from claim tool | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.clear-on-tool-switch` is enabled. |
 | Double crouch | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
-| Sneak + swap hand | `landclaims.gui` | Opens `/claims menu` when the claim tool is involved. |
+| Sneak + swap hand | `landclaims.gui` | Opens `/claim menu` when the claim tool is involved. |
 
 ## Selection Behavior
 
@@ -204,7 +204,7 @@ Protection edge behavior:
 
 ## Advanced Entity Control
 
-Advanced entity-control flags are claim-level customizations. They are off by default, can be toggled from `/claims flags`, and are designed to become part of the future claim upgrade UI.
+Advanced entity-control flags are claim-level customizations. They are off by default, can be toggled from `/claim flags`, and are designed to become part of the future claim upgrade UI.
 
 Relevant config:
 

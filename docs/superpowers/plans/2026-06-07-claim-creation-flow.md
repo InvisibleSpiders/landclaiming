@@ -83,8 +83,8 @@
 - [ ] Add listener tests for clearing when switching away from a claim tool.
 - [ ] Run `./gradlew.bat :landclaims-plugin:test --tests com.nick.landclaims.plugin.listener.ClaimToolListenerTest` and confirm the helper is missing.
 - [ ] Extend `ClaimToolListener` with `PlayerItemHeldEvent` and `PlayerToggleSneakEvent`.
-- [ ] Update `ClaimsCommand` to support `/claims create <name>`, `/claims cancel`, and `/claims info`.
-- [ ] Ensure `/claims create` spends charges only after `ClaimCreationService` succeeds and then consumes the selection.
+- [ ] Update `ClaimsCommand` to support `/claim create <name>`, `/claim cancel`, and `/claim info`.
+- [ ] Ensure `/claim create` spends charges only after `ClaimCreationService` succeeds and then consumes the selection.
 - [ ] Rerun targeted listener tests and commit with `git commit -m "Add claim commands and selection clearing"`.
 
 ### Task 8: Startup Wiring And Protection

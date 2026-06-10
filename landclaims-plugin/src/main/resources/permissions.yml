@@ -17,6 +17,6 @@ flag-edit:
     - mob_griefing
 
 commands:
-  landclaims.deny.manage: "Allows claim owners and managers to use /claims deny, /claims undeny, and /claims denied."
+  landclaims.deny.manage: "Allows claim owners and managers to use /claim deny, /claim undeny, and /claim denied."
 bypass:
   landclaims.bypass.entry-deny: "Allows staff to enter claims even when listed as denied."

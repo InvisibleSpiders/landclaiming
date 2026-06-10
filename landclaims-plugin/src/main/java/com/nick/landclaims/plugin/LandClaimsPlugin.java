@@ -188,9 +188,9 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         chunkBorderVisualService,
                         claimBorderColorService
                 );
-        Objects.requireNonNull(getCommand("claims"), "claims command is not defined in plugin.yml")
+        Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
                 .setExecutor(claimsCommand);
-        Objects.requireNonNull(getCommand("claims"), "claims command is not defined in plugin.yml")
+        Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
                 .setTabCompleter(claimsCommand);
 
         getLogger().info("LandClaims enabled.");

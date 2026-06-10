@@ -18,7 +18,7 @@ class ClaimFlagEditorServiceTest {
 
         assertThat(editor.claimName()).isEqualTo("Home");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::toggleCommand)
-                .containsExactly("/claims flag toggle build", "/claims flag toggle fluid_flow");
+                .containsExactly("/claim flag toggle build", "/claim flag toggle fluid_flow");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::stateLabel)
                 .containsExactly("ALLOWED", "BLOCKED");
         assertThat(editor.rows()).extracting(ClaimFlagEditorRow::nextStateLabel)
