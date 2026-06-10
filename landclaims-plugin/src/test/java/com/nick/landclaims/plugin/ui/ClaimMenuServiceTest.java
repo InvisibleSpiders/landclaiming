@@ -45,7 +45,7 @@ class ClaimMenuServiceTest {
         assertThat(menu.viewerOwnsClaim()).isTrue();
         assertThat(menu.adminClaim()).isFalse();
         assertThat(menu.actions()).extracting(ClaimMenuAction::command)
-                .containsExactly("/claims flags", "/claims member list", "/claims info");
+                .containsExactly("/claim flags", "/claim member list", "/claim info");
     }
 
     @Test

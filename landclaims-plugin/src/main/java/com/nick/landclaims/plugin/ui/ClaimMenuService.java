@@ -20,9 +20,9 @@ public final class ClaimMenuService {
                 viewerId.equals(claim.ownerUuid()),
                 claim.owner() == OwnerType.ADMIN,
                 List.of(
-                        new ClaimMenuAction("Flags", "/claims flags"),
-                        new ClaimMenuAction("Members", "/claims member list"),
-                        new ClaimMenuAction("Info", "/claims info")
+                        new ClaimMenuAction("Flags", "/claim flags"),
+                        new ClaimMenuAction("Members", "/claim member list"),
+                        new ClaimMenuAction("Info", "/claim info")
                 )
         );
     }

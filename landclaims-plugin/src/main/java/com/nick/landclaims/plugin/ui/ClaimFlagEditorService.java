@@ -19,7 +19,7 @@ public final class ClaimFlagEditorService {
                                 flag.description(),
                                 stateLabel(flag, flag.enabled()),
                                 stateLabel(flag, !flag.enabled()),
-                                "/claims flag toggle " + flag.key()
+                                "/claim flag toggle " + flag.key()
                         ))
                         .toList()
         );

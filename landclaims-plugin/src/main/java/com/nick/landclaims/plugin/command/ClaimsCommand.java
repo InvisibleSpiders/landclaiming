@@ -802,10 +802,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 "merge_count", String.valueOf(mergeCount)
         ))
                 .append(message("claim.merge.confirm-button")
-                        .clickEvent(ClickEvent.runCommand("/claims mergeconfirm")))
+                        .clickEvent(ClickEvent.runCommand("/claim mergeconfirm")))
                 .append(Component.space())
                 .append(message("claim.merge.cancel-button")
-                        .clickEvent(ClickEvent.runCommand("/claims mergecancel"))));
+                        .clickEvent(ClickEvent.runCommand("/claim mergecancel"))));
     }
 
     private Set<String> permissionNodes(Player player) {

@@ -9,10 +9,10 @@ depend:
 softdepend:
   - VaultUnlocked
 commands:
-  claims:
+  claim:
     description: Opens LandClaims commands and menus.
-    usage: /claims
-    aliases: [claim, lc]
+    usage: /claim
+    aliases: [claims, lc]
 permissions:
   landclaims.use:
     description: Allows basic LandClaims usage.
