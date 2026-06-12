@@ -7,7 +7,6 @@ import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimMember;
 import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.OwnerType;
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import java.time.Instant;
 import java.util.Map;
@@ -19,7 +18,7 @@ class ProtectionServiceTest {
     @Test
     void ownerAlwaysAllowedEvenWhenFlagIsFalse() {
         UUID ownerUuid = UUID.randomUUID();
-        Claim claim = claim(ownerUuid, Map.of("build", FlagState.OFF));
+        Claim claim = claim(ownerUuid, Map.of("build", false));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, ownerUuid, "build");
@@ -29,7 +28,7 @@ class ProtectionServiceTest {
 
     @Test
     void strangerDeniedWhenClaimFlagIsFalse() {
-        Claim claim = claim(UUID.randomUUID(), Map.of("build", FlagState.OFF));
+        Claim claim = claim(UUID.randomUUID(), Map.of("build", false));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, UUID.randomUUID(), "build");
@@ -40,7 +39,7 @@ class ProtectionServiceTest {
     @Test
     void memberAllowedForAccessFlagEvenWhenClaimFlagIsFalse() {
         UUID memberUuid = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), Map.of("build", FlagState.OFF), Set.of(new ClaimMember(memberUuid, ClaimRole.MEMBER)));
+        Claim claim = claim(UUID.randomUUID(), Map.of("build", false), Set.of(new ClaimMember(memberUuid, ClaimRole.MEMBER)));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, memberUuid, "build");
@@ -51,7 +50,7 @@ class ProtectionServiceTest {
     @Test
     void managerAllowedForAccessFlagEvenWhenClaimFlagIsFalse() {
         UUID managerUuid = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), Map.of("container_access", FlagState.OFF), Set.of(new ClaimMember(managerUuid, ClaimRole.MANAGER)));
+        Claim claim = claim(UUID.randomUUID(), Map.of("container_access", false), Set.of(new ClaimMember(managerUuid, ClaimRole.MANAGER)));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, managerUuid, "container_access");
@@ -62,7 +61,7 @@ class ProtectionServiceTest {
     @Test
     void memberStillFollowsEnvironmentFlag() {
         UUID memberUuid = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), Map.of("fluid_flow", FlagState.OFF), Set.of(new ClaimMember(memberUuid, ClaimRole.MEMBER)));
+        Claim claim = claim(UUID.randomUUID(), Map.of("fluid_flow", false), Set.of(new ClaimMember(memberUuid, ClaimRole.MEMBER)));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, memberUuid, "fluid_flow");
@@ -72,7 +71,7 @@ class ProtectionServiceTest {
 
     @Test
     void nullActorDeniedForAdminClaimWithoutOwnerWhenFlagIsFalse() {
-        Claim claim = claim(OwnerType.ADMIN, null, Map.of("build", FlagState.OFF));
+        Claim claim = claim(OwnerType.ADMIN, null, Map.of("build", false));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, null, "build");
@@ -82,7 +81,7 @@ class ProtectionServiceTest {
 
     @Test
     void strangerAllowedWhenClaimFlagIsTrue() {
-        Claim claim = claim(UUID.randomUUID(), Map.of("build", FlagState.ALL));
+        Claim claim = claim(UUID.randomUUID(), Map.of("build", true));
         ProtectionService service = new ProtectionService(FlagRegistry.createDefault());
 
         ClaimProtectionResult result = service.checkClaimFlag(claim, UUID.randomUUID(), "build");
@@ -101,19 +100,19 @@ class ProtectionServiceTest {
                 .isEqualTo(ClaimProtectionResult.DENY_WITH_MESSAGE);
     }
 
-    private static Claim claim(UUID ownerUuid, Map<String, FlagState> flags) {
+    private static Claim claim(UUID ownerUuid, Map<String, Boolean> flags) {
         return claim(ownerUuid, flags, Set.of());
     }
 
-    private static Claim claim(UUID ownerUuid, Map<String, FlagState> flags, Set<ClaimMember> members) {
+    private static Claim claim(UUID ownerUuid, Map<String, Boolean> flags, Set<ClaimMember> members) {
         return claim(OwnerType.PLAYER, ownerUuid, flags, members);
     }
 
-    private static Claim claim(OwnerType ownerType, UUID ownerUuid, Map<String, FlagState> flags) {
+    private static Claim claim(OwnerType ownerType, UUID ownerUuid, Map<String, Boolean> flags) {
         return claim(ownerType, ownerUuid, flags, Set.of());
     }
 
-    private static Claim claim(OwnerType ownerType, UUID ownerUuid, Map<String, FlagState> flags, Set<ClaimMember> members) {
+    private static Claim claim(OwnerType ownerType, UUID ownerUuid, Map<String, Boolean> flags, Set<ClaimMember> members) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
