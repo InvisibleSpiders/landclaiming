@@ -6,6 +6,7 @@ import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.OwnerType;
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ class ClaimFlagServiceTest {
         ClaimFlagService service = new ClaimFlagService(repository, claimIndex, FlagRegistry.createDefault());
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(ownerId, worldId, Map.of("build", false));
+        Claim claim = claim(ownerId, worldId, Map.of("build", FlagState.OFF));
         repository.claims.add(claim);
         claimIndex.add(claim);
 
@@ -38,7 +39,7 @@ class ClaimFlagServiceTest {
 
         assertThat(result.allowed()).isTrue();
         Claim updated = repository.claims.get(0);
-        assertThat(updated.flags()).containsEntry("build", true);
+        assertThat(updated.flags()).containsEntry("build", FlagState.ALL);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
     }
 
@@ -50,7 +51,7 @@ class ClaimFlagServiceTest {
         UUID ownerId = UUID.randomUUID();
         UUID deniedPlayerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(ownerId, worldId, Map.of("build", false), Set.of(deniedPlayerId));
+        Claim claim = claim(ownerId, worldId, Map.of("build", FlagState.OFF), Set.of(deniedPlayerId));
         repository.claims.add(claim);
         claimIndex.add(claim);
 
@@ -68,7 +69,7 @@ class ClaimFlagServiceTest {
         ClaimFlagService service = new ClaimFlagService(repository, claimIndex, FlagRegistry.createDefault());
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(ownerId, worldId, Map.of("build", true));
+        Claim claim = claim(ownerId, worldId, Map.of("build", FlagState.ALL));
         repository.claims.add(claim);
         claimIndex.add(claim);
 
@@ -81,14 +82,14 @@ class ClaimFlagServiceTest {
 
         assertThat(result.allowed()).isTrue();
         Claim updated = repository.claims.get(0);
-        assertThat(updated.flags()).containsEntry("build", false);
+        assertThat(updated.flags()).containsEntry("build", FlagState.OFF);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
     }
 
     @Test
     void nonOwnerCannotSetFlag() {
         ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
-        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of("build", false));
+        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of("build", FlagState.OFF));
 
         ClaimFlagResult result = service.setFlag(UUID.randomUUID(), claim, "build", true, permission -> true);
 
@@ -112,7 +113,7 @@ class ClaimFlagServiceTest {
     void missingEditPermissionIsDenied() {
         ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
         UUID ownerId = UUID.randomUUID();
-        Claim claim = claim(ownerId, UUID.randomUUID(), Map.of("build", false));
+        Claim claim = claim(ownerId, UUID.randomUUID(), Map.of("build", FlagState.OFF));
 
         ClaimFlagResult result = service.setFlag(ownerId, claim, "build", true, permission -> false);
 
@@ -123,7 +124,7 @@ class ClaimFlagServiceTest {
     @Test
     void flagRowsIncludeRegistryDefaultsWhenClaimDoesNotStoreValue() {
         ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
-        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of("build", true));
+        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of("build", FlagState.ALL));
 
         List<ClaimFlagRow> rows = service.listFlags(claim);
 
@@ -166,11 +167,11 @@ class ClaimFlagServiceTest {
         );
     }
 
-    private static Claim claim(UUID ownerId, UUID worldId, Map<String, Boolean> flags) {
+    private static Claim claim(UUID ownerId, UUID worldId, Map<String, FlagState> flags) {
         return claim(ownerId, worldId, flags, Set.of());
     }
 
-    private static Claim claim(UUID ownerId, UUID worldId, Map<String, Boolean> flags, Set<UUID> deniedPlayers) {
+    private static Claim claim(UUID ownerId, UUID worldId, Map<String, FlagState> flags, Set<UUID> deniedPlayers) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),

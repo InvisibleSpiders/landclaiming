@@ -1,5 +1,6 @@
 package com.nick.landclaims.plugin.entity;
 
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
@@ -97,10 +98,10 @@ public final class EntityControlService {
 
     private boolean shouldRemove(LivingEntity entity, Claim claim) {
         if (isHostile(entity)) {
-            return claim.flags().getOrDefault(REMOVE_HOSTILE_FLAG, false);
+            return claim.flags().getOrDefault(REMOVE_HOSTILE_FLAG, FlagState.OFF) != FlagState.OFF;
         }
         if (isPassive(entity)) {
-            return claim.flags().getOrDefault(REMOVE_PASSIVE_FLAG, false);
+            return claim.flags().getOrDefault(REMOVE_PASSIVE_FLAG, FlagState.OFF) != FlagState.OFF;
         }
         return false;
     }

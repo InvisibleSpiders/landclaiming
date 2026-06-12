@@ -2,6 +2,7 @@ package com.nick.landclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ class ClaimCreationServiceTest {
         assertThat(saved.name()).isEqualTo("Home");
         assertThat(saved.owner()).isEqualTo(OwnerType.PLAYER);
         assertThat(saved.ownerUuid()).isEqualTo(ownerId);
-        assertThat(saved.flags()).containsEntry("build", false).containsEntry("break", false);
+        assertThat(saved.flags()).containsEntry("build", FlagState.VISITORS).containsEntry("break", FlagState.VISITORS);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(saved);
     }
 
@@ -293,7 +294,7 @@ class ClaimCreationServiceTest {
                 ownerId,
                 worldId,
                 chunks,
-                Map.of("build", false),
+                Map.of("build", FlagState.OFF),
                 Set.of(),
                 deniedPlayers,
                 now,
