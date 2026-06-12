@@ -1,6 +1,7 @@
 package com.nick.landclaims.plugin.storage.sql;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
@@ -94,6 +95,24 @@ class SqlClaimRepositoryTest {
         assertThat(repository.findClaimAt(worldId, 1, 2)).isEmpty();
         assertThat(repository.findClaimById(claimId)).isEmpty();
         assertThat(repository.findAllClaims()).isEmpty();
+    }
+
+    @Test
+    void roundTripsFlagState(@TempDir Path tempDirectory) throws Exception {
+        SQLiteDataSource dataSource = new SQLiteDataSource();
+        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        applyMigrations(dataSource);
+        SqlClaimRepository repository = new SqlClaimRepository(dataSource);
+        UUID world = UUID.randomUUID();
+        Claim claim = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, UUID.randomUUID(), world,
+                Set.of(new ClaimChunk(world, 1, 2)),
+                Map.of("container_access", FlagState.ALL, "explosion_damage", FlagState.OFF),
+                Set.of(), Set.of(), Instant.now(), Instant.now());
+        repository.saveClaim(claim);
+
+        Claim loaded = repository.findClaimById(claim.id()).orElseThrow();
+        assertEquals(FlagState.ALL, loaded.flags().get("container_access"));
+        assertEquals(FlagState.OFF, loaded.flags().get("explosion_damage"));
     }
 
     @Test
