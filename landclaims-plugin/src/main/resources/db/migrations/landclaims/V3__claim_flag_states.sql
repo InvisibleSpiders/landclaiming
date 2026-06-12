@@ -1,6 +1,6 @@
 -- Tri-state flag values. Add a state column and backfill from the legacy enabled flag
--- so existing claims keep their current behavior. The enabled column is retained (now
--- nullable in effect; still written by the plugin for rollback safety).
+-- so existing claims keep their current behavior. The enabled column is retained for
+-- rollback safety.
 ALTER TABLE claim_flags ADD COLUMN state TEXT;
 
 UPDATE claim_flags
