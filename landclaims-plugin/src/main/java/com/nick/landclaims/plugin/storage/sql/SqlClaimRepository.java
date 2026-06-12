@@ -255,13 +255,142 @@ public class SqlClaimRepository implements ClaimRepository {
     }
 
     private List<Claim> mapClaims(Connection connection, PreparedStatement statement) throws SQLException {
-        List<Claim> claims = new ArrayList<>();
+        // Read every base row first, then bulk-load the child tables in one query each. This avoids
+        // the 4-queries-per-claim N+1 pattern that mapClaim() incurs when used in a loop.
+        List<ClaimRow> rows = new ArrayList<>();
         try (ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
-                claims.add(mapClaim(connection, resultSet));
+                rows.add(new ClaimRow(
+                        UUID.fromString(resultSet.getString("id")),
+                        resultSet.getString("name"),
+                        OwnerType.valueOf(resultSet.getString("owner_type")),
+                        nullableUuid(resultSet.getString("owner_uuid")),
+                        UUID.fromString(resultSet.getString("world_id")),
+                        Instant.parse(resultSet.getString("created_at")),
+                        Instant.parse(resultSet.getString("updated_at"))
+                ));
             }
         }
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> claimIds = rows.stream().map(ClaimRow::id).toList();
+        Map<UUID, Set<ClaimChunk>> chunksByClaim = bulkLoadChunks(connection, claimIds);
+        Map<UUID, Map<String, Boolean>> flagsByClaim = bulkLoadFlags(connection, claimIds);
+        Map<UUID, Set<ClaimMember>> membersByClaim = bulkLoadMembers(connection, claimIds);
+        Map<UUID, Set<UUID>> deniedByClaim = bulkLoadDeniedPlayers(connection, claimIds);
+
+        List<Claim> claims = new ArrayList<>(rows.size());
+        for (ClaimRow row : rows) {
+            claims.add(new Claim(
+                    row.id(),
+                    row.name(),
+                    row.ownerType(),
+                    row.ownerUuid(),
+                    row.worldId(),
+                    chunksByClaim.getOrDefault(row.id(), Set.of()),
+                    flagsByClaim.getOrDefault(row.id(), Map.of()),
+                    membersByClaim.getOrDefault(row.id(), Set.of()),
+                    deniedByClaim.getOrDefault(row.id(), Set.of()),
+                    row.createdAt(),
+                    row.updatedAt()
+            ));
+        }
         return List.copyOf(claims);
+    }
+
+    private record ClaimRow(
+            UUID id,
+            String name,
+            OwnerType ownerType,
+            UUID ownerUuid,
+            UUID worldId,
+            Instant createdAt,
+            Instant updatedAt
+    ) {}
+
+    private String inClausePlaceholders(int count) {
+        return String.join(", ", java.util.Collections.nCopies(count, "?"));
+    }
+
+    private void bindClaimIds(PreparedStatement statement, List<UUID> claimIds) throws SQLException {
+        for (int i = 0; i < claimIds.size(); i++) {
+            statement.setString(i + 1, claimIds.get(i).toString());
+        }
+    }
+
+    private Map<UUID, Set<ClaimChunk>> bulkLoadChunks(Connection connection, List<UUID> claimIds) throws SQLException {
+        Map<UUID, Set<ClaimChunk>> result = new HashMap<>();
+        String sql = "SELECT claim_id, world_id, chunk_x, chunk_z FROM claim_chunks WHERE claim_id IN ("
+                + inClausePlaceholders(claimIds.size()) + ")";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            bindClaimIds(statement, claimIds);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    UUID claimId = UUID.fromString(resultSet.getString("claim_id"));
+                    result.computeIfAbsent(claimId, key -> new HashSet<>()).add(new ClaimChunk(
+                            UUID.fromString(resultSet.getString("world_id")),
+                            resultSet.getInt("chunk_x"),
+                            resultSet.getInt("chunk_z")
+                    ));
+                }
+            }
+        }
+        return result;
+    }
+
+    private Map<UUID, Map<String, Boolean>> bulkLoadFlags(Connection connection, List<UUID> claimIds) throws SQLException {
+        Map<UUID, Map<String, Boolean>> result = new HashMap<>();
+        String sql = "SELECT claim_id, flag_key, enabled FROM claim_flags WHERE claim_id IN ("
+                + inClausePlaceholders(claimIds.size()) + ")";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            bindClaimIds(statement, claimIds);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    UUID claimId = UUID.fromString(resultSet.getString("claim_id"));
+                    result.computeIfAbsent(claimId, key -> new HashMap<>())
+                            .put(resultSet.getString("flag_key"), resultSet.getInt("enabled") != 0);
+                }
+            }
+        }
+        return result;
+    }
+
+    private Map<UUID, Set<ClaimMember>> bulkLoadMembers(Connection connection, List<UUID> claimIds) throws SQLException {
+        Map<UUID, Set<ClaimMember>> result = new HashMap<>();
+        String sql = "SELECT claim_id, member_uuid, role FROM claim_members WHERE claim_id IN ("
+                + inClausePlaceholders(claimIds.size()) + ")";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            bindClaimIds(statement, claimIds);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    UUID claimId = UUID.fromString(resultSet.getString("claim_id"));
+                    result.computeIfAbsent(claimId, key -> new HashSet<>()).add(new ClaimMember(
+                            UUID.fromString(resultSet.getString("member_uuid")),
+                            ClaimRole.valueOf(resultSet.getString("role"))
+                    ));
+                }
+            }
+        }
+        return result;
+    }
+
+    private Map<UUID, Set<UUID>> bulkLoadDeniedPlayers(Connection connection, List<UUID> claimIds) throws SQLException {
+        Map<UUID, Set<UUID>> result = new HashMap<>();
+        String sql = "SELECT claim_id, player_uuid FROM claim_denied_players WHERE claim_id IN ("
+                + inClausePlaceholders(claimIds.size()) + ")";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            bindClaimIds(statement, claimIds);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    UUID claimId = UUID.fromString(resultSet.getString("claim_id"));
+                    result.computeIfAbsent(claimId, key -> new HashSet<>())
+                            .add(UUID.fromString(resultSet.getString("player_uuid")));
+                }
+            }
+        }
+        return result;
     }
 
     private Claim mapClaim(Connection connection, ResultSet resultSet) throws SQLException {

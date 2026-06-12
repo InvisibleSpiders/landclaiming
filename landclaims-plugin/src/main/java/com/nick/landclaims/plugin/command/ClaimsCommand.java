@@ -340,7 +340,12 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        OfflinePlayer target = resolveOfflinePlayer(player, args[3]);
+        Optional<OfflinePlayer> resolved = resolveOfflinePlayer(player, args[3]);
+        if (resolved.isEmpty()) {
+            player.sendMessage(message("admin.userclaims.list-player-not-found", Map.of("player", args[3])));
+            return true;
+        }
+        OfflinePlayer target = resolved.orElseThrow();
         List<Claim> claims = adminClaimService.listPlayerClaims(target.getUniqueId());
         if (claims.isEmpty()) {
             player.sendMessage(message("admin.userclaims.list-empty", Map.of("player", memberName(target))));
@@ -735,13 +740,19 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         return claim;
     }
 
-    private OfflinePlayer resolveOfflinePlayer(Player actor, String input) {
+    // Resolves a target without ever hitting Mojang's web API on the main thread. UUIDs resolve
+    // directly; names resolve only from online players or the server's local profile cache. A name
+    // for a never-seen player returns empty rather than blocking the server on a synchronous lookup.
+    private Optional<OfflinePlayer> resolveOfflinePlayer(Player actor, String input) {
         Optional<UUID> uuid = parseUuid(input);
         if (uuid.isPresent()) {
-            return actor.getServer().getOfflinePlayer(uuid.orElseThrow());
+            return Optional.of(actor.getServer().getOfflinePlayer(uuid.orElseThrow()));
         }
         Player onlinePlayer = actor.getServer().getPlayerExact(input);
-        return onlinePlayer == null ? actor.getServer().getOfflinePlayer(input) : onlinePlayer;
+        if (onlinePlayer != null) {
+            return Optional.of(onlinePlayer);
+        }
+        return Optional.ofNullable(actor.getServer().getOfflinePlayerIfCached(input));
     }
 
     private boolean createAdminClaim(Player player, String[] args) {
@@ -1379,6 +1390,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // Fail-fast validation so we never charge the player for a claim we already know is invalid.
+        // createPlayerClaim re-validates under the same call as the write to guard against TOCTOU races.
         ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(player.getUniqueId(), claimName, chunks);
         if (!validationResult.isAllowed()) {
             showBorder(player, chunks, BorderColor.RED);
@@ -1417,8 +1430,11 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 player.getUniqueId(), claimName, chunks, mergeTargets);
         if (!result.isAllowed()) {
             // Refund the payment — the creation failed (e.g. concurrent overlap) after we charged.
-            if (quote != null && claimPaymentService != null) {
-                claimPaymentService.refund(player.getUniqueId(), quote);
+            if (quote != null && claimPaymentService != null && quote.cost() > 0.0
+                    && !claimPaymentService.refund(player.getUniqueId(), quote)) {
+                player.sendMessage(message("claim.refund-failed", Map.of(
+                        "cost", claimPaymentService.format(quote.cost())
+                )));
             }
             player.sendMessage(claimCreateDenied(result.messageKey().orElse("claims.denied")));
             return true;
