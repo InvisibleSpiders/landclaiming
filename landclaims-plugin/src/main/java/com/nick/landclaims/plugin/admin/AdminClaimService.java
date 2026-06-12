@@ -3,6 +3,7 @@ package com.nick.landclaims.plugin.admin;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.ClaimMember;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
@@ -143,6 +144,11 @@ public final class AdminClaimService {
                     if (claim.owner() != OwnerType.PLAYER) {
                         return AdminClaimResult.denied("admin.userclaims.not-player");
                     }
+                    // Drop the incoming owner from the member roster — owner and member are distinct
+                    // roles, and leaving a stale member row would duplicate their access grant.
+                    Set<ClaimMember> retainedMembers = claim.members().stream()
+                            .filter(member -> !member.memberUuid().equals(newOwnerId))
+                            .collect(Collectors.toSet());
                     Claim transferred = new Claim(
                             claim.id(),
                             claim.name(),
@@ -151,7 +157,7 @@ public final class AdminClaimService {
                             claim.worldId(),
                             claim.claimChunks(),
                             claim.flags(),
-                            claim.members(),
+                            retainedMembers,
                             claim.deniedPlayers(),
                             claim.createdAt(),
                             Instant.now()

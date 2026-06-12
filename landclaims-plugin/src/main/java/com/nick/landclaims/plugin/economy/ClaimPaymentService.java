@@ -29,21 +29,28 @@ public final class ClaimPaymentService {
         return ClaimPaymentResult.success();
     }
 
-    public void refund(UUID playerId, ClaimCostQuote quote) {
+    /**
+     * Refunds a previously-charged quote. Returns {@code true} when nothing was owed or the deposit
+     * succeeded, {@code false} when the player was charged but could not be refunded — callers should
+     * surface that failure to the player rather than silently swallowing the lost balance.
+     */
+    public boolean refund(UUID playerId, ClaimCostQuote quote) {
         Objects.requireNonNull(playerId, "playerId");
         Objects.requireNonNull(quote, "quote");
         if (quote.cost() <= 0.0) {
-            return;
+            return true;
         }
         if (!economyService.available()) {
             LOGGER.warning("Economy unavailable during refund — player " + playerId + " was charged "
                     + quote.cost() + " but could not be refunded.");
-            return;
+            return false;
         }
         if (!economyService.deposit(playerId, quote.cost())) {
             LOGGER.warning("Deposit failed during refund — player " + playerId + " was charged "
                     + quote.cost() + " but the deposit returned false.");
+            return false;
         }
+        return true;
     }
 
     public String format(double amount) {

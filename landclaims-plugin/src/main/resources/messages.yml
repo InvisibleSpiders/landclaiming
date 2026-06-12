@@ -9,6 +9,7 @@ claim:
   selection-required: "<red>Select two chunks with the claim tool first."
   hold-tool: "<red>Hold your claim tool to create a claim."
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
+  refund-failed: "<red>Claim creation failed and your refund of <yellow><cost></yellow> could not be processed. Contact an administrator."
   boundary:
     enter: "<gold>Entering <yellow><claim_name></yellow></gold>"
     exit: "<gray>Leaving <yellow><claim_name></yellow>.</gray>"
@@ -157,6 +158,7 @@ admin:
   userclaims:
     usage: "<red>Usage: /claim admin userclaims <list|view|delete|teleport|transfer|flag|member>"
     list-usage: "<red>Usage: /claim admin userclaims list <player|uuid>"
+    list-player-not-found: "<red>Player <yellow><player></yellow> has not been seen on this server. Use a UUID to look up offline players."
     view-usage: "<red>Usage: /claim admin userclaims view <claim-id>"
     delete-usage: "<red>Usage: /claim admin userclaims delete <claim-id>"
     teleport-usage: "<red>Usage: /claim admin userclaims teleport <claim-id>"
