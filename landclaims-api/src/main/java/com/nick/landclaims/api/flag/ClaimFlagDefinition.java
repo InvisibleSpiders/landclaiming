@@ -29,6 +29,9 @@ public record ClaimFlagDefinition(
         if (defaultState == null) {
             throw new IllegalArgumentException("Flag defaultState cannot be null.");
         }
+        if (editPermission == null) {
+            throw new IllegalArgumentException("Flag editPermission cannot be null.");
+        }
         if (!kind.supports(defaultState)) {
             throw new IllegalArgumentException(
                     "Flag " + key + " kind " + kind + " does not support default state " + defaultState);
