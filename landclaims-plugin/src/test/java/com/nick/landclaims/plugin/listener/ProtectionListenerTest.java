@@ -164,6 +164,8 @@ class ProtectionListenerTest {
                 chunk.worldId(),
                 chunks,
                 flags,
+                Set.of(),
+                Set.of(),
                 now,
                 now
         );
