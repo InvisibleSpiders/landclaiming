@@ -2,16 +2,53 @@ package com.nick.landclaims.plugin.flag;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.nick.landclaims.api.flag.ClaimFlagDefinition;
+import com.nick.landclaims.api.flag.FlagKind;
+import com.nick.landclaims.api.flag.FlagState;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class FlagRegistryTest {
-    @Test
-    void defaultRegistryContainsMvpFlagsWithLockedDownDefaults() {
-        FlagRegistry registry = FlagRegistry.createDefault();
+    private final FlagRegistry registry = FlagRegistry.createDefault();
 
+    @Test
+    void containerAccessIsPlayerActionOwnerExemptVisitorsDefault() {
+        ClaimFlagDefinition def = registry.definition("container_access").orElseThrow();
+        assertEquals(FlagKind.PLAYER_ACTION, def.kind());
+        assertTrue(def.ownerExempt());
+        assertEquals(FlagState.VISITORS, def.defaultState());
+    }
+
+    @Test
+    void entityDamageDefaultsToAll() {
+        assertEquals(FlagState.ALL, registry.definition("entity_damage").orElseThrow().defaultState());
+    }
+
+    @Test
+    void explosionDamageIsWorldEffectNotOwnerExemptOffDefault() {
+        ClaimFlagDefinition def = registry.definition("explosion_damage").orElseThrow();
+        assertEquals(FlagKind.WORLD_EFFECT, def.kind());
+        assertFalse(def.ownerExempt());
+        assertEquals(FlagState.OFF, def.defaultState());
+    }
+
+    @Test
+    void pistonProtectionDefaultsToAll() {
+        assertEquals(FlagState.ALL, registry.definition("piston_protection").orElseThrow().defaultState());
+    }
+
+    @Test
+    void defaultStateLookupFallsBackToOff() {
+        assertEquals(FlagState.OFF, registry.defaultState("nonexistent_flag"));
+    }
+
+    @Test
+    void defaultRegistryContainsAllExpectedFlags() {
         assertThat(registry.keys()).containsExactlyInAnyOrder(
                 "build",
                 "break",
@@ -32,16 +69,10 @@ class FlagRegistryTest {
                 "item_pickup",
                 "item_drop"
         );
-        assertThat(registry.defaultValue("build")).isFalse();
-        assertThat(registry.defaultValue("container_access")).isFalse();
-        assertThat(registry.defaultValue("piston_protection")).isTrue();
-        assertThat(registry.defaultValue("unknown")).isFalse();
     }
 
     @Test
     void definitionReturnsRegisteredDefinition() {
-        FlagRegistry registry = FlagRegistry.createDefault();
-
         assertThat(registry.definition("piston_protection"))
                 .isPresent()
                 .get()
@@ -49,23 +80,22 @@ class FlagRegistryTest {
                     assertThat(definition.key()).isEqualTo("piston_protection");
                     assertThat(definition.label()).isEqualTo("Piston Protection");
                     assertThat(definition.description()).contains("piston");
-                    assertThat(definition.defaultValue()).isTrue();
+                    assertThat(definition.kind()).isEqualTo(FlagKind.WORLD_EFFECT);
+                    assertThat(definition.defaultState()).isEqualTo(FlagState.ALL);
                 });
     }
 
     @Test
     void rejectsDuplicateFlagKeys() {
-        ClaimFlagDefinition first = flag("custom_flag", false);
-        ClaimFlagDefinition duplicate = flag("custom_flag", true);
+        ClaimFlagDefinition first = flag("custom_flag");
+        ClaimFlagDefinition duplicate = flag("custom_flag");
 
-        assertThatThrownBy(() -> new FlagRegistry(Set.of(first, duplicate)))
+        assertThatThrownBy(() -> new FlagRegistry(List.of(first, duplicate)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void exposedCollectionsCannotMutateRegistryInternals() {
-        FlagRegistry registry = FlagRegistry.createDefault();
-
         assertThatThrownBy(() -> registry.keys().add("custom_flag"))
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> registry.definitions().clear())
@@ -75,11 +105,15 @@ class FlagRegistryTest {
         assertThat(registry.keys()).isInstanceOf(Set.class);
     }
 
-    private static ClaimFlagDefinition flag(String key, boolean defaultValue) {
+    private static ClaimFlagDefinition flag(String key) {
         return new ClaimFlagDefinition(
                 key,
                 "custom",
-                defaultValue,
+                key,
+                "",
+                FlagKind.PLAYER_ACTION,
+                true,
+                FlagState.OFF,
                 "landclaims.flag." + key
         );
     }

@@ -1,6 +1,7 @@
 package com.nick.landclaims.plugin.flag;
 
 import com.nick.landclaims.api.flag.ClaimFlagDefinition;
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimRole;
@@ -34,33 +35,35 @@ public final class ClaimFlagService {
         this.flagRegistry = Objects.requireNonNull(flagRegistry, "flagRegistry");
     }
 
-    public ClaimFlagResult setFlag(
+    public ClaimFlagResult setFlagState(
             UUID actorId,
             Claim claim,
             String flagKey,
-            boolean enabled,
-            Predicate<String> permissionCheck
-    ) {
+            FlagState state,
+            Predicate<String> permissionCheck) {
         Objects.requireNonNull(actorId, "actorId");
         Objects.requireNonNull(claim, "claim");
         Objects.requireNonNull(flagKey, "flagKey");
+        Objects.requireNonNull(state, "state");
         Objects.requireNonNull(permissionCheck, "permissionCheck");
 
         if (!actorId.equals(claim.ownerUuid()) && !isManager(actorId, claim)) {
             return ClaimFlagResult.denied("claim.flag.not-owner");
         }
 
-        ClaimFlagDefinition definition = flagRegistry.definition(flagKey)
-                .orElse(null);
+        ClaimFlagDefinition definition = flagRegistry.definition(flagKey).orElse(null);
         if (definition == null) {
             return ClaimFlagResult.denied("claim.flag.unknown");
+        }
+        if (!definition.kind().supports(state)) {
+            return ClaimFlagResult.denied("claim.flag.invalid-state");
         }
         if (!permissionCheck.test(definition.editPermission())) {
             return ClaimFlagResult.denied("claim.flag.no-permission");
         }
 
-        Map<String, Boolean> flags = new HashMap<>(claim.flags());
-        flags.put(definition.key(), enabled);
+        Map<String, FlagState> flags = new HashMap<>(claim.flags());
+        flags.put(definition.key(), state);
         Claim updatedClaim = new Claim(
                 claim.id(),
                 claim.name(),
@@ -72,27 +75,38 @@ public final class ClaimFlagService {
                 claim.members(),
                 claim.deniedPlayers(),
                 claim.createdAt(),
-                Instant.now()
-        );
+                Instant.now());
         claimRepository.saveClaim(updatedClaim);
         claimIndex.replace(updatedClaim);
         return ClaimFlagResult.success();
     }
 
-    public ClaimFlagResult toggleFlag(
+    public ClaimFlagResult cycleFlag(
             UUID actorId,
             Claim claim,
             String flagKey,
-            Predicate<String> permissionCheck
-    ) {
+            Predicate<String> permissionCheck) {
+        Objects.requireNonNull(actorId, "actorId");
+        Objects.requireNonNull(claim, "claim");
         Objects.requireNonNull(flagKey, "flagKey");
-        ClaimFlagDefinition definition = flagRegistry.definition(flagKey)
-                .orElse(null);
+        Objects.requireNonNull(permissionCheck, "permissionCheck");
+        ClaimFlagDefinition definition = flagRegistry.definition(flagKey).orElse(null);
         if (definition == null) {
             return ClaimFlagResult.denied("claim.flag.unknown");
         }
-        boolean currentValue = claim.flags().getOrDefault(definition.key(), definition.defaultValue());
-        return setFlag(actorId, claim, definition.key(), !currentValue, permissionCheck);
+        FlagState next = nextState(claim, definition.key());
+        return setFlagState(actorId, claim, definition.key(), next, permissionCheck);
+    }
+
+    public FlagState nextState(Claim claim, String flagKey) {
+        Objects.requireNonNull(claim, "claim");
+        Objects.requireNonNull(flagKey, "flagKey");
+        ClaimFlagDefinition definition = flagRegistry.definition(flagKey).orElse(null);
+        if (definition == null) {
+            return FlagState.OFF;
+        }
+        FlagState current = claim.flags().getOrDefault(definition.key(), definition.defaultState());
+        return definition.kind().next(current);
     }
 
     private boolean isManager(UUID actorId, Claim claim) {
@@ -115,9 +129,9 @@ public final class ClaimFlagService {
                         definition.category(),
                         definition.label(),
                         definition.description(),
-                        claim.flags().getOrDefault(definition.key(), definition.defaultValue()),
-                        definition.editPermission()
-                ))
+                        definition.kind(),
+                        claim.flags().getOrDefault(definition.key(), definition.defaultState()),
+                        definition.editPermission()))
                 .toList();
     }
 
