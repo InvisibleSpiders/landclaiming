@@ -17,7 +17,8 @@ class LandClaimsMigrationResourceTest {
                 .filter(line -> !line.isEmpty() && !line.startsWith("#")))
                 .containsExactly(
                         "V1__initial_claim_schema.sql",
-                        "V2__claim_denied_players.sql"
+                        "V2__claim_denied_players.sql",
+                        "V3__claim_flag_states.sql"
                 );
     }
 
@@ -42,6 +43,19 @@ class LandClaimsMigrationResourceTest {
                 .contains("CREATE TABLE IF NOT EXISTS claim_denied_players")
                 .contains("player_uuid CHAR(36) NOT NULL")
                 .contains("PRIMARY KEY (claim_id, player_uuid)");
+    }
+
+    @Test
+    void flagStatesMigrationAddsStateColumnAndBackfills() throws IOException {
+        String migration = resource("db/migrations/landclaims/V3__claim_flag_states.sql");
+
+        assertThat(migration)
+                .contains("ALTER TABLE claim_flags ADD COLUMN state TEXT")
+                .contains("UPDATE claim_flags")
+                .contains("CASE")
+                .contains("'VISITORS'")
+                .contains("'ALL'")
+                .contains("'OFF'");
     }
 
     private static String resource(String path) throws IOException {
