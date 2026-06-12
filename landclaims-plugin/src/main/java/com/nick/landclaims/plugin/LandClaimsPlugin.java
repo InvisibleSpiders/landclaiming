@@ -185,7 +185,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         new ClaimFlagService(claimRepository, claimIndex, flagRegistry),
                         new ClaimFlagEditorService(),
                         new ClaimMenuService(),
-                        new DialogService(getConfig().getBoolean("ui.prefer-dialogs", true)),
+                        new DialogService(),
                         new InventoryGuiFallbackService(),
                         chunkBorderVisualService,
                         claimBorderColorService,

@@ -2,7 +2,6 @@ package com.nick.landclaims.plugin.claim;
 
 import com.nick.landclaims.api.claim.ClaimChunkView;
 import com.nick.landclaims.api.claim.ClaimView;
-import com.nick.landclaims.api.flag.FlagState;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -17,7 +16,7 @@ public record Claim(
         UUID ownerUuid,
         UUID worldId,
         Set<ClaimChunk> claimChunks,
-        Map<String, FlagState> flags,
+        Map<String, Boolean> flags,
         Set<ClaimMember> members,
         Set<UUID> deniedPlayers,
         Instant createdAt,
@@ -43,7 +42,7 @@ public record Claim(
             UUID ownerUuid,
             UUID worldId,
             Set<ClaimChunk> claimChunks,
-            Map<String, FlagState> flags,
+            Map<String, Boolean> flags,
             Set<ClaimMember> members,
             Instant createdAt,
             Instant updatedAt
@@ -58,7 +57,7 @@ public record Claim(
             UUID ownerUuid,
             UUID worldId,
             Set<ClaimChunk> claimChunks,
-            Map<String, FlagState> flags,
+            Map<String, Boolean> flags,
             Instant createdAt,
             Instant updatedAt
     ) {

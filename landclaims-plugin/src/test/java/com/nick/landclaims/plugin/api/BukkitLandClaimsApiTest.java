@@ -5,7 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.nick.landclaims.api.claim.ClaimView;
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
@@ -30,7 +29,7 @@ class BukkitLandClaimsApiTest {
     @Test
     void findsClaimAtLocation() {
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 2, -3)), Map.of("build", FlagState.OFF));
+        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 2, -3)), Map.of("build", false));
         FakeClaimRepository repository = new FakeClaimRepository(List.of(claim));
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
@@ -53,7 +52,7 @@ class BukkitLandClaimsApiTest {
     @Test
     void deniesInteractionWhenClaimFlagDeniesStranger() {
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("item_drop", FlagState.ALL));
+        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("item_drop", false));
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
         BukkitLandClaimsApi api = api(new FakeClaimRepository(List.of(claim)), claimIndex);
@@ -67,7 +66,7 @@ class BukkitLandClaimsApiTest {
     void allowsOwnerEvenWhenClaimFlagDeniesStrangers() {
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", FlagState.VISITORS));
+        Claim claim = claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", false));
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
         BukkitLandClaimsApi api = api(new FakeClaimRepository(List.of(claim)), claimIndex);
@@ -80,7 +79,7 @@ class BukkitLandClaimsApiTest {
     @Test
     void bypassPermissionAllowsInteraction() {
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", FlagState.VISITORS));
+        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", false));
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
         Player player = player(UUID.randomUUID());
@@ -126,7 +125,7 @@ class BukkitLandClaimsApiTest {
         return location;
     }
 
-    private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks, Map<String, FlagState> flags) {
+    private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks, Map<String, Boolean> flags) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),

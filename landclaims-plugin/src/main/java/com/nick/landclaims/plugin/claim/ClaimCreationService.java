@@ -1,6 +1,5 @@
 package com.nick.landclaims.plugin.claim;
 
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
@@ -86,7 +85,7 @@ public final class ClaimCreationService {
             Claim existingClaim = mergeTargets.get(0);
             Set<ClaimChunk> mergedChunks = new HashSet<>();
             // Union flags, members, and deniedPlayers from ALL targets so nothing is silently dropped.
-            Map<String, FlagState> mergedFlags = new HashMap<>(defaultFlags());
+            Map<String, Boolean> mergedFlags = new HashMap<>(defaultFlags());
             Set<ClaimMember> mergedMembers = new HashSet<>();
             Set<UUID> mergedDeniedPlayers = new HashSet<>();
             for (Claim mergeTarget : mergeTargets) {
@@ -228,8 +227,8 @@ public final class ClaimCreationService {
         return ClaimValidationResult.denied("claims.too-close");
     }
 
-    private Map<String, FlagState> defaultFlags() {
+    private Map<String, Boolean> defaultFlags() {
         return flagRegistry.keys().stream()
-                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultState));
+                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultValue));
     }
 }
