@@ -1,25 +1,17 @@
 package com.nick.landclaims.plugin.protection;
 
 import com.nick.landclaims.api.claim.ClaimView;
+import com.nick.landclaims.api.flag.ClaimFlagDefinition;
+import com.nick.landclaims.api.flag.FlagKind;
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.api.protection.ClaimProtectionResult;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 public final class ProtectionService {
-    private static final Set<String> MEMBER_ACCESS_FLAGS = Set.of(
-            "build",
-            "break",
-            "interact",
-            "container_access",
-            "door_access",
-            "switch_access",
-            "redstone_access"
-    );
-
     private final FlagRegistry flagRegistry;
 
     public ProtectionService(FlagRegistry flagRegistry) {
@@ -30,37 +22,64 @@ public final class ProtectionService {
         Objects.requireNonNull(claim, "claim");
         Objects.requireNonNull(flagKey, "flagKey");
 
-        if (actorUuid != null && actorUuid.equals(claim.ownerUuid())) {
-            return ClaimProtectionResult.ALLOW;
-        }
+        FlagState state = claim.flags().getOrDefault(flagKey, flagRegistry.defaultState(flagKey));
+        ClaimFlagDefinition definition = flagRegistry.definition(flagKey).orElse(null);
+        FlagKind kind = definition == null ? FlagKind.PLAYER_ACTION : definition.kind();
 
-        if (actorUuid != null && isClaimManager(claim, actorUuid)) {
-            return ClaimProtectionResult.ALLOW;
+        if (kind == FlagKind.WORLD_EFFECT) {
+            return worldEffectResult(flagKey, state);
         }
+        return playerActionResult(claim, actorUuid, definition, state);
+    }
 
-        if (actorUuid != null && MEMBER_ACCESS_FLAGS.contains(flagKey) && isClaimMember(claim, actorUuid)) {
-            return ClaimProtectionResult.ALLOW;
-        }
-
-        boolean allowed = claim.flags().getOrDefault(flagKey, flagRegistry.defaultValue(flagKey));
+    private ClaimProtectionResult worldEffectResult(String flagKey, FlagState state) {
+        boolean enabled = state != FlagState.OFF;
         if ("piston_protection".equals(flagKey)) {
-            return allowed ? ClaimProtectionResult.DENY_WITH_MESSAGE : ClaimProtectionResult.ALLOW;
+            return enabled ? ClaimProtectionResult.DENY_WITH_MESSAGE : ClaimProtectionResult.ALLOW;
         }
-        return allowed ? ClaimProtectionResult.ALLOW : ClaimProtectionResult.DENY_WITH_MESSAGE;
+        return enabled ? ClaimProtectionResult.ALLOW : ClaimProtectionResult.DENY_WITH_MESSAGE;
     }
 
-    private boolean isClaimMember(ClaimView claim, UUID actorUuid) {
-        if (!(claim instanceof Claim landClaim)) {
-            return false;
+    private ClaimProtectionResult playerActionResult(
+            ClaimView claim, UUID actorUuid, ClaimFlagDefinition definition, FlagState state) {
+        if (state == FlagState.OFF) {
+            return ClaimProtectionResult.ALLOW;
         }
-        return landClaim.members().stream().anyMatch(member -> member.memberUuid().equals(actorUuid));
+        boolean ownerExempt = definition == null || definition.ownerExempt();
+        Relationship relationship = relationship(claim, actorUuid);
+        return switch (state) {
+            case VISITORS -> relationship == Relationship.VISITOR
+                    ? ClaimProtectionResult.DENY_WITH_MESSAGE
+                    : ClaimProtectionResult.ALLOW;
+            case ALL -> (ownerExempt && relationship.isTrusted())
+                    ? ClaimProtectionResult.ALLOW
+                    : ClaimProtectionResult.DENY_WITH_MESSAGE;
+            default -> ClaimProtectionResult.ALLOW;
+        };
     }
 
-    private boolean isClaimManager(ClaimView claim, UUID actorUuid) {
+    private enum Relationship {
+        OWNER, MANAGER, MEMBER, VISITOR;
+
+        boolean isTrusted() {
+            return this == OWNER || this == MANAGER;
+        }
+    }
+
+    private Relationship relationship(ClaimView claim, UUID actorUuid) {
+        if (actorUuid == null) {
+            return Relationship.VISITOR;
+        }
+        if (actorUuid.equals(claim.ownerUuid())) {
+            return Relationship.OWNER;
+        }
         if (!(claim instanceof Claim landClaim)) {
-            return false;
+            return Relationship.VISITOR;
         }
         return landClaim.members().stream()
-                .anyMatch(member -> member.memberUuid().equals(actorUuid) && member.role() == ClaimRole.MANAGER);
+                .filter(member -> member.memberUuid().equals(actorUuid))
+                .findFirst()
+                .map(member -> member.role() == ClaimRole.MANAGER ? Relationship.MANAGER : Relationship.MEMBER)
+                .orElse(Relationship.VISITOR);
     }
 }
