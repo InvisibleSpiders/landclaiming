@@ -66,6 +66,42 @@ class ClaimFlagServiceTest {
                 service.nextState(claim(Map.of("explosion_damage", FlagState.OFF)), "explosion_damage"));
     }
 
+    @Test
+    void nonOwnerCannotSetFlag() {
+        ClaimFlagResult result = service(new ArrayList<>())
+                .setFlagState(UUID.randomUUID(), claim(Map.of()), "build", FlagState.VISITORS, perm -> true);
+        assertFalse(result.allowed());
+        assertEquals("claim.flag.not-owner", result.messageKey());
+    }
+
+    @Test
+    void unknownFlagIsDenied() {
+        ClaimFlagResult result = service(new ArrayList<>())
+                .setFlagState(owner, claim(Map.of()), "nonexistent_flag", FlagState.OFF, perm -> true);
+        assertFalse(result.allowed());
+        assertEquals("claim.flag.unknown", result.messageKey());
+    }
+
+    @Test
+    void missingPermissionIsDenied() {
+        ClaimFlagResult result = service(new ArrayList<>())
+                .setFlagState(owner, claim(Map.of()), "build", FlagState.VISITORS, perm -> false);
+        assertFalse(result.allowed());
+        assertEquals("claim.flag.no-permission", result.messageKey());
+    }
+
+    @Test
+    void setFlagPreservesDeniedPlayers() {
+        List<Claim> saved = new ArrayList<>();
+        UUID denied = UUID.randomUUID();
+        Claim c = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, owner, UUID.randomUUID(),
+                Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0)),
+                Map.of("build", FlagState.VISITORS), Set.of(), Set.of(denied),
+                Instant.now(), Instant.now());
+        service(saved).setFlagState(owner, c, "build", FlagState.OFF, perm -> true);
+        assertEquals(Set.of(denied), saved.get(saved.size() - 1).deniedPlayers());
+    }
+
     // Minimal in-memory ClaimRepository capturing saved claims.
     private static final class InMemoryRepo implements ClaimRepository {
         private final List<Claim> saved;
