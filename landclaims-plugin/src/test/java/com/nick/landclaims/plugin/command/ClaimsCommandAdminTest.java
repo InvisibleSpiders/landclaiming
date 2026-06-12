@@ -65,7 +65,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", "userclaims", "flag", ""}))
-                .containsExactlyInAnyOrder("list", "set", "toggle");
+                .containsExactlyInAnyOrder("list", "set", "cycle");
     }
 
     @Test
@@ -270,18 +270,18 @@ class ClaimsCommandAdminTest {
                 "set",
                 home.id().toString(),
                 "build",
-                "true"
+                "ALL"
         });
 
         Claim updated = repository.findClaimById(home.id()).orElseThrow();
         assertThat(updated.flags()).containsEntry("build", FlagState.ALL);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
-                .containsExactly("Set build to true for Home.");
+                .containsExactly("Set build to ALL for Home.");
     }
 
     @Test
-    void adminUserclaimsFlagToggleUpdatesPlayerClaimWhenAllowed() {
+    void adminUserclaimsFlagCycleUpdatesPlayerClaimWhenAllowed() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
@@ -301,7 +301,7 @@ class ClaimsCommandAdminTest {
                 "admin",
                 "userclaims",
                 "flag",
-                "toggle",
+                "cycle",
                 home.id().toString(),
                 "build"
         });
@@ -310,7 +310,7 @@ class ClaimsCommandAdminTest {
         assertThat(updated.flags()).containsEntry("build", FlagState.OFF);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
-                .containsExactly("Toggled build for Home.");
+                .containsExactly("Cycled build for Home.");
     }
 
     @Test
@@ -342,7 +342,7 @@ class ClaimsCommandAdminTest {
                 .map(PlainTextComponentSerializer.plainText()::serialize)
                 .toList();
         assertThat(plainMessages).first().isEqualTo("Flags for Home:");
-        assertThat(plainMessages).anyMatch(message -> message.contains("build") && message.contains("false"));
+        assertThat(plainMessages).anyMatch(message -> message.contains("build") && message.contains("VISITORS"));
     }
 
     @Test
@@ -506,9 +506,9 @@ class ClaimsCommandAdminTest {
                         Map.entry("admin.userclaims.transferred", "<green>Transferred <claim_name> to <player>."),
                         Map.entry("admin.userclaims.edit-no-permission", "<red>You do not have permission to edit user claims."),
                         Map.entry("admin.userclaims.flag-list-header", "<gold>Flags for <claim_name>:"),
-                        Map.entry("admin.userclaims.flag-list-entry", "<gray>- <flag>: <value>"),
-                        Map.entry("admin.userclaims.flag-set", "<green>Set <flag> to <value> for <claim_name>."),
-                        Map.entry("admin.userclaims.flag-toggled", "<green>Toggled <flag> for <claim_name>."),
+                        Map.entry("admin.userclaims.flag-list-entry", "<gray>- <flag>: <state>"),
+                        Map.entry("admin.userclaims.flag-set", "<green>Set <flag> to <state> for <claim_name>."),
+                        Map.entry("admin.userclaims.flag-cycled", "<green>Cycled <flag> for <claim_name>."),
                         Map.entry("admin.userclaims.member-list-header", "<gold>Members for <claim_name>:"),
                         Map.entry("admin.userclaims.member-list-entry", "<gray>- <player> (<role>)"),
                         Map.entry("admin.userclaims.member-added", "<green>Added <player> as <role> to <claim_name>."),

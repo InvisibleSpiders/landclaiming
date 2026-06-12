@@ -53,7 +53,7 @@ class BukkitLandClaimsApiTest {
     @Test
     void deniesInteractionWhenClaimFlagDeniesStranger() {
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("item_drop", FlagState.OFF));
+        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("item_drop", FlagState.ALL));
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
         BukkitLandClaimsApi api = api(new FakeClaimRepository(List.of(claim)), claimIndex);
@@ -67,7 +67,7 @@ class BukkitLandClaimsApiTest {
     void allowsOwnerEvenWhenClaimFlagDeniesStrangers() {
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", FlagState.OFF));
+        Claim claim = claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", FlagState.VISITORS));
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
         BukkitLandClaimsApi api = api(new FakeClaimRepository(List.of(claim)), claimIndex);
@@ -80,7 +80,7 @@ class BukkitLandClaimsApiTest {
     @Test
     void bypassPermissionAllowsInteraction() {
         UUID worldId = UUID.randomUUID();
-        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", FlagState.OFF));
+        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("build", FlagState.VISITORS));
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
         Player player = player(UUID.randomUUID());

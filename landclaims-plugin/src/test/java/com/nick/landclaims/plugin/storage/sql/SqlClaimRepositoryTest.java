@@ -202,11 +202,14 @@ class SqlClaimRepositoryTest {
     }
 
     private static void applySql(Connection connection, String sql) throws Exception {
-                for (String statement : sql.split(";")) {
-                    String trimmed = statement.trim();
-                    if (!trimmed.isEmpty()) {
-                        connection.prepareStatement(trimmed).execute();
-                    }
-                }
+        for (String statement : sql.split(";")) {
+            String trimmed = statement.trim();
+            if (!trimmed.isEmpty()) {
+                // SQLite JDBC 3.49.x has a double-finalize bug when using Statement.execute()
+                // Use executeUpdate() which avoids the issue.
+                java.sql.Statement st = connection.createStatement();
+                st.executeUpdate(trimmed);
+            }
+        }
     }
 }
