@@ -54,7 +54,7 @@ public final class ProtectionService {
             case ALL -> (ownerExempt && relationship.isTrusted())
                     ? ClaimProtectionResult.ALLOW
                     : ClaimProtectionResult.DENY_WITH_MESSAGE;
-            default -> ClaimProtectionResult.ALLOW;
+            default -> throw new IllegalStateException("Unhandled FlagState: " + state);
         };
     }
 
