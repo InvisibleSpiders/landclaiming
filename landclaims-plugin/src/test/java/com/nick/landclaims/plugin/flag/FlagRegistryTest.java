@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.nick.landclaims.api.flag.ClaimFlagDefinition;
 import com.nick.landclaims.api.flag.FlagKind;
 import com.nick.landclaims.api.flag.FlagState;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -89,7 +90,7 @@ class FlagRegistryTest {
         ClaimFlagDefinition first = flag("custom_flag");
         ClaimFlagDefinition duplicate = flag("custom_flag");
 
-        assertThatThrownBy(() -> new FlagRegistry(Set.of(first, duplicate)))
+        assertThatThrownBy(() -> new FlagRegistry(List.of(first, duplicate)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
