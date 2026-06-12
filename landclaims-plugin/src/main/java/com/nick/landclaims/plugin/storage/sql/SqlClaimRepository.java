@@ -1,5 +1,6 @@
 package com.nick.landclaims.plugin.storage.sql;
 
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimMember;
@@ -217,12 +218,13 @@ public class SqlClaimRepository implements ClaimRepository {
     }
 
     private void insertFlags(Connection connection, Claim claim) throws SQLException {
-        String sql = "INSERT INTO claim_flags (claim_id, flag_key, enabled) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO claim_flags (claim_id, flag_key, enabled, state) VALUES (?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            for (Map.Entry<String, Boolean> flag : claim.flags().entrySet()) {
+            for (Map.Entry<String, FlagState> flag : claim.flags().entrySet()) {
                 statement.setString(1, claim.id().toString());
                 statement.setString(2, flag.getKey());
-                statement.setInt(3, Boolean.TRUE.equals(flag.getValue()) ? 1 : 0);
+                statement.setInt(3, flag.getValue() == FlagState.OFF ? 0 : 1);
+                statement.setString(4, flag.getValue().name());
                 statement.addBatch();
             }
             statement.executeBatch();
@@ -301,19 +303,30 @@ public class SqlClaimRepository implements ClaimRepository {
         return Set.copyOf(chunks);
     }
 
-    private Map<String, Boolean> loadFlags(Connection connection, UUID claimId) throws SQLException {
-        Map<String, Boolean> flags = new HashMap<>();
+    private Map<String, FlagState> loadFlags(Connection connection, UUID claimId) throws SQLException {
+        Map<String, FlagState> flags = new HashMap<>();
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT flag_key, enabled FROM claim_flags WHERE claim_id = ?"
+                "SELECT flag_key, state FROM claim_flags WHERE claim_id = ?"
         )) {
             statement.setString(1, claimId.toString());
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
-                    flags.put(resultSet.getString("flag_key"), resultSet.getInt("enabled") != 0);
+                    flags.put(resultSet.getString("flag_key"), parseState(resultSet.getString("state")));
                 }
             }
         }
         return Map.copyOf(flags);
+    }
+
+    private FlagState parseState(String value) {
+        if (value == null) {
+            return FlagState.OFF;
+        }
+        try {
+            return FlagState.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            return FlagState.OFF;
+        }
     }
 
     private Set<ClaimMember> loadMembers(Connection connection, UUID claimId) throws SQLException {
