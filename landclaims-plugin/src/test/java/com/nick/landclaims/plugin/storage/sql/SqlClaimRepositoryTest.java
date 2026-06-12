@@ -11,6 +11,7 @@ import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.ClaimService;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
 import com.nick.landclaims.plugin.claim.OwnerType;
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -47,7 +48,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 1, 2), new ClaimChunk(worldId, 1, 3)),
-                Map.of("build", false, "interact", false),
+                Map.of("build", FlagState.OFF, "interact", FlagState.OFF),
                 Set.of(
                         new ClaimMember(memberId, ClaimRole.MEMBER),
                         new ClaimMember(managerId, ClaimRole.MANAGER)
@@ -82,7 +83,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 1, 2)),
-                Map.of("build", false),
+                Map.of("build", FlagState.OFF),
                 createdAt,
                 createdAt
         );
@@ -122,7 +123,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 0, 0)),
-                Map.of("build", false),
+                Map.of("build", FlagState.OFF),
                 Set.of(),
                 Set.of(deniedId),
                 createdAt,
@@ -135,7 +136,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 2, 0)),
-                Map.of("container_access", false),
+                Map.of("container_access", FlagState.OFF),
                 Set.of(),
                 Set.of(),
                 createdAt,

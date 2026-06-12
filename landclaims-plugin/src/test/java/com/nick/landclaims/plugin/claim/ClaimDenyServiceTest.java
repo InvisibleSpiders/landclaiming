@@ -2,6 +2,7 @@ package com.nick.landclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -136,7 +137,7 @@ class ClaimDenyServiceTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 0, 0)),
-                Map.of("build", false),
+                Map.of("build", FlagState.OFF),
                 members,
                 deniedPlayers,
                 now,

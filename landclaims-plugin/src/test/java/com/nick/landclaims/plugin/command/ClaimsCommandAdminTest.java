@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
@@ -273,7 +274,7 @@ class ClaimsCommandAdminTest {
         });
 
         Claim updated = repository.findClaimById(home.id()).orElseThrow();
-        assertThat(updated.flags()).containsEntry("build", true);
+        assertThat(updated.flags()).containsEntry("build", FlagState.ALL);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
                 .containsExactly("Set build to true for Home.");
@@ -285,7 +286,7 @@ class ClaimsCommandAdminTest {
         ClaimIndex claimIndex = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim home = playerClaim("Home", ownerId, worldId, 0, Map.of("build", true));
+        Claim home = playerClaim("Home", ownerId, worldId, 0, Map.of("build", FlagState.ALL));
         repository.claims.add(home);
         claimIndex.add(home);
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
@@ -306,7 +307,7 @@ class ClaimsCommandAdminTest {
         });
 
         Claim updated = repository.findClaimById(home.id()).orElseThrow();
-        assertThat(updated.flags()).containsEntry("build", false);
+        assertThat(updated.flags()).containsEntry("build", FlagState.OFF);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
                 .containsExactly("Toggled build for Home.");
@@ -554,7 +555,7 @@ class ClaimsCommandAdminTest {
         return playerClaim(name, ownerId, worldId, chunkX, Map.of());
     }
 
-    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX, Map<String, Boolean> flags) {
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX, Map<String, FlagState> flags) {
         return playerClaim(name, ownerId, worldId, chunkX, flags, Set.of());
     }
 
@@ -563,7 +564,7 @@ class ClaimsCommandAdminTest {
             UUID ownerId,
             UUID worldId,
             int chunkX,
-            Map<String, Boolean> flags,
+            Map<String, FlagState> flags,
             Set<ClaimMember> members
     ) {
         Instant now = Instant.parse("2026-06-10T00:00:00Z");
