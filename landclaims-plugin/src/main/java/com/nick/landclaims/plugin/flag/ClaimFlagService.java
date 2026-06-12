@@ -86,7 +86,10 @@ public final class ClaimFlagService {
             Claim claim,
             String flagKey,
             Predicate<String> permissionCheck) {
+        Objects.requireNonNull(actorId, "actorId");
+        Objects.requireNonNull(claim, "claim");
         Objects.requireNonNull(flagKey, "flagKey");
+        Objects.requireNonNull(permissionCheck, "permissionCheck");
         ClaimFlagDefinition definition = flagRegistry.definition(flagKey).orElse(null);
         if (definition == null) {
             return ClaimFlagResult.denied("claim.flag.unknown");
