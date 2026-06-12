@@ -182,7 +182,7 @@ admin:
     flag-list-header: "<gold>Flags for <yellow><claim_name></yellow>:"
     flag-list-entry: "<gray>- <yellow><label></yellow> <dark_gray>(<flag>, <category>)</dark_gray>: <white><state></white> <dark_gray>- <description></dark_gray>"
     flag-set: "<green>Set <yellow><flag></yellow> to <yellow><state></yellow> for <white><claim_name></white>."
-    flag-cycled: "<green>Cycled <yellow><flag></yellow> for <white><claim_name></white>."
+    flag-cycled: "<green>Cycled <yellow><flag></yellow> for <white><claim_name></white> → <yellow><state></yellow>."
     member-usage: "<red>Usage: /claim admin userclaims member <list|add|remove> ..."
     member-list-usage: "<red>Usage: /claim admin userclaims member list <claim-id>"
     member-add-usage: "<red>Usage: /claim admin userclaims member add <claim-id> <player|uuid> [member|manager]"

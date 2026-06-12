@@ -207,8 +207,9 @@ class SqlClaimRepositoryTest {
             if (!trimmed.isEmpty()) {
                 // SQLite JDBC 3.49.x has a double-finalize bug when using Statement.execute()
                 // Use executeUpdate() which avoids the issue.
-                java.sql.Statement st = connection.createStatement();
-                st.executeUpdate(trimmed);
+                try (java.sql.Statement st = connection.createStatement()) {
+                    st.executeUpdate(trimmed);
+                }
             }
         }
     }
