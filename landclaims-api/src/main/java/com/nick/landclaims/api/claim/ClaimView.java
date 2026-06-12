@@ -1,6 +1,5 @@
 package com.nick.landclaims.api.claim;
 
-import com.nick.landclaims.api.flag.FlagState;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -18,5 +17,5 @@ public interface ClaimView {
 
     Set<ClaimChunkView> chunks();
 
-    Map<String, FlagState> flags();
+    Map<String, Boolean> flags();
 }

@@ -1,6 +1,5 @@
 package com.nick.landclaims.plugin.admin;
 
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
@@ -184,8 +183,8 @@ public final class AdminClaimService {
         }
     }
 
-    private Map<String, FlagState> defaultFlags() {
+    private Map<String, Boolean> defaultFlags() {
         return flagRegistry.keys().stream()
-                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultState));
+                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultValue));
     }
 }

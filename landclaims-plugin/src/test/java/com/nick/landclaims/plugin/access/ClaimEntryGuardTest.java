@@ -2,7 +2,6 @@ package com.nick.landclaims.plugin.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
@@ -75,7 +74,7 @@ class ClaimEntryGuardTest {
                 UUID.randomUUID(),
                 chunk.worldId(),
                 Set.of(chunk),
-                Map.of("build", FlagState.OFF),
+                Map.of("build", false),
                 Set.of(),
                 deniedPlayers,
                 now,

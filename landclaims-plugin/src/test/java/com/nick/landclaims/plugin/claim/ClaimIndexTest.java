@@ -2,7 +2,6 @@ package com.nick.landclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.nick.landclaims.api.flag.FlagState;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
@@ -48,7 +47,7 @@ class ClaimIndexTest {
                 UUID.randomUUID(),
                 worldId,
                 chunks,
-                Map.of("build", FlagState.OFF),
+                Map.of("build", false),
                 now,
                 now
         );

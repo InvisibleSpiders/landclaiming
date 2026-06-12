@@ -17,7 +17,6 @@ import com.nick.landclaims.plugin.claim.PendingClaimMerge;
 import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.economy.ClaimPaymentResult;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.flag.ClaimFlagResult;
 import com.nick.landclaims.plugin.flag.ClaimFlagRow;
 import com.nick.landclaims.plugin.flag.ClaimFlagService;
@@ -81,7 +80,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     );
     private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims");
     private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport", "transfer", "flag", "member");
-    private static final List<String> ADMIN_USERCLAIM_FLAG_SUGGESTIONS = List.of("list", "set", "cycle");
+    private static final List<String> ADMIN_USERCLAIM_FLAG_SUGGESTIONS = List.of("list", "set", "toggle");
     private static final List<String> ADMIN_USERCLAIM_MEMBER_SUGGESTIONS = List.of("list", "add", "remove");
 
     private final ClaimToolService claimToolService;
@@ -220,7 +219,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return null;
         }
         if (args.length == 2 && subcommand.equals("flag")) {
-            return matching(List.of("list", "set", "cycle"), args[1]);
+            return matching(List.of("list", "set", "toggle"), args[1]);
         }
         if (args.length == 2 && subcommand.equals("admin")) {
             return matching(ADMIN_SUGGESTIONS, args[1]);
@@ -245,7 +244,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 && args[1].equalsIgnoreCase("userclaims")
                 && args[2].equalsIgnoreCase("flag")
                 && args[3].equalsIgnoreCase("set")) {
-            return matching(List.of("off", "visitors", "all"), args[6]);
+            return matching(List.of("true", "false", "on", "off", "yes", "no"), args[6]);
         }
         if (args.length == 7
                 && subcommand.equals("admin")
@@ -257,7 +256,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                     .toList(), args[6]);
         }
         if (args.length == 4 && subcommand.equals("flag") && args[1].equalsIgnoreCase("set")) {
-            return matching(List.of("off", "visitors", "all"), args[3]);
+            return matching(List.of("true", "false", "on", "off", "yes", "no"), args[3]);
         }
         if (args.length == 4 && subcommand.equals("member") && args[1].equalsIgnoreCase("add")) {
             return matching(Arrays.stream(ClaimRole.values())
@@ -487,8 +486,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (action.equals("set")) {
             return setPlayerClaimFlag(player, args);
         }
-        if (action.equals("cycle")) {
-            return cyclePlayerClaimFlag(player, args);
+        if (action.equals("toggle")) {
+            return togglePlayerClaimFlag(player, args);
         }
 
         player.sendMessage(message("admin.userclaims.flag-usage"));
@@ -511,7 +510,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                     "label", row.label(),
                     "category", row.category(),
                     "description", row.description(),
-                    "state", row.state().name()
+                    "value", String.valueOf(row.enabled())
             )));
         }
         return true;
@@ -522,11 +521,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(message("admin.userclaims.flag-set-usage"));
             return true;
         }
-        FlagState desired;
-        try {
-            desired = FlagState.valueOf(args[6].toUpperCase(java.util.Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            player.sendMessage(message("claim.flag.invalid-state"));
+        Optional<Boolean> enabled = parseBoolean(args[6]);
+        if (enabled.isEmpty()) {
+            player.sendMessage(message("claim.flag.invalid-value"));
             return true;
         }
         Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.flag-set-usage", 4);
@@ -535,11 +532,11 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         Claim foundClaim = claim.orElseThrow();
-        ClaimFlagResult result = claimFlagService.setFlagState(
+        ClaimFlagResult result = claimFlagService.setFlag(
                 foundClaim.ownerUuid(),
                 foundClaim,
                 args[5],
-                desired,
+                enabled.orElseThrow(),
                 permission -> true
         );
         if (!result.allowed()) {
@@ -550,24 +547,23 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 "claim_name", foundClaim.name(),
                 "claim_id", foundClaim.id().toString(),
                 "flag", args[5],
-                "state", desired.name()
+                "value", String.valueOf(enabled.orElseThrow())
         )));
         return true;
     }
 
-    private boolean cyclePlayerClaimFlag(Player player, String[] args) {
+    private boolean togglePlayerClaimFlag(Player player, String[] args) {
         if (args.length != 6) {
-            player.sendMessage(message("admin.userclaims.flag-cycle-usage"));
+            player.sendMessage(message("admin.userclaims.flag-toggle-usage"));
             return true;
         }
-        Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.flag-cycle-usage", 4);
+        Optional<Claim> claim = playerClaimFromArgs(player, args, "admin.userclaims.flag-toggle-usage", 4);
         if (claim.isEmpty()) {
             return true;
         }
 
         Claim foundClaim = claim.orElseThrow();
-        FlagState resulting = claimFlagService.nextState(foundClaim, args[5]);
-        ClaimFlagResult result = claimFlagService.cycleFlag(
+        ClaimFlagResult result = claimFlagService.toggleFlag(
                 foundClaim.ownerUuid(),
                 foundClaim,
                 args[5],
@@ -577,11 +573,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(message(result.messageKey(), Map.of("flag", args[5])));
             return true;
         }
-        player.sendMessage(message("admin.userclaims.flag-cycled", Map.of(
+        player.sendMessage(message("admin.userclaims.flag-toggled", Map.of(
                 "claim_name", foundClaim.name(),
                 "claim_id", foundClaim.id().toString(),
-                "flag", args[5],
-                "state", resulting.name()
+                "flag", args[5]
         )));
         return true;
     }
@@ -1000,43 +995,41 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
             return openFlagEditor(player);
         }
-        if (args.length == 3 && args[1].equalsIgnoreCase("cycle")) {
-            FlagState resulting = claimFlagService.nextState(claim.orElseThrow(), args[2]);
-            ClaimFlagResult result = claimFlagService.cycleFlag(
+        if (args.length == 3 && args[1].equalsIgnoreCase("toggle")) {
+            ClaimFlagResult result = claimFlagService.toggleFlag(
                     player.getUniqueId(),
                     claim.orElseThrow(),
                     args[2],
                     player::hasPermission
             );
             if (!result.allowed()) {
-                player.sendMessage(message(result.messageKey().isEmpty() ? "claim.flag.unknown" : result.messageKey()));
+                player.sendMessage(message(result.messageKey(), Map.of("flag", args[2])));
                 return true;
             }
-            player.sendMessage(message("claim.flag.cycled", Map.of(
-                    "flag", args[2],
-                    "state", resulting.name())));
+            player.sendMessage(message("claim.flag.toggled", Map.of("flag", args[2])));
             return openFlagEditor(player);
         }
         if (args.length == 4 && args[1].equalsIgnoreCase("set")) {
-            FlagState desired;
-            try {
-                desired = FlagState.valueOf(args[3].toUpperCase(java.util.Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
-                player.sendMessage(message("claim.flag.invalid-state"));
+            Optional<Boolean> enabled = parseBoolean(args[3]);
+            if (enabled.isEmpty()) {
+                player.sendMessage(message("claim.flag.invalid-value"));
                 return true;
             }
-            ClaimFlagResult result = claimFlagService.setFlagState(
+            ClaimFlagResult result = claimFlagService.setFlag(
                     player.getUniqueId(),
                     claim.orElseThrow(),
                     args[2],
-                    desired,
+                    enabled.orElseThrow(),
                     player::hasPermission
             );
             if (!result.allowed()) {
-                player.sendMessage(message(result.messageKey().isEmpty() ? "claim.flag.unknown" : result.messageKey()));
+                player.sendMessage(message(result.messageKey(), Map.of("flag", args[2])));
                 return true;
             }
-            player.sendMessage(message("claim.flag.set", Map.of("flag", args[2], "state", desired.name())));
+            player.sendMessage(message("claim.flag.set", Map.of(
+                    "flag", args[2],
+                    "value", String.valueOf(enabled.orElseThrow())
+            )));
             return true;
         }
 
@@ -1134,7 +1127,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                     "label", row.label(),
                     "category", row.category(),
                     "description", row.description(),
-                    "state", row.state().name()
+                    "value", String.valueOf(row.enabled())
             )));
         }
         return true;

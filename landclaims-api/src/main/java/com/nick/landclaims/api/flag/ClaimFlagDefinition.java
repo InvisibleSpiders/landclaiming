@@ -5,11 +5,13 @@ public record ClaimFlagDefinition(
         String category,
         String label,
         String description,
-        FlagKind kind,
-        boolean ownerExempt,
-        FlagState defaultState,
+        boolean defaultValue,
         String editPermission
 ) {
+    public ClaimFlagDefinition(String key, String category, boolean defaultValue, String editPermission) {
+        this(key, category, key, "", defaultValue, editPermission);
+    }
+
     public ClaimFlagDefinition {
         if (key == null || key.isBlank()) {
             throw new IllegalArgumentException("Flag key cannot be blank.");
@@ -22,19 +24,6 @@ public record ClaimFlagDefinition(
         }
         if (description == null) {
             throw new IllegalArgumentException("Flag description cannot be null.");
-        }
-        if (kind == null) {
-            throw new IllegalArgumentException("Flag kind cannot be null.");
-        }
-        if (defaultState == null) {
-            throw new IllegalArgumentException("Flag defaultState cannot be null.");
-        }
-        if (editPermission == null) {
-            throw new IllegalArgumentException("Flag editPermission cannot be null.");
-        }
-        if (!kind.supports(defaultState)) {
-            throw new IllegalArgumentException(
-                    "Flag " + key + " kind " + kind + " does not support default state " + defaultState);
         }
     }
 }

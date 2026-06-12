@@ -2,7 +2,6 @@ package com.nick.landclaims.plugin.ui;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimMember;
@@ -30,7 +29,7 @@ class ClaimMenuServiceTest {
                         new ClaimChunk(worldId, 0, 0),
                         new ClaimChunk(worldId, 1, 0)
                 ),
-                Map.of("build", FlagState.ALL, "container_access", FlagState.OFF),
+                Map.of("build", true, "container_access", false),
                 Set.of(new ClaimMember(UUID.randomUUID(), ClaimRole.MANAGER)),
                 Instant.parse("2026-06-08T00:00:00Z"),
                 Instant.parse("2026-06-08T00:00:00Z")

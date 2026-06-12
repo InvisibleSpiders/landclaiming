@@ -1,6 +1,5 @@
 package com.nick.landclaims.plugin.ui;
 
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.flag.ClaimFlagRow;
 import java.util.List;
 import java.util.Objects;
@@ -18,16 +17,15 @@ public final class ClaimFlagEditorService {
                                 flag.category(),
                                 flag.label(),
                                 flag.description(),
-                                stateLabel(flag, flag.state()),
-                                stateLabel(flag, flag.kind().next(flag.state())),
-                                "/claim flag cycle " + flag.key()
+                                stateLabel(flag, flag.enabled()),
+                                stateLabel(flag, !flag.enabled()),
+                                "/claim flag toggle " + flag.key()
                         ))
                         .toList()
         );
     }
 
-    private String stateLabel(ClaimFlagRow flag, FlagState state) {
-        boolean enabled = state != FlagState.OFF;
+    private String stateLabel(ClaimFlagRow flag, boolean enabled) {
         if (flag.key().startsWith("remove_") && flag.category().equalsIgnoreCase("Entity Control")) {
             return enabled ? "REMOVING" : "KEEPING";
         }

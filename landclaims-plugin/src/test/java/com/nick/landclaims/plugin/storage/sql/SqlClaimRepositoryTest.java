@@ -1,7 +1,6 @@
 package com.nick.landclaims.plugin.storage.sql;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
@@ -12,7 +11,6 @@ import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.ClaimService;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
 import com.nick.landclaims.plugin.claim.OwnerType;
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -49,7 +47,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 1, 2), new ClaimChunk(worldId, 1, 3)),
-                Map.of("build", FlagState.OFF, "interact", FlagState.OFF),
+                Map.of("build", false, "interact", false),
                 Set.of(
                         new ClaimMember(memberId, ClaimRole.MEMBER),
                         new ClaimMember(managerId, ClaimRole.MANAGER)
@@ -84,7 +82,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 1, 2)),
-                Map.of("build", FlagState.OFF),
+                Map.of("build", false),
                 createdAt,
                 createdAt
         );
@@ -95,24 +93,6 @@ class SqlClaimRepositoryTest {
         assertThat(repository.findClaimAt(worldId, 1, 2)).isEmpty();
         assertThat(repository.findClaimById(claimId)).isEmpty();
         assertThat(repository.findAllClaims()).isEmpty();
-    }
-
-    @Test
-    void roundTripsFlagState(@TempDir Path tempDirectory) throws Exception {
-        SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
-        applyMigrations(dataSource);
-        SqlClaimRepository repository = new SqlClaimRepository(dataSource);
-        UUID world = UUID.randomUUID();
-        Claim claim = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, UUID.randomUUID(), world,
-                Set.of(new ClaimChunk(world, 1, 2)),
-                Map.of("container_access", FlagState.ALL, "explosion_damage", FlagState.OFF),
-                Set.of(), Set.of(), Instant.now(), Instant.now());
-        repository.saveClaim(claim);
-
-        Claim loaded = repository.findClaimById(claim.id()).orElseThrow();
-        assertEquals(FlagState.ALL, loaded.flags().get("container_access"));
-        assertEquals(FlagState.OFF, loaded.flags().get("explosion_damage"));
     }
 
     @Test
@@ -142,7 +122,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 0, 0)),
-                Map.of("build", FlagState.OFF),
+                Map.of("build", false),
                 Set.of(),
                 Set.of(deniedId),
                 createdAt,
@@ -155,7 +135,7 @@ class SqlClaimRepositoryTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 2, 0)),
-                Map.of("container_access", FlagState.OFF),
+                Map.of("container_access", false),
                 Set.of(),
                 Set.of(),
                 createdAt,
@@ -202,15 +182,11 @@ class SqlClaimRepositoryTest {
     }
 
     private static void applySql(Connection connection, String sql) throws Exception {
-        for (String statement : sql.split(";")) {
-            String trimmed = statement.trim();
-            if (!trimmed.isEmpty()) {
-                // SQLite JDBC 3.49.x has a double-finalize bug when using Statement.execute()
-                // Use executeUpdate() which avoids the issue.
-                try (java.sql.Statement st = connection.createStatement()) {
-                    st.executeUpdate(trimmed);
+                for (String statement : sql.split(";")) {
+                    String trimmed = statement.trim();
+                    if (!trimmed.isEmpty()) {
+                        connection.prepareStatement(trimmed).execute();
+                    }
                 }
-            }
-        }
     }
 }

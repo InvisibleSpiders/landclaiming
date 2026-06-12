@@ -1,10 +1,7 @@
 package com.nick.landclaims.plugin.flag;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
@@ -20,98 +17,208 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ClaimFlagServiceTest {
-    private final UUID owner = UUID.randomUUID();
-
-    private Claim claim(Map<String, FlagState> flags) {
-        return new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, owner, UUID.randomUUID(),
-                Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0)), flags, Set.of(), Set.of(),
-                Instant.now(), Instant.now());
-    }
-
-    private ClaimFlagService service(List<Claim> saved) {
-        ClaimRepository repo = new InMemoryRepo(saved);
-        return new ClaimFlagService(repo, new ClaimIndex(), FlagRegistry.createDefault());
-    }
-
     @Test
-    void cyclePlayerActionAdvancesOffToVisitors() {
-        List<Claim> saved = new ArrayList<>();
-        Claim c = claim(Map.of("container_access", FlagState.OFF));
-        ClaimFlagResult result = service(saved).cycleFlag(owner, c, "container_access", perm -> true);
-        assertTrue(result.allowed());
-        assertEquals(FlagState.VISITORS, saved.get(saved.size() - 1).flags().get("container_access"));
-    }
+    void ownerCanSetEditableFlagWhenPermissionAllowsIt() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimFlagService service = new ClaimFlagService(repository, claimIndex, FlagRegistry.createDefault());
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(ownerId, worldId, Map.of("build", false));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
 
-    @Test
-    void cycleWorldEffectSkipsVisitors() {
-        List<Claim> saved = new ArrayList<>();
-        Claim c = claim(Map.of("explosion_damage", FlagState.OFF));
-        service(saved).cycleFlag(owner, c, "explosion_damage", perm -> true);
-        assertEquals(FlagState.ALL, saved.get(saved.size() - 1).flags().get("explosion_damage"));
-    }
+        ClaimFlagResult result = service.setFlag(
+                ownerId,
+                claim,
+                "build",
+                true,
+                permission -> permission.equals("landclaims.flag.build")
+        );
 
-    @Test
-    void setVisitorsOnWorldEffectIsRejected() {
-        ClaimFlagResult result = service(new ArrayList<>())
-                .setFlagState(owner, claim(Map.of()), "explosion_damage", FlagState.VISITORS, perm -> true);
-        assertFalse(result.allowed());
-    }
-
-    @Test
-    void nextStateComputesWithoutWriting() {
-        ClaimFlagService service = service(new ArrayList<>());
-        assertEquals(FlagState.VISITORS,
-                service.nextState(claim(Map.of("container_access", FlagState.OFF)), "container_access"));
-        assertEquals(FlagState.ALL,
-                service.nextState(claim(Map.of("explosion_damage", FlagState.OFF)), "explosion_damage"));
-    }
-
-    @Test
-    void nonOwnerCannotSetFlag() {
-        ClaimFlagResult result = service(new ArrayList<>())
-                .setFlagState(UUID.randomUUID(), claim(Map.of()), "build", FlagState.VISITORS, perm -> true);
-        assertFalse(result.allowed());
-        assertEquals("claim.flag.not-owner", result.messageKey());
-    }
-
-    @Test
-    void unknownFlagIsDenied() {
-        ClaimFlagResult result = service(new ArrayList<>())
-                .setFlagState(owner, claim(Map.of()), "nonexistent_flag", FlagState.OFF, perm -> true);
-        assertFalse(result.allowed());
-        assertEquals("claim.flag.unknown", result.messageKey());
-    }
-
-    @Test
-    void missingPermissionIsDenied() {
-        ClaimFlagResult result = service(new ArrayList<>())
-                .setFlagState(owner, claim(Map.of()), "build", FlagState.VISITORS, perm -> false);
-        assertFalse(result.allowed());
-        assertEquals("claim.flag.no-permission", result.messageKey());
+        assertThat(result.allowed()).isTrue();
+        Claim updated = repository.claims.get(0);
+        assertThat(updated.flags()).containsEntry("build", true);
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
     }
 
     @Test
     void setFlagPreservesDeniedPlayers() {
-        List<Claim> saved = new ArrayList<>();
-        UUID denied = UUID.randomUUID();
-        Claim c = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, owner, UUID.randomUUID(),
-                Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0)),
-                Map.of("build", FlagState.VISITORS), Set.of(), Set.of(denied),
-                Instant.now(), Instant.now());
-        service(saved).setFlagState(owner, c, "build", FlagState.OFF, perm -> true);
-        assertEquals(Set.of(denied), saved.get(saved.size() - 1).deniedPlayers());
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimFlagService service = new ClaimFlagService(repository, claimIndex, FlagRegistry.createDefault());
+        UUID ownerId = UUID.randomUUID();
+        UUID deniedPlayerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(ownerId, worldId, Map.of("build", false), Set.of(deniedPlayerId));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+
+        ClaimFlagResult result = service.setFlag(ownerId, claim, "build", true, permission -> true);
+
+        assertThat(result.allowed()).isTrue();
+        Claim updated = repository.claims.get(0);
+        assertThat(updated.deniedPlayers()).containsExactly(deniedPlayerId);
     }
 
-    // Minimal in-memory ClaimRepository capturing saved claims.
-    private static final class InMemoryRepo implements ClaimRepository {
-        private final List<Claim> saved;
-        InMemoryRepo(List<Claim> saved) { this.saved = saved; }
-        @Override public void saveClaim(Claim claim) { saved.add(claim); }
-        @Override public void replaceClaims(Claim c, List<UUID> d) { saved.add(c); }
-        @Override public void deleteClaim(UUID id) {}
-        @Override public Optional<Claim> findClaimAt(UUID w, int x, int z) { return Optional.empty(); }
-        @Override public Optional<Claim> findClaimById(UUID id) { return Optional.empty(); }
-        @Override public List<Claim> findClaimsByOwner(OwnerType t, UUID o) { return List.of(); }
-        @Override public List<Claim> findAllClaims() { return List.of(); }
+    @Test
+    void ownerCanToggleEditableFlagWhenPermissionAllowsIt() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimFlagService service = new ClaimFlagService(repository, claimIndex, FlagRegistry.createDefault());
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(ownerId, worldId, Map.of("build", true));
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+
+        ClaimFlagResult result = service.toggleFlag(
+                ownerId,
+                claim,
+                "build",
+                permission -> permission.equals("landclaims.flag.build")
+        );
+
+        assertThat(result.allowed()).isTrue();
+        Claim updated = repository.claims.get(0);
+        assertThat(updated.flags()).containsEntry("build", false);
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
+    }
+
+    @Test
+    void nonOwnerCannotSetFlag() {
+        ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
+        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of("build", false));
+
+        ClaimFlagResult result = service.setFlag(UUID.randomUUID(), claim, "build", true, permission -> true);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.flag.not-owner");
+    }
+
+    @Test
+    void unknownFlagIsDenied() {
+        ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
+        UUID ownerId = UUID.randomUUID();
+        Claim claim = claim(ownerId, UUID.randomUUID(), Map.of());
+
+        ClaimFlagResult result = service.setFlag(ownerId, claim, "unknown", true, permission -> true);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.flag.unknown");
+    }
+
+    @Test
+    void missingEditPermissionIsDenied() {
+        ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
+        UUID ownerId = UUID.randomUUID();
+        Claim claim = claim(ownerId, UUID.randomUUID(), Map.of("build", false));
+
+        ClaimFlagResult result = service.setFlag(ownerId, claim, "build", true, permission -> false);
+
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.flag.no-permission");
+    }
+
+    @Test
+    void flagRowsIncludeRegistryDefaultsWhenClaimDoesNotStoreValue() {
+        ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
+        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of("build", true));
+
+        List<ClaimFlagRow> rows = service.listFlags(claim);
+
+        assertThat(rows)
+                .anySatisfy(row -> {
+                    assertThat(row.key()).isEqualTo("build");
+                    assertThat(row.enabled()).isTrue();
+                    assertThat(row.category()).isEqualTo("Access");
+                    assertThat(row.label()).isEqualTo("Build");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.key()).isEqualTo("piston_protection");
+                    assertThat(row.enabled()).isTrue();
+                    assertThat(row.category()).isEqualTo("Protection");
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.key()).isEqualTo("remove_hostile_entities");
+                    assertThat(row.category()).isEqualTo("Entity Control");
+                    assertThat(row.description()).contains("hostile");
+                });
+    }
+
+    @Test
+    void flagRowsUsePlayerFocusedCategoryOrder() {
+        ClaimFlagService service = new ClaimFlagService(new FakeClaimRepository(), new ClaimIndex(), FlagRegistry.createDefault());
+        Claim claim = claim(UUID.randomUUID(), UUID.randomUUID(), Map.of());
+
+        List<String> categories = service.listFlags(claim).stream()
+                .map(ClaimFlagRow::category)
+                .distinct()
+                .toList();
+
+        assertThat(categories).containsExactly(
+                "Access",
+                "Protection",
+                "Environment",
+                "Entity",
+                "Entity Control",
+                "Items"
+        );
+    }
+
+    private static Claim claim(UUID ownerId, UUID worldId, Map<String, Boolean> flags) {
+        return claim(ownerId, worldId, flags, Set.of());
+    }
+
+    private static Claim claim(UUID ownerId, UUID worldId, Map<String, Boolean> flags, Set<UUID> deniedPlayers) {
+        Instant now = Instant.parse("2026-06-08T00:00:00Z");
+        return new Claim(
+                UUID.randomUUID(),
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                flags,
+                Set.of(),
+                deniedPlayers,
+                now,
+                now
+        );
+    }
+
+    private static final class FakeClaimRepository implements ClaimRepository {
+        private final List<Claim> claims = new ArrayList<>();
+
+        @Override
+        public void saveClaim(Claim claim) {
+            claims.removeIf(existing -> existing.id().equals(claim.id()));
+            claims.add(claim);
+        }
+
+        @Override
+        public void deleteClaim(UUID claimId) {
+            claims.removeIf(claim -> claim.id().equals(claimId));
+        }
+
+        @Override
+        public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<Claim> findClaimById(UUID claimId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<Claim> findClaimsByOwner(OwnerType ownerType, UUID ownerUuid) {
+            return List.of();
+        }
+
+        @Override
+        public List<Claim> findAllClaims() {
+            return List.copyOf(claims);
+        }
     }
 }

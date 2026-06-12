@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.nick.landclaims.api.flag.ClaimFlagDefinition;
-import com.nick.landclaims.api.flag.FlagKind;
-import com.nick.landclaims.api.flag.FlagState;
 import org.junit.jupiter.api.Test;
 
 class ExpansionRegistryTest {
@@ -47,8 +45,9 @@ class ExpansionRegistryTest {
 
     private static ClaimFlagDefinition flag(String key) {
         return new ClaimFlagDefinition(
-                key, "expansion", key, "",
-                FlagKind.PLAYER_ACTION, true, FlagState.OFF,
+                key,
+                "expansion",
+                false,
                 "landclaims.flag." + key
         );
     }

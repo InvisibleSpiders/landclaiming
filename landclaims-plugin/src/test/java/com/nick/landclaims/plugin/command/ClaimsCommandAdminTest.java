@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
@@ -65,7 +64,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", "userclaims", "flag", ""}))
-                .containsExactlyInAnyOrder("list", "set", "cycle");
+                .containsExactlyInAnyOrder("list", "set", "toggle");
     }
 
     @Test
@@ -270,23 +269,23 @@ class ClaimsCommandAdminTest {
                 "set",
                 home.id().toString(),
                 "build",
-                "ALL"
+                "true"
         });
 
         Claim updated = repository.findClaimById(home.id()).orElseThrow();
-        assertThat(updated.flags()).containsEntry("build", FlagState.ALL);
+        assertThat(updated.flags()).containsEntry("build", true);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
-                .containsExactly("Set build to ALL for Home.");
+                .containsExactly("Set build to true for Home.");
     }
 
     @Test
-    void adminUserclaimsFlagCycleUpdatesPlayerClaimWhenAllowed() {
+    void adminUserclaimsFlagToggleUpdatesPlayerClaimWhenAllowed() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim home = playerClaim("Home", ownerId, worldId, 0, Map.of("build", FlagState.ALL));
+        Claim home = playerClaim("Home", ownerId, worldId, 0, Map.of("build", true));
         repository.claims.add(home);
         claimIndex.add(home);
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
@@ -301,16 +300,16 @@ class ClaimsCommandAdminTest {
                 "admin",
                 "userclaims",
                 "flag",
-                "cycle",
+                "toggle",
                 home.id().toString(),
                 "build"
         });
 
         Claim updated = repository.findClaimById(home.id()).orElseThrow();
-        assertThat(updated.flags()).containsEntry("build", FlagState.OFF);
+        assertThat(updated.flags()).containsEntry("build", false);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
-                .containsExactly("Cycled build for Home.");
+                .containsExactly("Toggled build for Home.");
     }
 
     @Test
@@ -342,7 +341,7 @@ class ClaimsCommandAdminTest {
                 .map(PlainTextComponentSerializer.plainText()::serialize)
                 .toList();
         assertThat(plainMessages).first().isEqualTo("Flags for Home:");
-        assertThat(plainMessages).anyMatch(message -> message.contains("build") && message.contains("VISITORS"));
+        assertThat(plainMessages).anyMatch(message -> message.contains("build") && message.contains("false"));
     }
 
     @Test
@@ -506,9 +505,9 @@ class ClaimsCommandAdminTest {
                         Map.entry("admin.userclaims.transferred", "<green>Transferred <claim_name> to <player>."),
                         Map.entry("admin.userclaims.edit-no-permission", "<red>You do not have permission to edit user claims."),
                         Map.entry("admin.userclaims.flag-list-header", "<gold>Flags for <claim_name>:"),
-                        Map.entry("admin.userclaims.flag-list-entry", "<gray>- <flag>: <state>"),
-                        Map.entry("admin.userclaims.flag-set", "<green>Set <flag> to <state> for <claim_name>."),
-                        Map.entry("admin.userclaims.flag-cycled", "<green>Cycled <flag> for <claim_name>."),
+                        Map.entry("admin.userclaims.flag-list-entry", "<gray>- <flag>: <value>"),
+                        Map.entry("admin.userclaims.flag-set", "<green>Set <flag> to <value> for <claim_name>."),
+                        Map.entry("admin.userclaims.flag-toggled", "<green>Toggled <flag> for <claim_name>."),
                         Map.entry("admin.userclaims.member-list-header", "<gold>Members for <claim_name>:"),
                         Map.entry("admin.userclaims.member-list-entry", "<gray>- <player> (<role>)"),
                         Map.entry("admin.userclaims.member-added", "<green>Added <player> as <role> to <claim_name>."),
@@ -555,7 +554,7 @@ class ClaimsCommandAdminTest {
         return playerClaim(name, ownerId, worldId, chunkX, Map.of());
     }
 
-    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX, Map<String, FlagState> flags) {
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX, Map<String, Boolean> flags) {
         return playerClaim(name, ownerId, worldId, chunkX, flags, Set.of());
     }
 
@@ -564,7 +563,7 @@ class ClaimsCommandAdminTest {
             UUID ownerId,
             UUID worldId,
             int chunkX,
-            Map<String, FlagState> flags,
+            Map<String, Boolean> flags,
             Set<ClaimMember> members
     ) {
         Instant now = Instant.parse("2026-06-10T00:00:00Z");

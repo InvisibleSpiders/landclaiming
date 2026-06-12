@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.nick.landclaims.api.claim.ClaimChunkView;
 import com.nick.landclaims.api.claim.ClaimView;
-import com.nick.landclaims.api.flag.FlagState;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,7 +26,7 @@ class ClaimTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 4, -2)),
-                Map.of("build", FlagState.ALL),
+                Map.of("build", true),
                 Instant.parse("2026-06-07T00:00:00Z"),
                 Instant.parse("2026-06-07T00:05:00Z")
         );
@@ -40,7 +39,7 @@ class ClaimTest {
         assertThat(view.ownerUuid()).isEqualTo(ownerId);
         assertThat(view.worldId()).isEqualTo(worldId);
         assertThat(view.chunks()).containsExactly(new ClaimChunkView(worldId, 4, -2));
-        assertThat(view.flags()).containsEntry("build", FlagState.ALL);
+        assertThat(view.flags()).containsEntry("build", true);
     }
 
     @Test
@@ -50,8 +49,8 @@ class ClaimTest {
         ClaimChunk addedChunk = new ClaimChunk(worldId, 5, -2);
         Set<ClaimChunk> claimChunks = new HashSet<>();
         claimChunks.add(originalChunk);
-        Map<String, FlagState> flags = new HashMap<>();
-        flags.put("build", FlagState.ALL);
+        Map<String, Boolean> flags = new HashMap<>();
+        flags.put("build", true);
 
         Claim claim = new Claim(
                 UUID.randomUUID(),
@@ -66,11 +65,11 @@ class ClaimTest {
         );
 
         claimChunks.add(addedChunk);
-        flags.put("interact", FlagState.OFF);
+        flags.put("interact", false);
 
         assertThat(claim.claimChunks()).containsExactly(originalChunk);
         assertThat(claim.chunks()).containsExactly(new ClaimChunkView(worldId, 4, -2));
-        assertThat(claim.flags()).containsExactly(Map.entry("build", FlagState.ALL));
+        assertThat(claim.flags()).containsExactly(Map.entry("build", true));
     }
 
     @Test
@@ -82,12 +81,12 @@ class ClaimTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 Set.of(),
-                Map.of("build", FlagState.ALL),
+                Map.of("build", true),
                 Instant.parse("2026-06-07T00:00:00Z"),
                 Instant.parse("2026-06-07T00:05:00Z")
         );
 
-        assertThatThrownBy(() -> claim.flags().put("interact", FlagState.OFF))
+        assertThatThrownBy(() -> claim.flags().put("interact", false))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 

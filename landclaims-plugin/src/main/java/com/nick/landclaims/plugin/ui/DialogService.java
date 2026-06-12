@@ -1,14 +1,6 @@
 package com.nick.landclaims.plugin.ui;
 
 import com.nick.landclaims.plugin.message.MessageService;
-import io.papermc.paper.dialog.Dialog;
-import io.papermc.paper.registry.data.dialog.ActionButton;
-import io.papermc.paper.registry.data.dialog.DialogBase;
-import io.papermc.paper.registry.data.dialog.DialogInstancesProvider;
-import io.papermc.paper.registry.data.dialog.action.DialogAction;
-import io.papermc.paper.registry.data.dialog.type.DialogType;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;
@@ -17,12 +9,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 public final class DialogService {
-    private final boolean preferDialogs;
-
-    public DialogService(boolean preferDialogs) {
-        this.preferDialogs = preferDialogs;
-    }
-
     public void openClaimMenu(Player player, ClaimMenu menu, MessageService messageService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(menu, "menu");
@@ -51,13 +37,6 @@ public final class DialogService {
         Objects.requireNonNull(editor, "editor");
         Objects.requireNonNull(messageService, "messageService");
 
-        if (preferDialogs && tryOpenDialog(player, editor)) {
-            return;
-        }
-        openFlagEditorChat(player, editor, messageService);
-    }
-
-    private void openFlagEditorChat(Player player, ClaimFlagEditor editor, MessageService messageService) {
         player.sendMessage(messageService.render("claim.flag-editor.title", Map.of("claim_name", editor.claimName())));
         for (ClaimFlagEditorRow row : editor.rows()) {
             player.sendMessage(messageService.render("claim.flag-editor.row", Map.of(
@@ -69,44 +48,6 @@ public final class DialogService {
                     "next_state", row.nextStateLabel()
             )).clickEvent(ClickEvent.runCommand(row.toggleCommand())));
         }
-    }
-
-    private boolean tryOpenDialog(Player player, ClaimFlagEditor editor) {
-        try {
-            return buildAndShowDialog(player, editor);
-        } catch (LinkageError | RuntimeException error) {
-            return false;
-        }
-    }
-
-    private boolean buildAndShowDialog(Player player, ClaimFlagEditor editor) {
-        DialogInstancesProvider provider = DialogInstancesProvider.instance();
-
-        List<ActionButton> buttons = new ArrayList<>();
-        for (ClaimFlagEditorRow row : editor.rows()) {
-            Component label = Component.text(row.label() + " — " + row.stateLabel());
-            Component tooltip = Component.text(row.description());
-            DialogAction action = DialogAction.staticAction(ClickEvent.runCommand(row.toggleCommand()));
-            ActionButton button = provider.actionButtonBuilder(label)
-                    .tooltip(tooltip)
-                    .action(action)
-                    .build();
-            buttons.add(button);
-        }
-
-        Component title = Component.text(editor.claimName());
-        DialogBase base = provider.dialogBaseBuilder(title)
-                .afterAction(DialogBase.DialogAfterAction.NONE)
-                .build();
-
-        Dialog dialog = Dialog.create(factory -> {
-            factory.empty()
-                    .base(base)
-                    .type(DialogType.multiAction(buttons).build());
-        });
-
-        player.showDialog(dialog);
-        return true;
     }
 
     public void openClaimSetup(Player player) {
