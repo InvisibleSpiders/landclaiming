@@ -88,5 +88,17 @@ class LimitServiceTest {
     @Test
     void exponentialOverLimitCostScalesEachChunk() {
         assertThat(LimitService.exponentialOverLimitCost(3, 250.0, 1.25)).isEqualTo(953.125);
+        assertThat(LimitService.exponentialOverLimitCost(0, 250.0, 1.25)).isZero();
+    }
+
+    @Test
+    void reloadChangesDefaultLimitWhenNoDbRow() {
+        LimitService service = emptyService();
+        UUID player = UUID.randomUUID();
+        assertThat(service.getLimit(player)).isEqualTo(DEFAULT);
+
+        service.reload(25);
+
+        assertThat(service.getLimit(player)).isEqualTo(25);
     }
 }

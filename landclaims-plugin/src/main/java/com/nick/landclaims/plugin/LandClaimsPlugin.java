@@ -224,7 +224,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
             messageService.reload(
                     MessageConfigurationLoader.load(
                             loadYamlResource("messages.yml")));
-            limitService.reload(getConfig().getInt("limits.default-claim-limit", 10));
+            limitService.reload(
+                    getConfig().getInt("limits.default-claim-limit", 10));
             claimCostService.reload(
                     ClaimCostConfig.from(getConfig()));
             claimCreationService.reload(
@@ -250,6 +251,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                     getConfig().getString("notifications.claim-boundary.exit.delivery", defaultDel));
             return ReloadResult.ok("LandClaims reloaded successfully.");
         } catch (Exception e) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Config reload failed", e);
             return ReloadResult.fail("Reload failed: " + e.getMessage());
         }
     }
