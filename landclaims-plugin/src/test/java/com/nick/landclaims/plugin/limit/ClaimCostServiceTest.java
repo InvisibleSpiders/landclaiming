@@ -144,6 +144,20 @@ class ClaimCostServiceTest {
         assertThat(service.computeDeletionRefund(ownerId, 5)).isEqualTo(500.0);
     }
 
+    @Test
+    void computeDeletionRefundRejectsNegativeChunksBeingRemoved() {
+        ClaimCostService service = new ClaimCostService(
+                new ClaimIndex(),
+                limitOf(5),
+                new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+        );
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> service.computeDeletionRefund(UUID.randomUUID(), -1)
+        );
+    }
+
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(UUID.randomUUID(), "Existing", OwnerType.PLAYER, ownerId, worldId, chunks, Map.of(), now, now);
