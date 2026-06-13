@@ -88,6 +88,24 @@ class ClaimCreationServiceTest {
     }
 
     @Test
+    void allowsPlayerClaimInsideOtherPlayerBufferWhenBypassed() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        UUID worldId = UUID.randomUUID();
+        claimIndex.add(existingClaim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), OwnerType.PLAYER));
+        ClaimCreationService service = service(repository, claimIndex);
+
+        ClaimValidationResult result = service.validatePlayerClaim(
+                UUID.randomUUID(),
+                "Home",
+                Set.of(new ClaimChunk(worldId, 3, 0)),
+                true
+        );
+
+        assertThat(result.isAllowed()).isTrue();
+    }
+
+    @Test
     void rejectsPlayerClaimInsideAdminBuffer() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();

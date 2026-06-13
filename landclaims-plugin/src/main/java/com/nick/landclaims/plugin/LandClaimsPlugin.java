@@ -112,9 +112,13 @@ public final class LandClaimsPlugin extends JavaPlugin
         claimIndex = new ClaimIndex();
         claimIndex.load(claimRepository.findAllClaims());
         PermissionBankService permissionBankService = new PermissionBankService(getServer().getPluginManager());
-        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "commands", PermissionDefault.TRUE);
-        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "admin", PermissionDefault.OP);
-        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "bypass", PermissionDefault.OP);
+        YamlConfiguration permissionsConfiguration = loadYamlResource("permissions.yml");
+        permissionBankService.registerFlagEditGroups(
+                permissionsConfiguration.getConfigurationSection("flag-edit"),
+                PermissionDefault.TRUE);
+        registerConfiguredPermissions(permissionBankService, permissionsConfiguration, "commands", PermissionDefault.TRUE);
+        registerConfiguredPermissions(permissionBankService, permissionsConfiguration, "admin", PermissionDefault.OP);
+        registerConfiguredPermissions(permissionBankService, permissionsConfiguration, "bypass", PermissionDefault.OP);
         ClaimLimitRepository claimLimitRepository = new SqlClaimLimitRepository(dataSource);
         limitService = new LimitService(
                 getConfig().getInt("limits.default-claim-limit", 10),

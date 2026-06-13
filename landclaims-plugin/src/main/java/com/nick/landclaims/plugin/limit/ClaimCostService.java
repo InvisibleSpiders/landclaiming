@@ -26,6 +26,10 @@ public final class ClaimCostService {
         this.claimCostConfig = Objects.requireNonNull(newConfig, "newConfig");
     }
 
+    public boolean isPaidOverLimitEnabled() {
+        return claimCostConfig.overLimitEnabled();
+    }
+
     public double computeDeletionRefund(UUID ownerId, int chunksBeingRemoved) {
         Objects.requireNonNull(ownerId, "ownerId");
         int allowedChunks = limitService.getLimit(ownerId);

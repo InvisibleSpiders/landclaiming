@@ -64,4 +64,5 @@ permissions:
       landclaims.admin.userclaims.delete: true
       landclaims.admin.userclaims.teleport: true
       landclaims.admin.userclaims.transfer: true
+      landclaims.admin.limit: true
       landclaims.admin.reload: true

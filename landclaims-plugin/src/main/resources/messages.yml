@@ -9,6 +9,7 @@ claim:
   selection-required: "<red>Select two chunks with the claim tool first."
   hold-tool: "<red>Hold your claim tool to create a claim."
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
+  over-limit-disabled: "<red>This claim exceeds your claim limit."
   refund-failed: "<red>Claim creation failed and your refund of <yellow><cost></yellow> could not be processed. Contact an administrator."
   boundary:
     enter: "<gold>Entering <yellow><claim_name></yellow></gold>"
@@ -107,6 +108,8 @@ tool:
     - "<gray>Right-click two chunks to select land.</gray>"
 command:
   player-only: "<red>Only players can use LandClaims commands."
+  claim:
+    no-permission: "<red>You do not have permission to create claims."
   unavailable:
     claim-creation: "<red>Claim creation is not available yet."
     claim-info: "<red>Claim info is not available yet."

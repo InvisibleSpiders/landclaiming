@@ -75,6 +75,10 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 | `/claim admin userclaims member list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
 | `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `landclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
 | `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
+| `/claim admin limit get <player\|uuid>` | `landclaims.admin.limit` | Shows a player's effective claim chunk limit. |
+| `/claim admin limit set <player\|uuid> <amount>` | `landclaims.admin.limit` | Sets a player's claim chunk limit. |
+| `/claim admin limit add <player\|uuid> <amount>` | `landclaims.admin.limit` | Adds chunks to a player's claim chunk limit. |
+| `/claim admin limit remove <player\|uuid> <amount>` | `landclaims.admin.limit` | Removes chunks from a player's claim chunk limit, with a floor of 1. |
 | `/claim info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
 | `/claim cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
 | `/claim mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
@@ -165,11 +169,7 @@ access-denial:
 | `landclaims.tool.recharge` | `true` | Reserved for claim tool recharge flows. |
 | `landclaims.member.manage` | `true` | Reserved for broader member management permission gating. Current member commands are owner-gated. |
 | `landclaims.deny.manage` | `true` | Allows using denied-entry management commands. Claim ownership or manager role is still required. |
-| `landclaims.limit.default` | Registered from `permissions.yml` | Grants the default configured chunk allowance, currently 10. |
-| `landclaims.limit.member` | Registered from `permissions.yml` | Grants the member configured chunk allowance, currently 25. |
-| `landclaims.limit.vip` | Registered from `permissions.yml` | Grants the VIP configured chunk allowance, currently 75. |
-| `landclaims.limit.elite` | Registered from `permissions.yml` | Grants the elite configured chunk allowance, currently 150. |
-| `landclaims.flag.<flag>` | Server permission system | Allows the claim owner to edit a specific flag, such as `landclaims.flag.build` or `landclaims.flag.item_drop`. |
+| `landclaims.flag.<flag>` | Registered from `permissions.yml` flag-edit groups | Allows the claim owner to edit a specific flag, such as `landclaims.flag.build` or `landclaims.flag.item_drop`. Group nodes such as `landclaims.flag.edit.basic` grant their listed child flags. |
 | `landclaims.bypass.claim-limit` | `op` | Bypasses claim allowance limits. |
 | `landclaims.bypass.claim-buffer` | `op` | Bypasses configured claim buffer distance checks. |
 | `landclaims.bypass.protection` | `op` | Bypasses all protection checks. |
@@ -186,6 +186,7 @@ access-denial:
 | `landclaims.admin.userclaims.delete` | child of `landclaims.admin` | Allows deleting player claims by UUID. |
 | `landclaims.admin.userclaims.teleport` | child of `landclaims.admin` | Allows teleporting to player claims by UUID. |
 | `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Allows transferring player claim ownership by UUID. |
+| `landclaims.admin.limit` | child of `landclaims.admin` | Allows viewing and changing player claim chunk limits. |
 | `landclaims.admin.reload` | child of `landclaims.admin` | Planned runtime reload command. |
 
 ## Flags
