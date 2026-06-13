@@ -6,6 +6,7 @@ import com.nick.landclaims.plugin.economy.ClaimPaymentService;
 import com.nick.landclaims.plugin.economy.NoopEconomyService;
 import com.nick.landclaims.plugin.limit.ClaimCostConfig;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
+import com.nick.landclaims.plugin.limit.ClaimLimitRepository;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
@@ -13,11 +14,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.IntUnaryOperator;
 import org.junit.jupiter.api.Test;
 
 class ClaimManagementServiceTest {
+    private static LimitService limitOf(int limit) {
+        return new LimitService(limit, new ClaimLimitRepository() {
+            @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
+            @Override public void setLimit(UUID id, int lim) {}
+            @Override public void updateLimit(UUID id, int defaultLimit, IntUnaryOperator op) {}
+        });
+    }
 
     // -------------------------------------------------------------------------
     // renameClaim tests
@@ -132,7 +142,7 @@ class ClaimManagementServiceTest {
         // LimitService with limit=10 means 2-chunk claim is within limit → refund = 0
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
-                new LimitService(10, Map.of()),
+                limitOf(10),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
         // NoopEconomyService is always unavailable — so if refund is erroneously attempted,
@@ -161,7 +171,7 @@ class ClaimManagementServiceTest {
         ClaimManagementService service = new ClaimManagementService(repository, claimIndex);
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
-                new LimitService(10, Map.of()),
+                limitOf(10),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
         ClaimPaymentService paymentService = new ClaimPaymentService(new NoopEconomyService());
@@ -179,7 +189,7 @@ class ClaimManagementServiceTest {
         ClaimManagementService service = new ClaimManagementService(repository, new ClaimIndex());
         ClaimCostService costService = new ClaimCostService(
                 new ClaimIndex(),
-                new LimitService(10, Map.of()),
+                limitOf(10),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
         ClaimPaymentService paymentService = new ClaimPaymentService(new NoopEconomyService());
@@ -211,7 +221,7 @@ class ClaimManagementServiceTest {
         ClaimManagementService service = new ClaimManagementService(repository, claimIndex);
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
-                new LimitService(3, Map.of()),
+                limitOf(3),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
         TrackingEconomyService economyService = new TrackingEconomyService();

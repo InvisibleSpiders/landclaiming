@@ -48,7 +48,12 @@ class ClaimsCommandManageTest {
                 null,
                 null,
                 null,
-                mock(LandClaimsLimitService.class),
+                new LandClaimsLimitService() {
+                    @Override public int getLimit(java.util.UUID p) { return 0; }
+                    @Override public void setLimit(java.util.UUID p, int l) {}
+                    @Override public void addChunks(java.util.UUID p, int c) {}
+                    @Override public void removeChunks(java.util.UUID p, int c) {}
+                },
                 null,
                 null,
                 null,
