@@ -19,9 +19,9 @@ public final class ClaimCreationService {
     private final ClaimIndex claimIndex;
     private final ClaimService claimService;
     private final FlagRegistry flagRegistry;
-    private final int playerBufferDistance;
-    private final int adminBufferDistance;
-    private final int maxClaimNameLength;
+    private int playerBufferDistance;
+    private int adminBufferDistance;
+    private int maxClaimNameLength;
 
     public ClaimCreationService(
             ClaimRepository claimRepository,
@@ -45,6 +45,18 @@ public final class ClaimCreationService {
         this.playerBufferDistance = playerBufferDistance;
         this.adminBufferDistance = adminBufferDistance;
         this.maxClaimNameLength = maxClaimNameLength;
+    }
+
+    public void reload(int newPlayerBufferDistance, int newAdminBufferDistance, int newMaxNameLength) {
+        if (newPlayerBufferDistance < 0 || newAdminBufferDistance < 0) {
+            throw new IllegalArgumentException("buffer distances must be non-negative");
+        }
+        if (newMaxNameLength < 1) {
+            throw new IllegalArgumentException("maxClaimNameLength must be at least 1");
+        }
+        this.playerBufferDistance = newPlayerBufferDistance;
+        this.adminBufferDistance = newAdminBufferDistance;
+        this.maxClaimNameLength = newMaxNameLength;
     }
 
     public ClaimValidationResult createPlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {

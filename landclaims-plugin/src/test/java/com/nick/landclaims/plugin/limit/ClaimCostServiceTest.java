@@ -75,6 +75,27 @@ class ClaimCostServiceTest {
         assertThat(quote.overageChunks()).isZero();
     }
 
+    @Test
+    void reloadUpdatesConfig() {
+        ClaimIndex index = new ClaimIndex();
+        ClaimCostService service = new ClaimCostService(
+                index, limitOf(5),
+                new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0));
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+
+        service.reload(new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 999.0, 999.0, 2.0));
+
+        ClaimCostQuote quote = service.quotePlayerClaim(ownerId,
+                Set.of(new ClaimChunk(worldId, 0, 0),
+                       new ClaimChunk(worldId, 1, 0),
+                       new ClaimChunk(worldId, 2, 0),
+                       new ClaimChunk(worldId, 3, 0),
+                       new ClaimChunk(worldId, 4, 0),
+                       new ClaimChunk(worldId, 5, 0)));
+        assertThat(quote.cost()).isEqualTo(999.0);
+    }
+
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(UUID.randomUUID(), "Existing", OwnerType.PLAYER, ownerId, worldId, chunks, Map.of(), now, now);

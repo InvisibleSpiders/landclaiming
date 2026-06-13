@@ -12,7 +12,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 public final class MessageService {
     private static final String MISSING_MESSAGE_PREFIX = "Missing message: ";
 
-    private final Map<String, String> messages;
+    private Map<String, String> messages;
     private final MiniMessage miniMessage;
     private final PlainTextComponentSerializer plainTextSerializer;
 
@@ -20,6 +20,10 @@ public final class MessageService {
         this.messages = Map.copyOf(Objects.requireNonNull(messages, "messages"));
         this.miniMessage = MiniMessage.miniMessage();
         this.plainTextSerializer = PlainTextComponentSerializer.plainText();
+    }
+
+    public void reload(Map<String, String> newMessages) {
+        this.messages = Map.copyOf(Objects.requireNonNull(newMessages, "newMessages"));
     }
 
     public Component render(String key, Map<String, String> placeholders) {

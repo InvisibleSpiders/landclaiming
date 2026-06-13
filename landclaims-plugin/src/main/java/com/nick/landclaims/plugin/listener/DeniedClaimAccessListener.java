@@ -28,9 +28,9 @@ public final class DeniedClaimAccessListener implements Listener {
     private final ClaimIndex claimIndex;
     private final ClaimEntryGuard entryGuard;
     private final MessageService messageService;
-    private final boolean enabled;
-    private final boolean knockbackEnabled;
-    private final double knockbackStrength;
+    private boolean enabled;
+    private boolean knockbackEnabled;
+    private double knockbackStrength;
     private final Map<UUID, Location> lastAllowedLocations = new java.util.concurrent.ConcurrentHashMap<>();
 
     public DeniedClaimAccessListener(
@@ -46,6 +46,12 @@ public final class DeniedClaimAccessListener implements Listener {
         this.enabled = enabled;
         this.knockbackEnabled = knockbackEnabled;
         this.knockbackStrength = knockbackStrength;
+    }
+
+    public void reload(boolean newEnabled, boolean newKnockbackEnabled, double newKnockbackStrength) {
+        this.enabled = newEnabled;
+        this.knockbackEnabled = newKnockbackEnabled;
+        this.knockbackStrength = newKnockbackStrength;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

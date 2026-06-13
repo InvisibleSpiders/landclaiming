@@ -21,6 +21,7 @@ import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import dev.invisiblespiders.haven.api.model.ReloadResult;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Server;
@@ -50,7 +52,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", ""}))
-                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims", "limit");
+                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims", "limit", "reload");
     }
 
     @Test
@@ -474,6 +476,84 @@ class ClaimsCommandAdminTest {
                 );
     }
 
+    @Test
+    void adminReloadCallsReloadActionAndSendsSuccessMessage() {
+        boolean[] called = {false};
+        Supplier<ReloadResult> reloadAction = () -> {
+            called[0] = true;
+            return ReloadResult.ok("reloaded");
+        };
+        ClaimsCommand command = commandWithReloadAction(reloadAction);
+        Player admin = mockAdmin();
+        List<Component> messages = captureMessages(admin);
+
+        command.onCommand(admin, mockCommand(), "claim", new String[]{"admin", "reload"});
+
+        assertThat(called[0]).isTrue();
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .hasSize(1)
+                .first()
+                .asString()
+                .contains("Config reloaded.")
+                .contains("reloaded");
+    }
+
+    @Test
+    void adminReloadSendsFailureMessageWhenReloadFails() {
+        Supplier<ReloadResult> reloadAction = () -> ReloadResult.fail("Config file is invalid");
+        ClaimsCommand command = commandWithReloadAction(reloadAction);
+        Player admin = mockAdmin();
+        List<Component> messages = captureMessages(admin);
+
+        command.onCommand(admin, mockCommand(), "claim", new String[]{"admin", "reload"});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .hasSize(1)
+                .first()
+                .asString()
+                .contains("Reload failed:")
+                .contains("Config file is invalid");
+    }
+
+    private static Player mockAdmin() {
+        Player admin = mock(Player.class);
+        when(admin.hasPermission("landclaims.admin.reload")).thenReturn(true);
+        return admin;
+    }
+
+    private static Command mockCommand() {
+        return mock(Command.class);
+    }
+
+    private static ClaimsCommand commandWithReloadAction(Supplier<ReloadResult> reloadAction) {
+        return new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new MessageService(Map.ofEntries(
+                        Map.entry("admin.reload.success", "<green>Config reloaded. <detail>"),
+                        Map.entry("admin.reload.failed", "<red>Reload failed: <detail>"),
+                        Map.entry("admin.no-permission", "<red>No permission.")
+                )),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new AdminClaimService(),
+                mock(LandClaimsLimitService.class),
+                reloadAction
+        );
+    }
+
     private static ClaimsCommand command(AdminClaimService adminClaimService) {
         return command(adminClaimService, null, null);
     }
@@ -525,7 +605,8 @@ class ClaimsCommandAdminTest {
                 null,
                 null,
                 adminClaimService,
-                mock(LandClaimsLimitService.class)
+                mock(LandClaimsLimitService.class),
+                null
         );
     }
 

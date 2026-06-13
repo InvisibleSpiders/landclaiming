@@ -5,12 +5,16 @@ import java.util.Objects;
 import java.util.UUID;
 
 public final class LimitService implements LandClaimsLimitService {
-    private final int defaultLimit;
+    private int defaultLimit;
     private final ClaimLimitRepository repository;
 
     public LimitService(int defaultLimit, ClaimLimitRepository repository) {
         this.defaultLimit = defaultLimit;
         this.repository = Objects.requireNonNull(repository, "repository");
+    }
+
+    public void reload(int newDefaultLimit) {
+        this.defaultLimit = newDefaultLimit;
     }
 
     @Override
