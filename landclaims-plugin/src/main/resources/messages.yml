@@ -196,3 +196,12 @@ admin:
     member-list-entry: "<gray>- <yellow><player></yellow> <gray>(<role>)</gray>"
     member-added: "<green>Added <yellow><player></yellow> as <yellow><role></yellow> to <white><claim_name></white>."
     member-removed: "<green>Removed <yellow><player></yellow> from <white><claim_name></white>."
+  limit:
+    usage: "<red>Usage: /claim admin limit <set|add|remove|get> <player|uuid> [amount]"
+    no-permission: "<red>You do not have permission to manage claim limits."
+    invalid-amount: "<red>Amount must be a positive integer."
+    player-not-found: "<red>Player <yellow><player></yellow> not found."
+    set: "<green>Set claim limit for <yellow><player></yellow> to <yellow><amount></yellow> chunks."
+    added: "<green>Added <yellow><amount></yellow> chunks to <yellow><player></yellow>'s limit. New limit: <yellow><new_limit></yellow>."
+    removed: "<green>Removed <yellow><amount></yellow> chunks from <yellow><player></yellow>'s limit. New limit: <yellow><new_limit></yellow>."
+    get: "<gold>Claim limit for <yellow><player></yellow>: <white><amount></white> chunks <gray>(<source>)</gray>."

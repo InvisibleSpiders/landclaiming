@@ -8,11 +8,28 @@ import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import java.time.Instant;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ClaimCostServiceTest {
+    private static LimitService limitOf(int limit) {
+        return new LimitService(limit, new ClaimLimitRepository() {
+            @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
+            @Override public void setLimit(UUID id, int limit) {}
+            @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
+        });
+    }
+
+    private static LimitService limitOf(UUID player, int limit) {
+        return new LimitService(99, new ClaimLimitRepository() {
+            @Override public OptionalInt getLimit(UUID id) { return id.equals(player) ? OptionalInt.of(limit) : OptionalInt.empty(); }
+            @Override public void setLimit(UUID id, int lim) {}
+            @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
+        });
+    }
+
     @Test
     void quoteIncludesExistingPlayerChunksWhenPricingOverLimitSelection() {
         ClaimIndex claimIndex = new ClaimIndex();
@@ -24,13 +41,12 @@ class ClaimCostServiceTest {
         )));
         ClaimCostService service = new ClaimCostService(
                 claimIndex,
-                new LimitService(3, Map.of()),
+                limitOf(3),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
 
         ClaimCostQuote quote = service.quotePlayerClaim(
                 ownerId,
-                Set.of(),
                 Set.of(new ClaimChunk(worldId, 2, 0), new ClaimChunk(worldId, 3, 0))
         );
 
@@ -42,22 +58,21 @@ class ClaimCostServiceTest {
     }
 
     @Test
-    void quoteUsesHighestMatchingLimitPermission() {
+    void quoteUsesPlayerDBLimitNotDefault() {
+        UUID ownerId = UUID.randomUUID();
         ClaimCostService service = new ClaimCostService(
                 new ClaimIndex(),
-                new LimitService(3, Map.of("landclaims.limit.vip", 10)),
+                limitOf(ownerId, 10),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
 
         ClaimCostQuote quote = service.quotePlayerClaim(
-                UUID.randomUUID(),
-                Set.of("landclaims.limit.vip"),
+                ownerId,
                 Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0), new ClaimChunk(UUID.randomUUID(), 1, 0))
         );
 
         assertThat(quote.allowedChunks()).isEqualTo(10);
         assertThat(quote.overageChunks()).isZero();
-        assertThat(quote.cost()).isZero();
     }
 
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks) {

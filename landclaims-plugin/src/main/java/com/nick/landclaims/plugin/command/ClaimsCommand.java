@@ -20,6 +20,7 @@ import com.nick.landclaims.plugin.economy.ClaimPaymentService;
 import com.nick.landclaims.plugin.flag.ClaimFlagResult;
 import com.nick.landclaims.plugin.flag.ClaimFlagRow;
 import com.nick.landclaims.plugin.flag.ClaimFlagService;
+import com.nick.landclaims.api.limit.LandClaimsLimitService;
 import com.nick.landclaims.plugin.limit.ClaimCostMessageService;
 import com.nick.landclaims.plugin.limit.ClaimCostQuote;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
@@ -78,7 +79,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "cancel",
             "info"
     );
-    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims");
+    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit");
+    private static final List<String> ADMIN_LIMIT_SUGGESTIONS = List.of("set", "add", "remove", "get");
     private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport", "transfer", "flag", "member");
     private static final List<String> ADMIN_USERCLAIM_FLAG_SUGGESTIONS = List.of("list", "set", "toggle");
     private static final List<String> ADMIN_USERCLAIM_MEMBER_SUGGESTIONS = List.of("list", "add", "remove");
@@ -101,9 +103,15 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final ChunkBorderVisualService chunkBorderVisualService;
     private final ClaimBorderColorService claimBorderColorService;
     private final AdminClaimService adminClaimService;
+    private final LandClaimsLimitService claimLimitService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new LandClaimsLimitService() {
+            @Override public int getLimit(java.util.UUID playerId) { return 0; }
+            @Override public void setLimit(java.util.UUID playerId, int limit) {}
+            @Override public void addChunks(java.util.UUID playerId, int chunks) {}
+            @Override public void removeChunks(java.util.UUID playerId, int chunks) {}
+        });
     }
 
     public ClaimsCommand(
@@ -124,7 +132,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             InventoryGuiFallbackService inventoryGuiFallbackService,
             ChunkBorderVisualService chunkBorderVisualService,
             ClaimBorderColorService claimBorderColorService,
-            AdminClaimService adminClaimService
+            AdminClaimService adminClaimService,
+            LandClaimsLimitService claimLimitService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -144,6 +153,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.chunkBorderVisualService = chunkBorderVisualService;
         this.claimBorderColorService = claimBorderColorService;
         this.adminClaimService = adminClaimService;
+        this.claimLimitService = Objects.requireNonNull(claimLimitService, "claimLimitService");
     }
 
     @Override
@@ -227,6 +237,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3 && subcommand.equals("admin") && args[1].equalsIgnoreCase("userclaims")) {
             return matching(ADMIN_USERCLAIMS_SUGGESTIONS, args[2]);
         }
+        if (args.length == 3 && subcommand.equals("admin") && args[1].equalsIgnoreCase("limit")) {
+            return matching(ADMIN_LIMIT_SUGGESTIONS, args[2]);
+        }
         if (args.length == 4
                 && subcommand.equals("admin")
                 && args[1].equalsIgnoreCase("userclaims")
@@ -292,8 +305,80 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (action.equals("userclaims")) {
             return manageAdminUserClaims(player, args);
         }
+        if (action.equals("limit")) {
+            return manageAdminLimit(player, args);
+        }
 
         player.sendMessage(message("admin.claim.usage"));
+        return true;
+    }
+
+    private boolean manageAdminLimit(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.limit")) {
+            player.sendMessage(message("admin.limit.no-permission"));
+            return true;
+        }
+        if (args.length < 3) {
+            player.sendMessage(message("admin.limit.usage"));
+            return true;
+        }
+        String limitAction = args[2].toLowerCase(java.util.Locale.ROOT);
+        if (limitAction.equals("get")) {
+            if (args.length < 4) {
+                player.sendMessage(message("admin.limit.usage"));
+                return true;
+            }
+            UUID targetId = resolvePlayerUuid(args[3]);
+            if (targetId == null) {
+                player.sendMessage(message("admin.limit.player-not-found", Map.of("player", args[3])));
+                return true;
+            }
+            int limit = claimLimitService.getLimit(targetId);
+            player.sendMessage(message("admin.limit.get", Map.of(
+                    "player", args[3],
+                    "amount", String.valueOf(limit),
+                    "source", "db")));
+            return true;
+        }
+        if (args.length < 5) {
+            player.sendMessage(message("admin.limit.usage"));
+            return true;
+        }
+        UUID targetId = resolvePlayerUuid(args[3]);
+        if (targetId == null) {
+            player.sendMessage(message("admin.limit.player-not-found", Map.of("player", args[3])));
+            return true;
+        }
+        int amount;
+        try {
+            amount = Integer.parseInt(args[4]);
+            if (amount < 1) throw new NumberFormatException();
+        } catch (NumberFormatException ex) {
+            player.sendMessage(message("admin.limit.invalid-amount"));
+            return true;
+        }
+        switch (limitAction) {
+            case "set" -> {
+                claimLimitService.setLimit(targetId, amount);
+                player.sendMessage(message("admin.limit.set", Map.of(
+                        "player", args[3], "amount", String.valueOf(amount))));
+            }
+            case "add" -> {
+                claimLimitService.addChunks(targetId, amount);
+                player.sendMessage(message("admin.limit.added", Map.of(
+                        "player", args[3],
+                        "amount", String.valueOf(amount),
+                        "new_limit", String.valueOf(claimLimitService.getLimit(targetId)))));
+            }
+            case "remove" -> {
+                claimLimitService.removeChunks(targetId, amount);
+                player.sendMessage(message("admin.limit.removed", Map.of(
+                        "player", args[3],
+                        "amount", String.valueOf(amount),
+                        "new_limit", String.valueOf(claimLimitService.getLimit(targetId)))));
+            }
+            default -> player.sendMessage(message("admin.limit.usage"));
+        }
         return true;
     }
 
@@ -1317,6 +1402,14 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 .findFirst();
     }
 
+    private UUID resolvePlayerUuid(String input) {
+        try {
+            return UUID.fromString(input);
+        } catch (IllegalArgumentException ignored) {}
+        org.bukkit.OfflinePlayer offline = org.bukkit.Bukkit.getOfflinePlayerIfCached(input);
+        return offline == null ? null : offline.getUniqueId();
+    }
+
     private Optional<UUID> parseUuid(String value) {
         try {
             return Optional.of(UUID.fromString(value));
@@ -1342,7 +1435,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = claimCostService.quotePlayerClaim(
                 player.getUniqueId(),
-                permissionNodes(player),
                 pendingSelection.orElseThrow()
         );
         ClaimCostMessageService.preview(quote, claimPaymentService.format(quote.cost()), messageService)
@@ -1411,7 +1503,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = null;
         if (claimCostService != null && claimPaymentService != null) {
-            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), permissionNodes(player), chunks);
+            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), chunks);
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
             if (!paymentResult.allowed()) {
                 showBorder(player, chunks, BorderColor.AQUA);
