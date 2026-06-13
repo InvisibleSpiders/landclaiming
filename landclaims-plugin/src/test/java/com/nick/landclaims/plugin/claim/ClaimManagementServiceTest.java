@@ -82,6 +82,32 @@ class ClaimManagementServiceTest {
         assertThat(repository.claims.get(0).name()).isEqualTo("Home");
     }
 
+    @Test
+    void renameClaimDeniedWhenClaimNotFound() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimManagementService service = new ClaimManagementService(repository, new ClaimIndex());
+
+        ClaimManagementResult result = service.renameClaim(UUID.randomUUID(), UUID.randomUUID(), "NewName", 32);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.manage.not-found");
+    }
+
+    @Test
+    void renameClaimDeniedWhenNameIsBlank() {
+        UUID ownerId = UUID.randomUUID();
+        Claim claim = claim(ownerId, UUID.randomUUID(), "Home");
+        FakeClaimRepository repository = new FakeClaimRepository();
+        repository.claims.add(claim);
+        ClaimManagementService service = new ClaimManagementService(repository, new ClaimIndex());
+
+        ClaimManagementResult result = service.renameClaim(ownerId, claim.id(), "   ", 32);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.manage.invalid-name");
+        assertThat(repository.claims.get(0).name()).isEqualTo("Home");
+    }
+
     // -------------------------------------------------------------------------
     // deleteClaim tests
     // -------------------------------------------------------------------------
@@ -147,6 +173,58 @@ class ClaimManagementServiceTest {
         assertThat(repository.claims).hasSize(1);
     }
 
+    @Test
+    void deleteClaimDeniedWhenClaimNotFound() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimManagementService service = new ClaimManagementService(repository, new ClaimIndex());
+        ClaimCostService costService = new ClaimCostService(
+                new ClaimIndex(),
+                new LimitService(10, Map.of()),
+                new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+        );
+        ClaimPaymentService paymentService = new ClaimPaymentService(new NoopEconomyService());
+
+        ClaimManagementResult result = service.deleteClaim(UUID.randomUUID(), UUID.randomUUID(), costService, paymentService);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.messageKey()).isEqualTo("claim.manage.not-found");
+    }
+
+    @Test
+    void deleteClaimIssuesRefundWhenPlayerIsOverLimit() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        // Player has 5 chunks, limit is 3 → over by 2 → should receive a refund on deletion
+        Claim claim = claim(ownerId, worldId, "Home", Set.of(
+                new ClaimChunk(worldId, 0, 0),
+                new ClaimChunk(worldId, 1, 0),
+                new ClaimChunk(worldId, 2, 0),
+                new ClaimChunk(worldId, 3, 0),
+                new ClaimChunk(worldId, 4, 0)
+        ));
+
+        FakeClaimRepository repository = new FakeClaimRepository();
+        repository.claims.add(claim);
+        ClaimIndex claimIndex = new ClaimIndex();
+        claimIndex.add(claim);
+
+        ClaimManagementService service = new ClaimManagementService(repository, claimIndex);
+        ClaimCostService costService = new ClaimCostService(
+                claimIndex,
+                new LimitService(3, Map.of()),
+                new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+        );
+        TrackingEconomyService economyService = new TrackingEconomyService();
+        ClaimPaymentService paymentService = new ClaimPaymentService(economyService);
+
+        ClaimManagementResult result = service.deleteClaim(ownerId, claim.id(), costService, paymentService);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.messageKey()).isEqualTo("claim.manage.deleted");
+        assertThat(economyService.lastDeposit).isEqualTo(200.0); // 2 over-limit chunks × $100
+        assertThat(repository.claims).isEmpty();
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -170,6 +248,15 @@ class ClaimManagementServiceTest {
                 now,
                 now
         );
+    }
+
+    private static final class TrackingEconomyService implements com.nick.landclaims.plugin.economy.EconomyService {
+        double lastDeposit = 0.0;
+
+        @Override public boolean available() { return true; }
+        @Override public boolean withdraw(UUID playerId, double amount) { return true; }
+        @Override public boolean deposit(UUID playerId, double amount) { lastDeposit = amount; return true; }
+        @Override public String format(double amount) { return String.valueOf(amount); }
     }
 
     private static final class FakeClaimRepository implements ClaimRepository {

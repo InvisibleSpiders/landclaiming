@@ -22,6 +22,9 @@ public final class ClaimManagementService {
         Objects.requireNonNull(playerId, "playerId");
         Objects.requireNonNull(claimId, "claimId");
         Objects.requireNonNull(newName, "newName");
+        if (maxNameLength < 1) {
+            throw new IllegalArgumentException("maxNameLength must be at least 1, got: " + maxNameLength);
+        }
 
         Optional<Claim> found = claimRepository.findClaimById(claimId);
         if (found.isEmpty()) {
