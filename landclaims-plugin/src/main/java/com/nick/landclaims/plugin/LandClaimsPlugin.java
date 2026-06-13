@@ -45,6 +45,7 @@ import com.nick.landclaims.plugin.visual.BukkitChunkBorderRenderer;
 import com.nick.landclaims.plugin.visual.ClaimBorderColorService;
 import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import dev.invisiblespiders.haven.api.HavenAPI;
+import dev.invisiblespiders.haven.api.model.ReloadResult;
 import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
 import java.io.File;
@@ -64,6 +65,14 @@ public final class LandClaimsPlugin extends JavaPlugin {
     private LimitService limitService;
     private ChunkBorderVisualService chunkBorderVisualService;
     private EntityControlService entityControlService;
+    private MessageService messageService;
+    private ClaimCostService claimCostService;
+    private ClaimCreationService claimCreationService;
+    private DoubleCrouchClearService doubleCrouchClearService;
+    private ClaimToolListener claimToolListener;
+    private DeniedClaimAccessListener deniedClaimAccessListener;
+    private ClaimBoundaryNotificationListener claimBoundaryNotificationListener;
+    private ClaimIndex claimIndex;
 
     @Override
     public void onEnable() {
@@ -75,7 +84,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
 
         ClaimService claimService = new ClaimService();
         ClaimToolService claimToolService = new ClaimToolService(this);
-        MessageService messageService = new MessageService(MessageConfigurationLoader.load(loadYamlResource("messages.yml")));
+        messageService = new MessageService(MessageConfigurationLoader.load(loadYamlResource("messages.yml")));
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
@@ -87,7 +96,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
         );
         DataSource dataSource = havenDataSource.getDataSource();
         ClaimRepository claimRepository = new SqlClaimRepository(dataSource);
-        ClaimIndex claimIndex = new ClaimIndex();
+        claimIndex = new ClaimIndex();
         claimIndex.load(claimRepository.findAllClaims());
         PermissionBankService permissionBankService = new PermissionBankService(getServer().getPluginManager());
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "commands", PermissionDefault.TRUE);
@@ -100,7 +109,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
         );
         getServer().getServicesManager().register(
                 LandClaimsLimitService.class, limitService, this, ServicePriority.Normal);
-        ClaimCostService claimCostService = new ClaimCostService(
+        claimCostService = new ClaimCostService(
                 claimIndex,
                 limitService,
                 ClaimCostConfig.from(getConfig())
@@ -111,7 +120,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         ? new HavenEconomyServiceAdapter(havenEconomy)
                         : new NoopEconomyService()
         );
-        ClaimCreationService claimCreationService = new ClaimCreationService(
+        claimCreationService = new ClaimCreationService(
                 claimRepository,
                 claimIndex,
                 claimService,
@@ -125,7 +134,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
                 claimIndex,
                 claimCostService
         );
-        DoubleCrouchClearService doubleCrouchClearService = new DoubleCrouchClearService(
+        doubleCrouchClearService = new DoubleCrouchClearService(
                 getConfig().getInt("selection.double-crouch-clear.window-ticks", 80),
                 () -> getServer().getCurrentTick()
         );
@@ -135,49 +144,43 @@ public final class LandClaimsPlugin extends JavaPlugin {
         getServer().getServicesManager().register(LandClaimsApi.class, landClaimsApi, this, ServicePriority.Normal);
         new ClaimToolRecipeService(this, claimToolService).register(loadYamlResource("recipes.yml"));
 
-        getServer().getPluginManager().registerEvents(
-                new ClaimToolListener(
-                        claimToolService,
-                        selectionService,
-                        doubleCrouchClearService,
-                        chunkBorderVisualService,
-                        claimBorderColorService,
-                        claimIndex,
-                        messageService,
-                        getConfig().getBoolean("selection.clear-on-tool-switch", true),
-                        getConfig().getBoolean("selection.double-crouch-clear.enabled", true)
-                ),
-                this
+        claimToolListener = new ClaimToolListener(
+                claimToolService,
+                selectionService,
+                doubleCrouchClearService,
+                chunkBorderVisualService,
+                claimBorderColorService,
+                claimIndex,
+                messageService,
+                getConfig().getBoolean("selection.clear-on-tool-switch", true),
+                getConfig().getBoolean("selection.double-crouch-clear.enabled", true)
         );
+        getServer().getPluginManager().registerEvents(claimToolListener, this);
         getServer().getPluginManager().registerEvents(
                 new ProtectionListener(protectionService, claimIndex, messageService),
                 this
         );
-        getServer().getPluginManager().registerEvents(
-                new DeniedClaimAccessListener(
-                        claimIndex,
-                        messageService,
-                        getConfig().getBoolean("access-denial.enabled", true),
-                        getConfig().getBoolean("access-denial.knockback.enabled", true),
-                        getConfig().getDouble("access-denial.knockback.strength", 0.65D)
-                ),
-                this
+        deniedClaimAccessListener = new DeniedClaimAccessListener(
+                claimIndex,
+                messageService,
+                getConfig().getBoolean("access-denial.enabled", true),
+                getConfig().getBoolean("access-denial.knockback.enabled", true),
+                getConfig().getDouble("access-denial.knockback.strength", 0.65D)
         );
-        getServer().getPluginManager().registerEvents(
-                new ClaimBoundaryNotificationListener(
-                        claimIndex,
-                        messageService,
-                        getConfig().getBoolean("notifications.claim-boundary.enabled", true),
-                        getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
-                        getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
-                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar"),
-                        getConfig().getString("notifications.claim-boundary.enter.delivery",
-                                getConfig().getString("notifications.claim-boundary.delivery", "action_bar")),
-                        getConfig().getString("notifications.claim-boundary.exit.delivery",
-                                getConfig().getString("notifications.claim-boundary.delivery", "action_bar"))
-                ),
-                this
+        getServer().getPluginManager().registerEvents(deniedClaimAccessListener, this);
+        claimBoundaryNotificationListener = new ClaimBoundaryNotificationListener(
+                claimIndex,
+                messageService,
+                getConfig().getBoolean("notifications.claim-boundary.enabled", true),
+                getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
+                getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
+                getConfig().getString("notifications.claim-boundary.delivery", "action_bar"),
+                getConfig().getString("notifications.claim-boundary.enter.delivery",
+                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar")),
+                getConfig().getString("notifications.claim-boundary.exit.delivery",
+                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar"))
         );
+        getServer().getPluginManager().registerEvents(claimBoundaryNotificationListener, this);
         if (entityControlService != null) {
             getServer().getPluginManager().registerEvents(new EntityControlListener(entityControlService), this);
             entityControlService.start(getConfig().getLong("advanced.entity-control.cleanup-interval-ticks", 200L));
@@ -215,6 +218,42 @@ public final class LandClaimsPlugin extends JavaPlugin {
         getLogger().info("LandClaims enabled.");
     }
 
+    public ReloadResult performReload() {
+        try {
+            reloadConfig();
+            messageService.reload(
+                    MessageConfigurationLoader.load(
+                            loadYamlResource("messages.yml")));
+            limitService.reload(getConfig().getInt("limits.default-claim-limit", 10));
+            claimCostService.reload(
+                    ClaimCostConfig.from(getConfig()));
+            claimCreationService.reload(
+                    getConfig().getInt("claiming.player-buffer-distance", 3),
+                    getConfig().getInt("claiming.admin-buffer-distance", 3),
+                    getConfig().getInt("claiming.max-name-length", 32));
+            doubleCrouchClearService.reload(
+                    getConfig().getInt("selection.double-crouch-clear.window-ticks", 80));
+            claimToolListener.reload(
+                    getConfig().getBoolean("selection.clear-on-tool-switch", true),
+                    getConfig().getBoolean("selection.double-crouch-clear.enabled", true));
+            deniedClaimAccessListener.reload(
+                    getConfig().getBoolean("access-denial.enabled", true),
+                    getConfig().getBoolean("access-denial.knockback.enabled", true),
+                    getConfig().getDouble("access-denial.knockback.strength", 0.65D));
+            String defaultDel = getConfig().getString("notifications.claim-boundary.delivery", "action_bar");
+            claimBoundaryNotificationListener.reload(
+                    getConfig().getBoolean("notifications.claim-boundary.enabled", true),
+                    getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
+                    getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
+                    defaultDel,
+                    getConfig().getString("notifications.claim-boundary.enter.delivery", defaultDel),
+                    getConfig().getString("notifications.claim-boundary.exit.delivery", defaultDel));
+            return ReloadResult.ok("LandClaims reloaded successfully.");
+        } catch (Exception e) {
+            return ReloadResult.fail("Reload failed: " + e.getMessage());
+        }
+    }
+
     @Override
     public void onDisable() {
         if (chunkBorderVisualService != null) {
@@ -233,6 +272,15 @@ public final class LandClaimsPlugin extends JavaPlugin {
             getServer().getServicesManager().unregister(LandClaimsApi.class, landClaimsApi);
             landClaimsApi = null;
         }
+        messageService = null;
+        limitService = null;
+        claimCostService = null;
+        claimCreationService = null;
+        doubleCrouchClearService = null;
+        claimToolListener = null;
+        deniedClaimAccessListener = null;
+        claimBoundaryNotificationListener = null;
+        claimIndex = null;
         getLogger().info("LandClaims disabled.");
     }
 
