@@ -5,6 +5,7 @@ import com.nick.landclaims.api.limit.LandClaimsLimitService;
 import com.nick.landclaims.plugin.api.BukkitLandClaimsApi;
 import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
+import com.nick.landclaims.plugin.claim.ClaimManagementService;
 import com.nick.landclaims.plugin.claim.ClaimDenyService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimMemberService;
@@ -229,7 +230,9 @@ public final class LandClaimsPlugin extends JavaPlugin
                         adminClaimService,
                         limitService,
                         this::performReload,
-                        adminClaimBrowserService
+                        adminClaimBrowserService,
+                        new ClaimManagementService(claimRepository, claimIndex),
+                        getConfig().getInt("claiming.max-name-length", 32)
                 );
         var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
         claimCommand.setExecutor(claimsCommand);

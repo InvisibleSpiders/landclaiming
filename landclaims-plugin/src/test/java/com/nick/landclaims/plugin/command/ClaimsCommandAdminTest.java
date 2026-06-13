@@ -576,7 +576,9 @@ class ClaimsCommandAdminTest {
                 new AdminClaimService(),
                 mock(LandClaimsLimitService.class),
                 reloadAction,
-                null
+                null,
+                null,
+                32
         );
     }
 
@@ -635,7 +637,9 @@ class ClaimsCommandAdminTest {
                 adminClaimService,
                 mock(LandClaimsLimitService.class),
                 null,
-                null
+                null,
+                null,
+                32
         );
     }
 

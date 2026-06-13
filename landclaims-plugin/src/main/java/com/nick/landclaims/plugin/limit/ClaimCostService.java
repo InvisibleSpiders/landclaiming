@@ -26,8 +26,12 @@ public final class ClaimCostService {
         this.claimCostConfig = Objects.requireNonNull(newConfig, "newConfig");
     }
 
+
     public double computeDeletionRefund(UUID ownerId, int chunksBeingRemoved) {
         Objects.requireNonNull(ownerId, "ownerId");
+        if (chunksBeingRemoved < 0) {
+            throw new IllegalArgumentException("chunksBeingRemoved must be non-negative, got: " + chunksBeingRemoved);
+        }
         int allowedChunks = limitService.getLimit(ownerId);
         int existingTotal = claimIndex.findAll().stream()
                 .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
