@@ -258,6 +258,22 @@ class ClaimCreationServiceTest {
         );
     }
 
+    @Test
+    void reloadEnforcesNewMaxNameLength() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService service = new ClaimCreationService(
+                repository, claimIndex, new ClaimService(), FlagRegistry.createDefault(), 3, 3, 10);
+        UUID owner = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Set<ClaimChunk> chunks = Set.of(new ClaimChunk(worldId, 0, 0));
+
+        service.reload(3, 3, 4);
+
+        ClaimValidationResult result = service.validatePlayerClaim(owner, "TooLongName", chunks);
+        assertThat(result.isAllowed()).isFalse();
+    }
+
     private static ClaimCreationService service(FakeClaimRepository repository, ClaimIndex claimIndex) {
         return new ClaimCreationService(
                 repository,

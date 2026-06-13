@@ -10,7 +10,7 @@ import java.util.UUID;
 public final class ClaimCostService {
     private final ClaimIndex claimIndex;
     private final LimitService limitService;
-    private final ClaimCostConfig claimCostConfig;
+    private ClaimCostConfig claimCostConfig;
 
     public ClaimCostService(
             ClaimIndex claimIndex,
@@ -20,6 +20,10 @@ public final class ClaimCostService {
         this.claimIndex = Objects.requireNonNull(claimIndex, "claimIndex");
         this.limitService = Objects.requireNonNull(limitService, "limitService");
         this.claimCostConfig = Objects.requireNonNull(claimCostConfig, "claimCostConfig");
+    }
+
+    public void reload(ClaimCostConfig newConfig) {
+        this.claimCostConfig = Objects.requireNonNull(newConfig, "newConfig");
     }
 
     public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<ClaimChunk> selectedChunks) {
