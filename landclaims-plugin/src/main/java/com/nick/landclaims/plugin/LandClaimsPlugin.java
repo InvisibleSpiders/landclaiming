@@ -231,7 +231,8 @@ public final class LandClaimsPlugin extends JavaPlugin
                         limitService,
                         this::performReload,
                         adminClaimBrowserService,
-                        new ClaimManagementService(claimRepository, claimIndex)
+                        new ClaimManagementService(claimRepository, claimIndex),
+                        getConfig().getInt("claiming.max-name-length", 32)
                 );
         var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
         claimCommand.setExecutor(claimsCommand);

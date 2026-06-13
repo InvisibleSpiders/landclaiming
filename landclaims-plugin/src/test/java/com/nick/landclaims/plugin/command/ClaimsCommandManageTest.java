@@ -51,7 +51,8 @@ class ClaimsCommandManageTest {
                 mock(LandClaimsLimitService.class),
                 null,
                 null,
-                null
+                null,
+                32
         );
     }
 }

@@ -115,6 +115,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final Supplier<ReloadResult> reloadAction;
     private final AdminClaimBrowserService adminClaimBrowserService;
     private final ClaimManagementService claimManagementService;
+    private final int maxNameLength;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new LandClaimsLimitService() {
@@ -122,7 +123,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             @Override public void setLimit(java.util.UUID playerId, int limit) {}
             @Override public void addChunks(java.util.UUID playerId, int chunks) {}
             @Override public void removeChunks(java.util.UUID playerId, int chunks) {}
-        }, null, null, null);
+        }, null, null, null, 32);
     }
 
     public ClaimsCommand(
@@ -147,7 +148,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             LandClaimsLimitService claimLimitService,
             Supplier<ReloadResult> reloadAction,
             AdminClaimBrowserService adminClaimBrowserService,
-            ClaimManagementService claimManagementService
+            ClaimManagementService claimManagementService,
+            int maxNameLength
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -171,6 +173,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.reloadAction = reloadAction;
         this.adminClaimBrowserService = adminClaimBrowserService;
         this.claimManagementService = claimManagementService;
+        this.maxNameLength = maxNameLength;
     }
 
     @Override
@@ -1727,7 +1730,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         String newName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         ClaimManagementResult result = claimManagementService.renameClaim(
-                player.getUniqueId(), claim.get().id(), newName, 32);
+                player.getUniqueId(), claim.get().id(), newName, maxNameLength);
         if (result.success()) {
             player.sendMessage(message(result.messageKey(), Map.of("claim_name", newName.trim())));
         } else {
