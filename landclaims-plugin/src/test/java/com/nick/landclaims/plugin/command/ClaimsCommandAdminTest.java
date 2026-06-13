@@ -485,10 +485,34 @@ class ClaimsCommandAdminTest {
         };
         ClaimsCommand command = commandWithReloadAction(reloadAction);
         Player admin = mockAdmin();
+        List<Component> messages = captureMessages(admin);
 
         command.onCommand(admin, mockCommand(), "claim", new String[]{"admin", "reload"});
 
         assertThat(called[0]).isTrue();
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .hasSize(1)
+                .first()
+                .asString()
+                .contains("Config reloaded.")
+                .contains("reloaded");
+    }
+
+    @Test
+    void adminReloadSendsFailureMessageWhenReloadFails() {
+        Supplier<ReloadResult> reloadAction = () -> ReloadResult.fail("Config file is invalid");
+        ClaimsCommand command = commandWithReloadAction(reloadAction);
+        Player admin = mockAdmin();
+        List<Component> messages = captureMessages(admin);
+
+        command.onCommand(admin, mockCommand(), "claim", new String[]{"admin", "reload"});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .hasSize(1)
+                .first()
+                .asString()
+                .contains("Reload failed:")
+                .contains("Config file is invalid");
     }
 
     private static Player mockAdmin() {
