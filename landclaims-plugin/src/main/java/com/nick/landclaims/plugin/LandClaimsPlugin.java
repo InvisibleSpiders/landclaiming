@@ -22,6 +22,7 @@ import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.limit.ClaimLimitRepository;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.limit.SqlClaimLimitRepository;
+import com.nick.landclaims.plugin.listener.AdminClaimBrowserListener;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
 import com.nick.landclaims.plugin.listener.ClaimBoundaryNotificationListener;
 import com.nick.landclaims.plugin.listener.DeniedClaimAccessListener;
@@ -37,6 +38,7 @@ import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.storage.sql.SqlClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import com.nick.landclaims.plugin.ui.AdminClaimBrowserService;
 import com.nick.landclaims.plugin.ui.ClaimFlagEditorService;
 import com.nick.landclaims.plugin.ui.ClaimMenuService;
 import com.nick.landclaims.plugin.ui.DialogService;
@@ -196,6 +198,16 @@ public final class LandClaimsPlugin extends JavaPlugin
             getServer().getPluginManager().registerEvents(new EntityControlListener(entityControlService), this);
             entityControlService.start(getConfig().getLong("advanced.entity-control.cleanup-interval-ticks", 200L));
         }
+        AdminClaimService adminClaimService = new AdminClaimService(
+                claimRepository,
+                claimIndex,
+                flagRegistry,
+                getConfig().getInt("claiming.max-name-length", 32)
+        );
+        AdminClaimBrowserService adminClaimBrowserService = new AdminClaimBrowserService(
+                adminClaimService, claimCostService, claimPaymentService, messageService);
+        getServer().getPluginManager().registerEvents(
+                new AdminClaimBrowserListener(adminClaimBrowserService), this);
         ClaimsCommand claimsCommand = new ClaimsCommand(
                         claimToolService,
                         selectionService,
@@ -214,14 +226,10 @@ public final class LandClaimsPlugin extends JavaPlugin
                         new InventoryGuiFallbackService(),
                         chunkBorderVisualService,
                         claimBorderColorService,
-                        new AdminClaimService(
-                                claimRepository,
-                                claimIndex,
-                                flagRegistry,
-                                getConfig().getInt("claiming.max-name-length", 32)
-                        ),
+                        adminClaimService,
                         limitService,
-                        this::performReload
+                        this::performReload,
+                        adminClaimBrowserService
                 );
         var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
         claimCommand.setExecutor(claimsCommand);

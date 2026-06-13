@@ -26,6 +26,19 @@ public final class ClaimCostService {
         this.claimCostConfig = Objects.requireNonNull(newConfig, "newConfig");
     }
 
+    public double computeDeletionRefund(UUID ownerId, int chunksBeingRemoved) {
+        Objects.requireNonNull(ownerId, "ownerId");
+        int allowedChunks = limitService.getLimit(ownerId);
+        int existingTotal = claimIndex.findAll().stream()
+                .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
+                .mapToInt(c -> c.claimChunks().size())
+                .sum();
+        int afterDeletion = existingTotal - chunksBeingRemoved;
+        double costBefore = claimCostConfig.priceOverage(Math.max(0, existingTotal - allowedChunks));
+        double costAfter  = claimCostConfig.priceOverage(Math.max(0, afterDeletion  - allowedChunks));
+        return Math.max(0.0, costBefore - costAfter);
+    }
+
     public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<ClaimChunk> selectedChunks) {
         Objects.requireNonNull(ownerId, "ownerId");
         Objects.requireNonNull(selectedChunks, "selectedChunks");

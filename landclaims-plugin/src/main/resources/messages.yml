@@ -209,3 +209,9 @@ admin:
   reload:
     success: "<green>Config reloaded. <detail>"
     failed: "<red>Reload failed: <detail>"
+  browse:
+    usage: "<red>Usage: /claim admin browse <player|uuid>"
+    empty: "<yellow>No claims found for <player>."
+  disband:
+    success: "<green>Disbanded <count> claim(s). Refunded: <amount>."
+    no-refund-success: "<green>Disbanded <count> claim(s). No refund issued."

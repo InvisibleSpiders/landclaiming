@@ -114,8 +114,4 @@ public final class DialogService {
         player.sendMessage(Component.text("Claim setup dialog coming soon.", NamedTextColor.YELLOW));
     }
 
-    public void openAdminBrowser(Player player) {
-        Objects.requireNonNull(player, "player");
-        player.sendMessage(Component.text("Admin claim browser coming soon.", NamedTextColor.YELLOW));
-    }
 }

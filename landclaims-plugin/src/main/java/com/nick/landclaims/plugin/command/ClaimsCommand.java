@@ -32,6 +32,7 @@ import com.nick.landclaims.plugin.ui.ClaimFlagEditor;
 import com.nick.landclaims.plugin.ui.ClaimFlagEditorService;
 import com.nick.landclaims.plugin.ui.ClaimMenu;
 import com.nick.landclaims.plugin.ui.ClaimMenuService;
+import com.nick.landclaims.plugin.ui.AdminClaimBrowserService;
 import com.nick.landclaims.plugin.ui.DialogService;
 import com.nick.landclaims.plugin.ui.InventoryGuiFallbackService;
 import com.nick.landclaims.plugin.visual.BorderColor;
@@ -82,7 +83,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "cancel",
             "info"
     );
-    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit", "reload");
+    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit", "reload", "browse");
     private static final List<String> ADMIN_LIMIT_SUGGESTIONS = List.of("set", "add", "remove", "get");
     private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport", "transfer", "flag", "member");
     private static final List<String> ADMIN_USERCLAIM_FLAG_SUGGESTIONS = List.of("list", "set", "cycle");
@@ -108,6 +109,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final AdminClaimService adminClaimService;
     private final LandClaimsLimitService claimLimitService;
     private final Supplier<ReloadResult> reloadAction;
+    private final AdminClaimBrowserService adminClaimBrowserService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new LandClaimsLimitService() {
@@ -115,7 +117,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             @Override public void setLimit(java.util.UUID playerId, int limit) {}
             @Override public void addChunks(java.util.UUID playerId, int chunks) {}
             @Override public void removeChunks(java.util.UUID playerId, int chunks) {}
-        }, null);
+        }, null, null);
     }
 
     public ClaimsCommand(
@@ -138,7 +140,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             ClaimBorderColorService claimBorderColorService,
             AdminClaimService adminClaimService,
             LandClaimsLimitService claimLimitService,
-            Supplier<ReloadResult> reloadAction
+            Supplier<ReloadResult> reloadAction,
+            AdminClaimBrowserService adminClaimBrowserService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -160,6 +163,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.adminClaimService = adminClaimService;
         this.claimLimitService = Objects.requireNonNull(claimLimitService, "claimLimitService");
         this.reloadAction = reloadAction;
+        this.adminClaimBrowserService = adminClaimBrowserService;
     }
 
     @Override
@@ -328,6 +332,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(messageService.render(key, Map.of("detail", result.message())));
             return true;
         }
+        if (action.equals("browse")) {
+            return browsePlayerClaims(player, args);
+        }
 
         player.sendMessage(message("admin.claim.usage"));
         return true;
@@ -432,6 +439,28 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage(message("admin.userclaims.usage"));
+        return true;
+    }
+
+    private boolean browsePlayerClaims(Player player, String[] args) {
+        if (!player.hasPermission("landclaims.admin.userclaims.delete")) {
+            player.sendMessage(message("admin.userclaims.no-permission"));
+            return true;
+        }
+        if (args.length < 3) {
+            player.sendMessage(message("admin.browse.usage"));
+            return true;
+        }
+        if (adminClaimBrowserService == null) {
+            player.sendMessage(message("admin.claim.unavailable"));
+            return true;
+        }
+        Optional<OfflinePlayer> resolved = resolveOfflinePlayer(player, args[2]);
+        if (resolved.isEmpty()) {
+            player.sendMessage(message("admin.browse.empty", Map.of("player", args[2])));
+            return true;
+        }
+        adminClaimBrowserService.openBrowse(player, resolved.orElseThrow().getUniqueId());
         return true;
     }
 
