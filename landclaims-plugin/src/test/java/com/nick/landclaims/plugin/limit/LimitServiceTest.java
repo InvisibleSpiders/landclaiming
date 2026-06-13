@@ -16,6 +16,7 @@ class LimitServiceTest {
                 return id.equals(player) ? OptionalInt.of(stored) : OptionalInt.empty();
             }
             @Override public void setLimit(UUID id, int limit) {}
+            @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
         };
         return new LimitService(DEFAULT, repo);
     }
@@ -28,6 +29,10 @@ class LimitServiceTest {
                 return storedId != null && storedId.equals(id) ? OptionalInt.of(stored) : OptionalInt.empty();
             }
             @Override public void setLimit(UUID id, int limit) { storedId = id; stored = limit; }
+            @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {
+                int current = storedId != null && storedId.equals(id) ? stored : defaultLimit;
+                setLimit(id, Math.max(1, op.applyAsInt(current)));
+            }
         });
     }
 

@@ -47,4 +47,38 @@ public final class SqlClaimLimitRepository implements ClaimLimitRepository {
             throw new IllegalStateException("Failed to set player limit.", e);
         }
     }
+
+    @Override
+    public void updateLimit(UUID playerId, int defaultLimit, java.util.function.IntUnaryOperator operator) {
+        Objects.requireNonNull(playerId, "playerId");
+        Objects.requireNonNull(operator, "operator");
+        String selectSql = "SELECT chunk_limit FROM claim_player_limits WHERE player_uuid = ?";
+        String upsertSql = "INSERT OR REPLACE INTO claim_player_limits (player_uuid, chunk_limit) VALUES (?, ?)";
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int current;
+                try (PreparedStatement sel = conn.prepareStatement(selectSql)) {
+                    sel.setString(1, playerId.toString());
+                    try (ResultSet rs = sel.executeQuery()) {
+                        current = rs.next() ? rs.getInt("chunk_limit") : defaultLimit;
+                    }
+                }
+                int newValue = Math.max(1, operator.applyAsInt(current));
+                try (PreparedStatement ups = conn.prepareStatement(upsertSql)) {
+                    ups.setString(1, playerId.toString());
+                    ups.setInt(2, newValue);
+                    ups.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to update player limit.", e);
+        }
+    }
 }

@@ -133,6 +133,7 @@ class ClaimBorderColorServiceTest {
                     new LimitService(defaultLimit, new ClaimLimitRepository() {
                         @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
                         @Override public void setLimit(UUID id, int limit) {}
+                        @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
                     }),
                     new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
             );

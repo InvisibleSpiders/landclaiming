@@ -18,6 +18,7 @@ class ClaimCostServiceTest {
         return new LimitService(limit, new ClaimLimitRepository() {
             @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
             @Override public void setLimit(UUID id, int limit) {}
+            @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
         });
     }
 
@@ -25,6 +26,7 @@ class ClaimCostServiceTest {
         return new LimitService(99, new ClaimLimitRepository() {
             @Override public OptionalInt getLimit(UUID id) { return id.equals(player) ? OptionalInt.of(limit) : OptionalInt.empty(); }
             @Override public void setLimit(UUID id, int lim) {}
+            @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
         });
     }
 

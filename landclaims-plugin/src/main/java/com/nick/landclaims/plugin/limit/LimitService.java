@@ -30,14 +30,14 @@ public final class LimitService implements LandClaimsLimitService {
     public void addChunks(UUID playerId, int chunks) {
         Objects.requireNonNull(playerId, "playerId");
         if (chunks < 1) throw new IllegalArgumentException("chunks must be >= 1");
-        repository.setLimit(playerId, getLimit(playerId) + chunks);
+        repository.updateLimit(playerId, defaultLimit, current -> current + chunks);
     }
 
     @Override
     public void removeChunks(UUID playerId, int chunks) {
         Objects.requireNonNull(playerId, "playerId");
         if (chunks < 1) throw new IllegalArgumentException("chunks must be >= 1");
-        repository.setLimit(playerId, Math.max(1, getLimit(playerId) - chunks));
+        repository.updateLimit(playerId, defaultLimit, current -> Math.max(1, current - chunks));
     }
 
     public int overageChunks(int proposedTotalChunks, int allowedChunks) {

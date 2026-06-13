@@ -37,6 +37,32 @@ class SqlClaimLimitRepositoryTest {
         assertThat(repo.getLimit(player)).hasValue(30);
     }
 
+    @Test
+    void updateLimitAppliesOperatorAtomically(@TempDir Path tmp) throws Exception {
+        SqlClaimLimitRepository repo = repo(tmp);
+        UUID player = UUID.randomUUID();
+        repo.setLimit(player, 10);
+        repo.updateLimit(player, 10, current -> current + 5);
+        assertThat(repo.getLimit(player)).hasValue(15);
+    }
+
+    @Test
+    void updateLimitFloorAtOne(@TempDir Path tmp) throws Exception {
+        SqlClaimLimitRepository repo = repo(tmp);
+        UUID player = UUID.randomUUID();
+        repo.setLimit(player, 2);
+        repo.updateLimit(player, 10, current -> current - 100);
+        assertThat(repo.getLimit(player)).hasValue(1);
+    }
+
+    @Test
+    void updateLimitUsesDefaultWhenNoRow(@TempDir Path tmp) throws Exception {
+        SqlClaimLimitRepository repo = repo(tmp);
+        UUID player = UUID.randomUUID();
+        repo.updateLimit(player, 10, current -> current + 3);
+        assertThat(repo.getLimit(player)).hasValue(13);
+    }
+
     private static SqlClaimLimitRepository repo(Path tmp) throws Exception {
         SQLiteDataSource ds = new SQLiteDataSource();
         ds.setUrl("jdbc:sqlite:" + tmp.resolve("test.db"));
