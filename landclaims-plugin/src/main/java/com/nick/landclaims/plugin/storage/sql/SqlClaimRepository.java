@@ -279,7 +279,7 @@ public class SqlClaimRepository implements ClaimRepository {
 
         List<UUID> claimIds = rows.stream().map(ClaimRow::id).toList();
         Map<UUID, Set<ClaimChunk>> chunksByClaim = bulkLoadChunks(connection, claimIds);
-        Map<UUID, Map<String, Boolean>> flagsByClaim = bulkLoadFlags(connection, claimIds);
+        Map<UUID, Map<String, FlagState>> flagsByClaim = bulkLoadFlags(connection, claimIds);
         Map<UUID, Set<ClaimMember>> membersByClaim = bulkLoadMembers(connection, claimIds);
         Map<UUID, Set<UUID>> deniedByClaim = bulkLoadDeniedPlayers(connection, claimIds);
 
@@ -342,9 +342,9 @@ public class SqlClaimRepository implements ClaimRepository {
         return result;
     }
 
-    private Map<UUID, Map<String, Boolean>> bulkLoadFlags(Connection connection, List<UUID> claimIds) throws SQLException {
-        Map<UUID, Map<String, Boolean>> result = new HashMap<>();
-        String sql = "SELECT claim_id, flag_key, enabled FROM claim_flags WHERE claim_id IN ("
+    private Map<UUID, Map<String, FlagState>> bulkLoadFlags(Connection connection, List<UUID> claimIds) throws SQLException {
+        Map<UUID, Map<String, FlagState>> result = new HashMap<>();
+        String sql = "SELECT claim_id, flag_key, state FROM claim_flags WHERE claim_id IN ("
                 + inClausePlaceholders(claimIds.size()) + ")";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             bindClaimIds(statement, claimIds);
@@ -352,7 +352,7 @@ public class SqlClaimRepository implements ClaimRepository {
                 while (resultSet.next()) {
                     UUID claimId = UUID.fromString(resultSet.getString("claim_id"));
                     result.computeIfAbsent(claimId, key -> new HashMap<>())
-                            .put(resultSet.getString("flag_key"), resultSet.getInt("enabled") != 0);
+                            .put(resultSet.getString("flag_key"), parseState(resultSet.getString("state")));
                 }
             }
         }
