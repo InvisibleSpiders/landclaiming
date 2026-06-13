@@ -31,7 +31,7 @@ public final class DeniedClaimAccessListener implements Listener {
     private final boolean enabled;
     private final boolean knockbackEnabled;
     private final double knockbackStrength;
-    private final Map<UUID, Location> lastAllowedLocations = new java.util.HashMap<>();
+    private final Map<UUID, Location> lastAllowedLocations = new java.util.concurrent.ConcurrentHashMap<>();
 
     public DeniedClaimAccessListener(
             ClaimIndex claimIndex,

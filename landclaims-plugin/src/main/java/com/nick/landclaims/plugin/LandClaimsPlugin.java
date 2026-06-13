@@ -208,10 +208,9 @@ public final class LandClaimsPlugin extends JavaPlugin {
                         ),
                         limitService
                 );
-        Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
-                .setExecutor(claimsCommand);
-        Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
-                .setTabCompleter(claimsCommand);
+        var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
+        claimCommand.setExecutor(claimsCommand);
+        claimCommand.setTabCompleter(claimsCommand);
 
         getLogger().info("LandClaims enabled.");
     }
