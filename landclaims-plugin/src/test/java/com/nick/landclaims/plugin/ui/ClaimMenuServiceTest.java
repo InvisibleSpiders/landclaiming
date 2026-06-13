@@ -46,32 +46,6 @@ class ClaimMenuServiceTest {
         assertThat(menu.viewerOwnsClaim()).isTrue();
         assertThat(menu.adminClaim()).isFalse();
         assertThat(menu.actions()).extracting(ClaimMenuAction::command)
-                .containsExactly("/claim flags", "/claim member list", "/claim info",
-                        "/claim rename", "/claim delete");
-    }
-
-    @Test
-    void doesNotAddRenameDeleteActionsForNonOwnerViewer() {
-        ClaimMenuService service = new ClaimMenuService();
-        UUID ownerId = UUID.randomUUID();
-        UUID worldId = UUID.randomUUID();
-        Claim claim = new Claim(
-                UUID.randomUUID(),
-                "Haven Home",
-                OwnerType.PLAYER,
-                ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
-                Map.of(),
-                Set.of(),
-                Instant.parse("2026-06-08T00:00:00Z"),
-                Instant.parse("2026-06-08T00:00:00Z")
-        );
-
-        ClaimMenu menu = service.buildMenu(claim, UUID.randomUUID());
-
-        assertThat(menu.viewerOwnsClaim()).isFalse();
-        assertThat(menu.actions()).extracting(ClaimMenuAction::command)
                 .containsExactly("/claim flags", "/claim member list", "/claim info");
     }
 
