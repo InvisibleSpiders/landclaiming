@@ -448,15 +448,19 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 3) {
-            player.sendMessage(message("admin.userclaims.browse.usage"));
+            player.sendMessage(message("admin.browse.usage"));
             return true;
         }
         if (adminClaimBrowserService == null) {
             player.sendMessage(message("admin.claim.unavailable"));
             return true;
         }
-        OfflinePlayer target = resolveOfflinePlayer(player, args[2]);
-        adminClaimBrowserService.openBrowse(player, target.getUniqueId());
+        Optional<OfflinePlayer> resolved = resolveOfflinePlayer(player, args[2]);
+        if (resolved.isEmpty()) {
+            player.sendMessage(message("admin.browse.empty", Map.of("player", args[2])));
+            return true;
+        }
+        adminClaimBrowserService.openBrowse(player, resolved.orElseThrow().getUniqueId());
         return true;
     }
 

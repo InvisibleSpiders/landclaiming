@@ -11,6 +11,7 @@ import com.nick.landclaims.plugin.economy.EconomyService;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.limit.ClaimCostConfig;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
+import com.nick.landclaims.plugin.limit.ClaimLimitRepository;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
@@ -18,6 +19,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
+import java.util.function.IntUnaryOperator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -164,7 +167,11 @@ class AdminClaimServiceDisbandTest {
     }
 
     private static ClaimCostService costService(ClaimIndex index, int defaultLimit, double flatCostPerChunk) {
-        LimitService limitService = new LimitService(defaultLimit, Map.of());
+        LimitService limitService = new LimitService(defaultLimit, new ClaimLimitRepository() {
+            @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
+            @Override public void setLimit(UUID id, int limit) {}
+            @Override public void updateLimit(UUID id, int defaultLim, IntUnaryOperator op) {}
+        });
         ClaimCostConfig costConfig = new ClaimCostConfig(
                 true,
                 ClaimCostConfig.PricingMode.FLAT,
