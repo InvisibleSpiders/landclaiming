@@ -106,7 +106,12 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final LandClaimsLimitService claimLimitService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
-        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, null);
+        this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new LandClaimsLimitService() {
+            @Override public int getLimit(java.util.UUID playerId) { return 0; }
+            @Override public void setLimit(java.util.UUID playerId, int limit) {}
+            @Override public void addChunks(java.util.UUID playerId, int chunks) {}
+            @Override public void removeChunks(java.util.UUID playerId, int chunks) {}
+        });
     }
 
     public ClaimsCommand(
@@ -148,7 +153,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.chunkBorderVisualService = chunkBorderVisualService;
         this.claimBorderColorService = claimBorderColorService;
         this.adminClaimService = adminClaimService;
-        this.claimLimitService = claimLimitService;
+        this.claimLimitService = Objects.requireNonNull(claimLimitService, "claimLimitService");
     }
 
     @Override

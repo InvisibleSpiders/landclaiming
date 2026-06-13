@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nick.landclaims.api.limit.LandClaimsLimitService;
 import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
@@ -523,7 +524,7 @@ class ClaimsCommandAdminTest {
                 null,
                 null,
                 adminClaimService,
-                null
+                mock(LandClaimsLimitService.class)
         );
     }
 
