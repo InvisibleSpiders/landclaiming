@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import com.nick.landclaims.api.flag.FlagState;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
@@ -33,7 +34,7 @@ class EntityControlServiceTest {
     void removesHostileEntityWithCustomNameWhenNotNamedByPlayerNametag() {
         UUID worldId = UUID.randomUUID();
         ClaimIndex claimIndex = new ClaimIndex();
-        claimIndex.add(claim(worldId, Map.of("remove_hostile_entities", true)));
+        claimIndex.add(claim(worldId, Map.of("remove_hostile_entities", FlagState.ALL)));
         EntityControlService service = new EntityControlService(plugin(), claimIndex, true, false);
         LivingEntity entity = hostileEntity(worldId, 0, 0);
         when(entity.customName()).thenReturn(Component.text("Rare Zombie"));
@@ -48,7 +49,7 @@ class EntityControlServiceTest {
     void preservesHostileEntityMarkedByPlayerNametag() {
         UUID worldId = UUID.randomUUID();
         ClaimIndex claimIndex = new ClaimIndex();
-        claimIndex.add(claim(worldId, Map.of("remove_hostile_entities", true)));
+        claimIndex.add(claim(worldId, Map.of("remove_hostile_entities", FlagState.ALL)));
         EntityControlService service = new EntityControlService(plugin(), claimIndex, true, false);
         LivingEntity entity = hostileEntity(worldId, 0, 0);
         PersistentDataContainer persistentDataContainer = mock(PersistentDataContainer.class);
@@ -60,7 +61,7 @@ class EntityControlServiceTest {
         assertThat(removed).isFalse();
     }
 
-    private static Claim claim(UUID worldId, Map<String, Boolean> flags) {
+    private static Claim claim(UUID worldId, Map<String, FlagState> flags) {
         Instant now = Instant.parse("2026-06-10T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
