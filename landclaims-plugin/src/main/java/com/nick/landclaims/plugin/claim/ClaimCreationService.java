@@ -121,12 +121,16 @@ public final class ClaimCreationService {
             return ClaimValidationResult.allowed();
         }
 
+        UUID claimWorldId = chunks.iterator().next().worldId();
+        if (chunks.stream().anyMatch(c -> !c.worldId().equals(claimWorldId))) {
+            throw new IllegalArgumentException("All selected chunks must belong to the same world");
+        }
         Claim claim = new Claim(
                 UUID.randomUUID(),
                 trimmedName,
                 OwnerType.PLAYER,
                 ownerUuid,
-                chunks.iterator().next().worldId(),
+                claimWorldId,
                 chunks,
                 defaultFlags(),
                 now,

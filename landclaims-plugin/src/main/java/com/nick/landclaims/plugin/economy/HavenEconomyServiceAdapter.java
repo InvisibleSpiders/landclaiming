@@ -19,6 +19,9 @@ public final class HavenEconomyServiceAdapter implements EconomyService {
     @Override
     public boolean withdraw(UUID playerId, double amount) {
         Objects.requireNonNull(playerId, "playerId");
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive, got: " + amount);
+        }
         if (!available()) {
             return false;
         }

@@ -55,6 +55,9 @@ public final class LimitService implements LandClaimsLimitService {
         double total = 0.0;
         for (int i = 0; i < n; i++) {
             total += base * Math.pow(mult, i);
+            if (total >= Double.MAX_VALUE) {
+                return Double.MAX_VALUE;
+            }
         }
         return total;
     }

@@ -249,6 +249,8 @@ public final class ProtectionListener implements Listener {
         return pistonTouchesProtectedClaim(sourceChunks, destinationChunks);
     }
 
+    // null actorUuid signals "no player actor" — isDenied skips owner/member checks and
+    // treats the interaction as coming from an untrusted non-player source.
     boolean pistonTouchesProtectedClaim(java.util.List<ClaimChunk> sourceChunks, java.util.List<ClaimChunk> destinationChunks) {
         for (ClaimChunk sourceChunk : sourceChunks) {
             if (isDenied(sourceChunk, null, permission -> false, "piston_protection")) {
