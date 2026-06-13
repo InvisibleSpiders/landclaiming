@@ -5,11 +5,25 @@ flag-edit:
     - break
     - interact
     - container_access
+    - door_access
+    - switch_access
+    - redstone_access
+  landclaims.flag.edit.entity:
+    - entity_damage
+    - crop_trample
+  landclaims.flag.edit.items:
+    - item_pickup
+    - item_drop
+  landclaims.flag.edit.protection:
+    - piston_protection
   landclaims.flag.edit.environment:
     - fluid_flow
     - explosion_damage
     - fire_spread
     - mob_griefing
+  landclaims.flag.edit.entity-control:
+    - remove_hostile_entities
+    - remove_passive_entities
 
 commands:
   landclaims.deny.manage: "Allows claim owners and managers to use /claim deny, /claim undeny, and /claim denied."

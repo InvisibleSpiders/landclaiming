@@ -6,7 +6,6 @@ import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.message.MessageService;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -115,18 +114,7 @@ public final class DeniedClaimAccessListener implements Listener {
 
     private Location nearestUnclaimedBorderLocation(Location location, Claim claim) {
         World world = Objects.requireNonNull(location.getWorld(), "world");
-        ClaimChunk currentChunk = claimChunk(location);
-        ClaimChunk fallbackChunk = claim.claimChunks().stream()
-                .flatMap(chunk -> java.util.stream.Stream.of(
-                        new ClaimChunk(chunk.worldId(), chunk.chunkX() + 1, chunk.chunkZ()),
-                        new ClaimChunk(chunk.worldId(), chunk.chunkX() - 1, chunk.chunkZ()),
-                        new ClaimChunk(chunk.worldId(), chunk.chunkX(), chunk.chunkZ() + 1),
-                        new ClaimChunk(chunk.worldId(), chunk.chunkX(), chunk.chunkZ() - 1)
-                ))
-                .filter(chunk -> !claim.claimChunks().contains(chunk))
-                .min(Comparator.comparingInt(chunk ->
-                        Math.abs(chunk.chunkX() - currentChunk.chunkX()) + Math.abs(chunk.chunkZ() - currentChunk.chunkZ())))
-                .orElse(new ClaimChunk(claim.worldId(), currentChunk.chunkX() + 1, currentChunk.chunkZ()));
+        ClaimChunk fallbackChunk = entryGuard.nearestUnclaimedBorderChunk(claimChunk(location), claim);
         int blockX = fallbackChunk.chunkX() * 16 + 8;
         int blockZ = fallbackChunk.chunkZ() * 16 + 8;
         int blockY = Math.max(world.getMinHeight() + 1, world.getHighestBlockYAt(blockX, blockZ) + 1);

@@ -51,7 +51,12 @@ public final class ClaimBorderColorService {
         Objects.requireNonNull(permissions, "permissions");
 
         String validationName = claimName.filter(name -> !name.isBlank()).orElse(PREVIEW_CLAIM_NAME);
-        ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(ownerId, validationName, chunks);
+        ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(
+                ownerId,
+                validationName,
+                chunks,
+                permissions.contains("landclaims.bypass.claim-buffer")
+        );
         if (!validationResult.isAllowed()) {
             return BorderColor.RED;
         }
@@ -62,7 +67,7 @@ public final class ClaimBorderColorService {
             return BorderColor.YELLOW;
         }
 
-        if (claimCostService != null) {
+        if (claimCostService != null && !permissions.contains("landclaims.bypass.claim-limit")) {
             ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, chunks);
             if (quote.cost() > 0.0) {
                 return BorderColor.AQUA;

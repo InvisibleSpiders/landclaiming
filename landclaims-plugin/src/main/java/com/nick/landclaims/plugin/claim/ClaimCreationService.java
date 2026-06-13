@@ -60,12 +60,16 @@ public final class ClaimCreationService {
     }
 
     public ClaimValidationResult createPlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+        return createPlayerClaim(ownerUuid, name, chunks, false);
+    }
+
+    public ClaimValidationResult createPlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks, boolean bypassBuffer) {
         Objects.requireNonNull(ownerUuid, "ownerUuid");
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(chunks, "chunks");
 
         String trimmedName = name.trim();
-        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks);
+        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks, bypassBuffer);
         if (!validationResult.isAllowed()) {
             return validationResult;
         }
@@ -77,13 +81,18 @@ public final class ClaimCreationService {
     // caller already has them (e.g. to decide whether to show a merge-confirmation prompt).
     public ClaimValidationResult createPlayerClaim(
             UUID ownerUuid, String name, Set<ClaimChunk> chunks, List<Claim> mergeTargets) {
+        return createPlayerClaim(ownerUuid, name, chunks, mergeTargets, false);
+    }
+
+    public ClaimValidationResult createPlayerClaim(
+            UUID ownerUuid, String name, Set<ClaimChunk> chunks, List<Claim> mergeTargets, boolean bypassBuffer) {
         Objects.requireNonNull(ownerUuid, "ownerUuid");
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(chunks, "chunks");
         Objects.requireNonNull(mergeTargets, "mergeTargets");
 
         String trimmedName = name.trim();
-        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks);
+        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks, bypassBuffer);
         if (!validationResult.isAllowed()) {
             return validationResult;
         }
@@ -196,6 +205,10 @@ public final class ClaimCreationService {
     }
 
     public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+        return validatePlayerClaim(ownerUuid, name, chunks, false);
+    }
+
+    public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks, boolean bypassBuffer) {
         Objects.requireNonNull(ownerUuid, "ownerUuid");
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(chunks, "chunks");
@@ -213,12 +226,14 @@ public final class ClaimCreationService {
 
         // Snapshot once — findAll() rebuilds the distinct list, so calling it inside the loop
         // would re-scan the entire chunk map on every proposed-chunk iteration.
-        List<Claim> allClaims = claimIndex.findAll();
-        for (ClaimChunk proposedChunk : chunks) {
-            for (Claim existingClaim : allClaims) {
-                ClaimValidationResult bufferResult = validateBuffer(ownerUuid, proposedChunk, existingClaim);
-                if (!bufferResult.isAllowed()) {
-                    return bufferResult;
+        if (!bypassBuffer) {
+            List<Claim> allClaims = claimIndex.findAll();
+            for (ClaimChunk proposedChunk : chunks) {
+                for (Claim existingClaim : allClaims) {
+                    ClaimValidationResult bufferResult = validateBuffer(ownerUuid, proposedChunk, existingClaim);
+                    if (!bufferResult.isAllowed()) {
+                        return bufferResult;
+                    }
                 }
             }
         }

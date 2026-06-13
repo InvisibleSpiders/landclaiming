@@ -23,5 +23,10 @@ Admin permissions:
 - `landclaims.admin.userclaims.delete`
 - `landclaims.admin.userclaims.teleport`
 - `landclaims.admin.userclaims.transfer`
+- `landclaims.admin.limit`
 
-Limit permissions are configured in `permissions.yml`, such as `landclaims.limit.member` and `landclaims.limit.vip`.
+Claim limits are stored per player in the LandClaims database and inherit `limits.default-claim-limit` when no override exists.
+Use `/claim admin limit` commands or the `LandClaimsLimitService` API to adjust them.
+
+Flag edit groups are configured in `permissions.yml`.
+Group nodes such as `landclaims.flag.edit.basic` grant child permissions such as `landclaims.flag.build`.

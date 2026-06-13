@@ -64,8 +64,11 @@ import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
+    private static final String CLAIM_CREATE_PERMISSION = "landclaims.claim";
     private static final String CLAIM_MENU_PERMISSION = "landclaims.gui";
     private static final String CLAIM_DENY_PERMISSION = "landclaims.deny.manage";
+    private static final String CLAIM_LIMIT_BYPASS_PERMISSION = "landclaims.bypass.claim-limit";
+    private static final String CLAIM_BUFFER_BYPASS_PERMISSION = "landclaims.bypass.claim-buffer";
     private static final List<String> ROOT_SUGGESTIONS = List.of(
             "tool",
             "create",
@@ -1474,6 +1477,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean previewClaimCost(Player player) {
+        if (!player.hasPermission(CLAIM_CREATE_PERMISSION)) {
+            player.sendMessage(message("command.claim.no-permission"));
+            return true;
+        }
         if (!isClaimCreationAvailable(player)) {
             return true;
         }
@@ -1513,6 +1520,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean createClaim(Player player, String claimName, boolean mergeConfirmed) {
+        if (!player.hasPermission(CLAIM_CREATE_PERMISSION)) {
+            player.sendMessage(message("command.claim.no-permission"));
+            return true;
+        }
         if (!isClaimCreationAvailable(player)) {
             return true;
         }
@@ -1539,7 +1550,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         // Fail-fast validation so we never charge the player for a claim we already know is invalid.
         // createPlayerClaim re-validates under the same call as the write to guard against TOCTOU races.
-        ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(player.getUniqueId(), claimName, chunks);
+        boolean bypassBuffer = player.hasPermission(CLAIM_BUFFER_BYPASS_PERMISSION);
+        boolean bypassLimit = player.hasPermission(CLAIM_LIMIT_BYPASS_PERMISSION);
+        ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(
+                player.getUniqueId(), claimName, chunks, bypassBuffer);
         if (!validationResult.isAllowed()) {
             showBorder(player, chunks, BorderColor.RED);
             player.sendMessage(claimCreateDenied(validationResult.messageKey().orElse("claims.denied")));
@@ -1557,8 +1571,13 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         ClaimCostQuote quote = null;
-        if (claimCostService != null && claimPaymentService != null) {
+        if (claimCostService != null && claimPaymentService != null && !bypassLimit) {
             quote = claimCostService.quotePlayerClaim(player.getUniqueId(), chunks);
+            if (quote.overageChunks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
+                showBorder(player, chunks, BorderColor.AQUA);
+                player.sendMessage(message("claim.over-limit-disabled"));
+                return true;
+            }
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
             if (!paymentResult.allowed()) {
                 showBorder(player, chunks, BorderColor.AQUA);
@@ -1574,7 +1593,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         // Pass the already-computed mergeTargets to avoid a redundant index scan inside createPlayerClaim.
         ClaimValidationResult result = claimCreationService.createPlayerClaim(
-                player.getUniqueId(), claimName, chunks, mergeTargets);
+                player.getUniqueId(), claimName, chunks, mergeTargets, bypassBuffer);
         if (!result.isAllowed()) {
             // Refund the payment — the creation failed (e.g. concurrent overlap) after we charged.
             if (quote != null && claimPaymentService != null && quote.cost() > 0.0
@@ -1606,6 +1625,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean confirmPendingMerge(Player player) {
+        if (!player.hasPermission(CLAIM_CREATE_PERMISSION)) {
+            player.sendMessage(message("command.claim.no-permission"));
+            return true;
+        }
         if (pendingClaimMergeService == null) {
             player.sendMessage(message("claim.merge.unavailable"));
             return true;
@@ -1627,6 +1650,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean cancelPendingMerge(Player player) {
+        if (!player.hasPermission(CLAIM_CREATE_PERMISSION)) {
+            player.sendMessage(message("command.claim.no-permission"));
+            return true;
+        }
         if (pendingClaimMergeService != null) {
             pendingClaimMergeService.clear(player.getUniqueId());
         }
@@ -1666,6 +1693,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean cancelSelection(Player player) {
+        if (!player.hasPermission(CLAIM_CREATE_PERMISSION)) {
+            player.sendMessage(message("command.claim.no-permission"));
+            return true;
+        }
         if (selectionService == null) {
             player.sendMessage(message("command.unavailable.claim-creation"));
             return true;
