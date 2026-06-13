@@ -8,6 +8,8 @@ import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimDenyResult;
 import com.nick.landclaims.plugin.claim.ClaimDenyService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.ClaimManagementResult;
+import com.nick.landclaims.plugin.claim.ClaimManagementService;
 import com.nick.landclaims.plugin.claim.ClaimMember;
 import com.nick.landclaims.plugin.claim.ClaimMemberResult;
 import com.nick.landclaims.plugin.claim.ClaimMemberService;
@@ -81,7 +83,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "denied",
             "admin",
             "cancel",
-            "info"
+            "info",
+            "rename",
+            "delete"
     );
     private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit", "reload", "browse");
     private static final List<String> ADMIN_LIMIT_SUGGESTIONS = List.of("set", "add", "remove", "get");
@@ -110,6 +114,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final LandClaimsLimitService claimLimitService;
     private final Supplier<ReloadResult> reloadAction;
     private final AdminClaimBrowserService adminClaimBrowserService;
+    private final ClaimManagementService claimManagementService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new LandClaimsLimitService() {
@@ -117,7 +122,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             @Override public void setLimit(java.util.UUID playerId, int limit) {}
             @Override public void addChunks(java.util.UUID playerId, int chunks) {}
             @Override public void removeChunks(java.util.UUID playerId, int chunks) {}
-        }, null, null);
+        }, null, null, null);
     }
 
     public ClaimsCommand(
@@ -141,7 +146,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             AdminClaimService adminClaimService,
             LandClaimsLimitService claimLimitService,
             Supplier<ReloadResult> reloadAction,
-            AdminClaimBrowserService adminClaimBrowserService
+            AdminClaimBrowserService adminClaimBrowserService,
+            ClaimManagementService claimManagementService
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -164,6 +170,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.claimLimitService = Objects.requireNonNull(claimLimitService, "claimLimitService");
         this.reloadAction = reloadAction;
         this.adminClaimBrowserService = adminClaimBrowserService;
+        this.claimManagementService = claimManagementService;
     }
 
     @Override
@@ -216,6 +223,12 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("info")) {
             return showInfo(player);
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("rename")) {
+            return renameOwnClaim(player, args);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("delete")) {
+            return deleteOwnClaim(player);
         }
 
         sendHelp(player);
@@ -1699,6 +1712,43 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", foundClaim.owner().name())));
         player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(foundClaim.claimChunks().size()))));
         player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(foundClaim.ownerUuid())))));
+        return true;
+    }
+
+    private boolean renameOwnClaim(Player player, String[] args) {
+        if (claimManagementService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.rename.not-in-claim"));
+            return true;
+        }
+        String newName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        ClaimManagementResult result = claimManagementService.renameClaim(
+                player.getUniqueId(), claim.get().id(), newName, 32);
+        if (result.success()) {
+            player.sendMessage(message(result.messageKey(), Map.of("claim_name", newName.trim())));
+        } else {
+            player.sendMessage(message(result.messageKey()));
+        }
+        return true;
+    }
+
+    private boolean deleteOwnClaim(Player player) {
+        if (claimManagementService == null || claimCostService == null || claimPaymentService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.delete.not-in-claim"));
+            return true;
+        }
+        ClaimManagementResult result = claimManagementService.deleteClaim(
+                player.getUniqueId(), claim.get().id(), claimCostService, claimPaymentService);
+        player.sendMessage(message(result.messageKey()));
         return true;
     }
 

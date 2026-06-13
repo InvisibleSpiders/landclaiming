@@ -88,6 +88,16 @@ claim:
     border-claim: "<green>Showing this claim border."
     border-current-chunk: "<green>Showing the current chunk border.</green> <gray>Color: <yellow><color></yellow>."
     color-help: "<gray>Green: claimable. Red: blocked. Yellow: can merge. Aqua: claimable with cost. Gold: existing or created claim.</gray>"
+  manage:
+    renamed: "<green>Claim renamed to <claim_name>."
+    deleted: "<green>Claim deleted."
+    not-found: "<red>No claim found at your location."
+    not-owner: "<red>You do not own that claim."
+    invalid-name: "<red>Invalid name. Use 1-32 characters."
+  rename:
+    not-in-claim: "<red>You are not standing in a claim."
+  delete:
+    not-in-claim: "<red>You are not standing in a claim."
   menu:
     no-permission: "<red>You do not have permission to open claim menus."
     title: "<gold>Claim Menu: <yellow><claim_name></yellow>"
