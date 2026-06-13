@@ -85,9 +85,13 @@ public final class LandClaimsPlugin extends JavaPlugin {
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "commands", PermissionDefault.TRUE);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "admin", PermissionDefault.OP);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "bypass", PermissionDefault.OP);
+        // TODO(A4): wire SqlClaimLimitRepository here; stub repo used until wiring task
         LimitService limitService = new LimitService(
                 getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("landclaims.limit.default", 10)),
-                limitPermissions
+                new com.nick.landclaims.plugin.limit.ClaimLimitRepository() {
+                    @Override public java.util.OptionalInt getLimit(java.util.UUID id) { return java.util.OptionalInt.empty(); }
+                    @Override public void setLimit(java.util.UUID id, int limit) {}
+                }
         );
         ClaimCostService claimCostService = new ClaimCostService(
                 claimIndex,

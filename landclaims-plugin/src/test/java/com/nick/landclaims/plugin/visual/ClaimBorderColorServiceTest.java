@@ -11,6 +11,7 @@ import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.limit.ClaimCostConfig;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
+import com.nick.landclaims.plugin.limit.ClaimLimitRepository;
 import com.nick.landclaims.plugin.limit.LimitService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -128,7 +130,10 @@ class ClaimBorderColorServiceTest {
             );
             ClaimCostService claimCostService = new ClaimCostService(
                     claimIndex,
-                    new LimitService(defaultLimit, permissionLimits),
+                    new LimitService(defaultLimit, new ClaimLimitRepository() {
+                        @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
+                        @Override public void setLimit(UUID id, int limit) {}
+                    }),
                     new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
             );
             service = new ClaimBorderColorService(claimCreationService, claimIndex, claimCostService);

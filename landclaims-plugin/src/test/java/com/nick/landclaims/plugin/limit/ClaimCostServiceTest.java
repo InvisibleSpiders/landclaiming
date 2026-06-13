@@ -8,6 +8,7 @@ import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import java.time.Instant;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,10 @@ class ClaimCostServiceTest {
         )));
         ClaimCostService service = new ClaimCostService(
                 claimIndex,
-                new LimitService(3, Map.of()),
+                new LimitService(3, new ClaimLimitRepository() {
+                    @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
+                    @Override public void setLimit(UUID id, int limit) {}
+                }),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
 
@@ -42,16 +46,22 @@ class ClaimCostServiceTest {
     }
 
     @Test
-    void quoteUsesHighestMatchingLimitPermission() {
+    void quoteUsesStoredDbLimit() {
+        UUID playerId = UUID.randomUUID();
         ClaimCostService service = new ClaimCostService(
                 new ClaimIndex(),
-                new LimitService(3, Map.of("landclaims.limit.vip", 10)),
+                new LimitService(3, new ClaimLimitRepository() {
+                    @Override public OptionalInt getLimit(UUID id) {
+                        return id.equals(playerId) ? OptionalInt.of(10) : OptionalInt.empty();
+                    }
+                    @Override public void setLimit(UUID id, int limit) {}
+                }),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
 
         ClaimCostQuote quote = service.quotePlayerClaim(
-                UUID.randomUUID(),
-                Set.of("landclaims.limit.vip"),
+                playerId,
+                Set.of(),
                 Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0), new ClaimChunk(UUID.randomUUID(), 1, 0))
         );
 

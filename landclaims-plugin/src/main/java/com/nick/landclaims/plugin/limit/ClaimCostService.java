@@ -27,7 +27,7 @@ public final class ClaimCostService {
         Objects.requireNonNull(permissions, "permissions");
         Objects.requireNonNull(selectedChunks, "selectedChunks");
 
-        int allowedChunks = limitService.resolveLimit(permissions);
+        int allowedChunks = limitService.getLimit(ownerId);
         int existingChunks = claimIndex.findAll().stream()
                 .filter(claim -> claim.owner() == OwnerType.PLAYER && ownerId.equals(claim.ownerUuid()))
                 .mapToInt(claim -> claim.claimChunks().size())

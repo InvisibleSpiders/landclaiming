@@ -17,7 +17,8 @@ class LandClaimsMigrationResourceTest {
                 .filter(line -> !line.isEmpty() && !line.startsWith("#")))
                 .containsExactly(
                         "V1__initial_claim_schema.sql",
-                        "V2__claim_denied_players.sql"
+                        "V2__claim_denied_players.sql",
+                        "V4__claim_player_limits.sql"
                 );
     }
 
