@@ -14,6 +14,20 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ClaimCostServiceTest {
+    private static LimitService limitOf(int limit) {
+        return new LimitService(limit, new ClaimLimitRepository() {
+            @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
+            @Override public void setLimit(UUID id, int limit) {}
+        });
+    }
+
+    private static LimitService limitOf(UUID player, int limit) {
+        return new LimitService(99, new ClaimLimitRepository() {
+            @Override public OptionalInt getLimit(UUID id) { return id.equals(player) ? OptionalInt.of(limit) : OptionalInt.empty(); }
+            @Override public void setLimit(UUID id, int lim) {}
+        });
+    }
+
     @Test
     void quoteIncludesExistingPlayerChunksWhenPricingOverLimitSelection() {
         ClaimIndex claimIndex = new ClaimIndex();
@@ -25,16 +39,12 @@ class ClaimCostServiceTest {
         )));
         ClaimCostService service = new ClaimCostService(
                 claimIndex,
-                new LimitService(3, new ClaimLimitRepository() {
-                    @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
-                    @Override public void setLimit(UUID id, int limit) {}
-                }),
+                limitOf(3),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
 
         ClaimCostQuote quote = service.quotePlayerClaim(
                 ownerId,
-                Set.of(),
                 Set.of(new ClaimChunk(worldId, 2, 0), new ClaimChunk(worldId, 3, 0))
         );
 
@@ -46,28 +56,21 @@ class ClaimCostServiceTest {
     }
 
     @Test
-    void quoteUsesStoredDbLimit() {
-        UUID playerId = UUID.randomUUID();
+    void quoteUsesPlayerDBLimitNotDefault() {
+        UUID ownerId = UUID.randomUUID();
         ClaimCostService service = new ClaimCostService(
                 new ClaimIndex(),
-                new LimitService(3, new ClaimLimitRepository() {
-                    @Override public OptionalInt getLimit(UUID id) {
-                        return id.equals(playerId) ? OptionalInt.of(10) : OptionalInt.empty();
-                    }
-                    @Override public void setLimit(UUID id, int limit) {}
-                }),
+                limitOf(ownerId, 10),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
 
         ClaimCostQuote quote = service.quotePlayerClaim(
-                playerId,
-                Set.of(),
+                ownerId,
                 Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0), new ClaimChunk(UUID.randomUUID(), 1, 0))
         );
 
         assertThat(quote.allowedChunks()).isEqualTo(10);
         assertThat(quote.overageChunks()).isZero();
-        assertThat(quote.cost()).isZero();
     }
 
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks) {

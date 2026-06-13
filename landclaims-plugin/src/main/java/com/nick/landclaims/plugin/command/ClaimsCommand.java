@@ -1342,7 +1342,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = claimCostService.quotePlayerClaim(
                 player.getUniqueId(),
-                permissionNodes(player),
                 pendingSelection.orElseThrow()
         );
         ClaimCostMessageService.preview(quote, claimPaymentService.format(quote.cost()), messageService)
@@ -1411,7 +1410,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = null;
         if (claimCostService != null && claimPaymentService != null) {
-            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), permissionNodes(player), chunks);
+            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), chunks);
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
             if (!paymentResult.allowed()) {
                 showBorder(player, chunks, BorderColor.AQUA);

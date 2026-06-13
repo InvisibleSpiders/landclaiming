@@ -22,9 +22,8 @@ public final class ClaimCostService {
         this.claimCostConfig = Objects.requireNonNull(claimCostConfig, "claimCostConfig");
     }
 
-    public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<String> permissions, Set<ClaimChunk> selectedChunks) {
+    public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<ClaimChunk> selectedChunks) {
         Objects.requireNonNull(ownerId, "ownerId");
-        Objects.requireNonNull(permissions, "permissions");
         Objects.requireNonNull(selectedChunks, "selectedChunks");
 
         int allowedChunks = limitService.getLimit(ownerId);
