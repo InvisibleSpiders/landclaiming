@@ -515,6 +515,31 @@ class ClaimsCommandAdminTest {
                 .contains("Config file is invalid");
     }
 
+    @Test
+    void adminBrowseRequiresDeletePermission() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"admin", "browse", UUID.randomUUID().toString()});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("You do not have permission to manage user claims.");
+    }
+
+    @Test
+    void adminBrowseSendsUnavailableWhenServiceNull() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        when(player.hasPermission("landclaims.admin.userclaims.delete")).thenReturn(true);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"admin", "browse", UUID.randomUUID().toString()});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("Admin claim management is not available yet.");
+    }
+
     private static Player mockAdmin() {
         Player admin = mock(Player.class);
         when(admin.hasPermission("landclaims.admin.reload")).thenReturn(true);
@@ -594,7 +619,9 @@ class ClaimsCommandAdminTest {
                         Map.entry("admin.userclaims.member-list-header", "<gold>Members for <claim_name>:"),
                         Map.entry("admin.userclaims.member-list-entry", "<gray>- <player> (<role>)"),
                         Map.entry("admin.userclaims.member-added", "<green>Added <player> as <role> to <claim_name>."),
-                        Map.entry("admin.userclaims.member-removed", "<green>Removed <player> from <claim_name>.")
+                        Map.entry("admin.userclaims.member-removed", "<green>Removed <player> from <claim_name>."),
+                        Map.entry("admin.claim.unavailable", "<red>Admin claim management is not available yet."),
+                        Map.entry("admin.userclaims.browse.usage", "<red>Usage: /claim admin browse <player|uuid>")
                 )),
                 claimMemberService,
                 null,
