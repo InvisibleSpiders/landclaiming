@@ -37,6 +37,7 @@ import com.nick.landclaims.plugin.ui.InventoryGuiFallbackService;
 import com.nick.landclaims.plugin.visual.BorderColor;
 import com.nick.landclaims.plugin.visual.ClaimBorderColorService;
 import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
+import dev.invisiblespiders.haven.api.model.ReloadResult;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.Component;
@@ -80,7 +82,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "cancel",
             "info"
     );
-    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit");
+    private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit", "reload");
     private static final List<String> ADMIN_LIMIT_SUGGESTIONS = List.of("set", "add", "remove", "get");
     private static final List<String> ADMIN_USERCLAIMS_SUGGESTIONS = List.of("list", "view", "delete", "teleport", "transfer", "flag", "member");
     private static final List<String> ADMIN_USERCLAIM_FLAG_SUGGESTIONS = List.of("list", "set", "cycle");
@@ -105,6 +107,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final ClaimBorderColorService claimBorderColorService;
     private final AdminClaimService adminClaimService;
     private final LandClaimsLimitService claimLimitService;
+    private final Supplier<ReloadResult> reloadAction;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new LandClaimsLimitService() {
@@ -112,7 +115,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             @Override public void setLimit(java.util.UUID playerId, int limit) {}
             @Override public void addChunks(java.util.UUID playerId, int chunks) {}
             @Override public void removeChunks(java.util.UUID playerId, int chunks) {}
-        });
+        }, null);
     }
 
     public ClaimsCommand(
@@ -134,7 +137,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             ChunkBorderVisualService chunkBorderVisualService,
             ClaimBorderColorService claimBorderColorService,
             AdminClaimService adminClaimService,
-            LandClaimsLimitService claimLimitService
+            LandClaimsLimitService claimLimitService,
+            Supplier<ReloadResult> reloadAction
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -155,6 +159,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.claimBorderColorService = claimBorderColorService;
         this.adminClaimService = adminClaimService;
         this.claimLimitService = Objects.requireNonNull(claimLimitService, "claimLimitService");
+        this.reloadAction = reloadAction;
     }
 
     @Override
@@ -308,6 +313,20 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (action.equals("limit")) {
             return manageAdminLimit(player, args);
+        }
+        if (action.equals("reload")) {
+            if (!player.hasPermission("landclaims.admin.reload")) {
+                player.sendMessage(messageService.render("admin.no-permission", Map.of()));
+                return true;
+            }
+            if (reloadAction == null) {
+                player.sendMessage(message("admin.claim.unavailable"));
+                return true;
+            }
+            ReloadResult result = reloadAction.get();
+            String key = result.succeeded() ? "admin.reload.success" : "admin.reload.failed";
+            player.sendMessage(messageService.render(key, Map.of("detail", result.message())));
+            return true;
         }
 
         player.sendMessage(message("admin.claim.usage"));
