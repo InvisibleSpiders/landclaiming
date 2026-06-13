@@ -34,6 +34,9 @@ import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -142,10 +145,114 @@ class ClaimsCommandPermissionTest {
         verify(toolService, never()).spendCharges(any(), any(Integer.class));
     }
 
+    @Test
+    void costPreviewShowsUnavailableWhenPaidOverLimitIsDisabled() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        ClaimIndex claimIndex = new ClaimIndex();
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        selectionService.replacePendingSelection(ownerId, Set.of(
+                new ClaimChunk(worldId, 0, 0),
+                new ClaimChunk(worldId, 1, 0)
+        ));
+        LimitService limitService = new LimitService(1, emptyLimitRepository());
+        ClaimCostService costService = new ClaimCostService(
+                claimIndex,
+                limitService,
+                new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+        );
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("landclaims.claim")).thenReturn(true);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                selectionService,
+                mock(ClaimCreationService.class),
+                claimIndex,
+                costService,
+                new ClaimPaymentService(new NoopEconomyService()),
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                limitService,
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"cost"});
+
+        assertThat(plain(messages)).containsExactly(
+                "Selection: 2 chunks",
+                "Current total after claim: 2 / 1 chunks",
+                "Over limit: 1 chunks",
+                "Cost: not available"
+        );
+    }
+
+    @Test
+    void ownerCanDeleteCurrentPlayerClaim() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = playerAt(ownerId, worldId, 0, 0);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = commandForClaimDeletion(repository, claimIndex);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"delete"});
+
+        assertThat(repository.deletedClaims).containsExactly(claim.id());
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).isEmpty();
+        assertThat(plain(messages)).containsExactly("Deleted claim Home.");
+    }
+
+    @Test
+    void nonOwnerCannotDeleteCurrentPlayerClaim() {
+        UUID ownerId = UUID.randomUUID();
+        UUID visitorId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = playerAt(visitorId, worldId, 0, 0);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = commandForClaimDeletion(repository, claimIndex);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"abandon"});
+
+        assertThat(repository.deletedClaims).isEmpty();
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(claim);
+        assertThat(plain(messages)).containsExactly("Only the claim owner can delete this claim.");
+    }
+
     private static MessageService messages() {
         return new MessageService(Map.ofEntries(
                 Map.entry("command.claim.no-permission", "<red>You do not have permission to create claims."),
                 Map.entry("claim.over-limit-disabled", "<red>This claim exceeds your claim limit."),
+                Map.entry("claim.cost-preview.selection", "<gray>Selection: <yellow><selected_chunks></yellow> chunks"),
+                Map.entry("claim.cost-preview.current-total", "<gray>Current total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"),
+                Map.entry("claim.cost-preview.over-limit", "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"),
+                Map.entry("claim.cost-preview.cost", "<gray>Cost: <green><cost></green>"),
+                Map.entry("claim.cost-preview.free", "free"),
+                Map.entry("claim.cost-preview.unavailable", "not available"),
+                Map.entry("claim.deleted", "<green>Deleted claim <white><claim_name></white>."),
+                Map.entry("claim.delete.not-owner", "<red>Only the claim owner can delete this claim."),
+                Map.entry("claim.info.unclaimed", "<yellow>You are not standing in a claim."),
                 Map.entry("claim.selection-required", "<red>Select chunks first."),
                 Map.entry("claim.hold-tool", "<red>Hold the claim tool."),
                 Map.entry("claim.not-enough-charges", "<red>Need <needed>, have <available>."),
@@ -178,14 +285,77 @@ class ClaimsCommandPermissionTest {
                 .toList();
     }
 
+    private static ClaimsCommand commandForClaimDeletion(FakeClaimRepository repository, ClaimIndex claimIndex) {
+        return new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new com.nick.landclaims.plugin.admin.AdminClaimService(
+                        repository, claimIndex, FlagRegistry.createDefault(), 32),
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+    }
+
+    private static Player playerAt(UUID playerId, UUID worldId, int chunkX, int chunkZ) {
+        Player player = mock(Player.class);
+        World world = mock(World.class);
+        Location location = mock(Location.class);
+        Chunk chunk = mock(Chunk.class);
+        when(player.getUniqueId()).thenReturn(playerId);
+        when(player.getWorld()).thenReturn(world);
+        when(world.getUID()).thenReturn(worldId);
+        when(player.getLocation()).thenReturn(location);
+        when(location.getChunk()).thenReturn(chunk);
+        when(chunk.getX()).thenReturn(chunkX);
+        when(chunk.getZ()).thenReturn(chunkZ);
+        return player;
+    }
+
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
+        return new Claim(
+                UUID.randomUUID(),
+                name,
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                Map.of(),
+                java.time.Instant.now(),
+                java.time.Instant.now()
+        );
+    }
+
     private static final class FakeClaimRepository implements ClaimRepository {
+        private final List<Claim> claims = new ArrayList<>();
         private final List<Claim> savedClaims = new ArrayList<>();
+        private final List<UUID> deletedClaims = new ArrayList<>();
 
         @Override public void saveClaim(Claim claim) { savedClaims.add(claim); }
         @Override public void replaceClaims(Claim replacementClaim, List<UUID> deletedClaimIds) { savedClaims.add(replacementClaim); }
-        @Override public void deleteClaim(UUID claimId) {}
+        @Override public void deleteClaim(UUID claimId) {
+            deletedClaims.add(claimId);
+            claims.removeIf(claim -> claim.id().equals(claimId));
+        }
         @Override public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) { return Optional.empty(); }
-        @Override public Optional<Claim> findClaimById(UUID claimId) { return Optional.empty(); }
+        @Override public Optional<Claim> findClaimById(UUID claimId) {
+            return claims.stream().filter(claim -> claim.id().equals(claimId)).findFirst();
+        }
         @Override public List<Claim> findClaimsByOwner(OwnerType ownerType, UUID ownerUuid) { return List.of(); }
         @Override public List<Claim> findAllClaims() { return List.of(); }
     }

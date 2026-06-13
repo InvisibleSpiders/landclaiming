@@ -27,6 +27,10 @@ claim:
     over-limit: "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"
     cost: "<gray>Cost: <green><cost></green>"
     free: "free"
+    unavailable: "not available"
+  deleted: "<green>Deleted claim <white><claim_name></white>."
+  delete:
+    not-owner: "<red>Only the claim owner can delete this claim."
   info:
     unclaimed: "<yellow>This chunk is not claimed."
     name: "<gold>Claim: <yellow><claim_name></yellow>"
@@ -130,6 +134,7 @@ command:
     deny: "<yellow>/claim deny|undeny|denied</yellow><gray> - manages players denied from entering this claim.</gray>"
     flag: "<yellow>/claim flag <list|set></yellow><gray> - views or edits flags for the claim you are standing in.</gray>"
     cost: "<yellow>/claim cost</yellow><gray> - previews claim allowance and over-limit cost.</gray>"
+    delete: "<yellow>/claim delete</yellow><gray> - deletes the claim you are standing in if you own it.</gray>"
     cancel: "<yellow>/claim cancel</yellow><gray> - clears your pending selection.</gray>"
     info: "<yellow>/claim info</yellow><gray> - shows the claim at your current chunk.</gray>"
     admin: "<yellow>/claim admin <create|list|delete|teleport></yellow><gray> - manages server-owned admin claims.</gray>"
