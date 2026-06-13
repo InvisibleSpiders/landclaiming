@@ -96,6 +96,54 @@ class ClaimCostServiceTest {
         assertThat(quote.cost()).isEqualTo(999.0);
     }
 
+    @Test
+    void computeDeletionRefundIsZeroWhenBelowLimit() {
+        ClaimIndex index = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        index.add(claim(ownerId, worldId, Set.of(
+                new ClaimChunk(worldId, 0, 0),
+                new ClaimChunk(worldId, 1, 0),
+                new ClaimChunk(worldId, 2, 0))));
+        ClaimCostService service = new ClaimCostService(
+                index, limitOf(10),
+                new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0));
+
+        assertThat(service.computeDeletionRefund(ownerId, 3)).isEqualTo(0.0);
+    }
+
+    @Test
+    void computeDeletionRefundCoversOnlyOverLimitChunks() {
+        ClaimIndex index = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Set<ClaimChunk> chunks = new java.util.HashSet<>();
+        for (int i = 0; i < 15; i++) chunks.add(new ClaimChunk(worldId, i, 0));
+        index.add(claim(ownerId, worldId, Set.copyOf(chunks)));
+        ClaimCostService service = new ClaimCostService(
+                index, limitOf(10),
+                new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0));
+
+        // 15 chunks, limit 10. Removing 8: overageBefore=5(500), overageAfter=0(0) → 500
+        assertThat(service.computeDeletionRefund(ownerId, 8)).isEqualTo(500.0);
+    }
+
+    @Test
+    void computeDeletionRefundPartialOverage() {
+        ClaimIndex index = new ClaimIndex();
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Set<ClaimChunk> chunks = new java.util.HashSet<>();
+        for (int i = 0; i < 20; i++) chunks.add(new ClaimChunk(worldId, i, 0));
+        index.add(claim(ownerId, worldId, Set.copyOf(chunks)));
+        ClaimCostService service = new ClaimCostService(
+                index, limitOf(10),
+                new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0));
+
+        // 20 chunks, limit 10. Removing 5: overageBefore=10(1000), overageAfter=5(500) → 500
+        assertThat(service.computeDeletionRefund(ownerId, 5)).isEqualTo(500.0);
+    }
+
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(UUID.randomUUID(), "Existing", OwnerType.PLAYER, ownerId, worldId, chunks, Map.of(), now, now);
