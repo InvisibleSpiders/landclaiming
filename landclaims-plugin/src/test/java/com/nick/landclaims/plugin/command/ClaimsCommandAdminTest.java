@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.nick.landclaims.api.flag.FlagState;
+import com.nick.landclaims.api.limit.LandClaimsLimitService;
 import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
@@ -49,7 +50,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", ""}))
-                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims");
+                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims", "limit");
     }
 
     @Test
@@ -523,7 +524,8 @@ class ClaimsCommandAdminTest {
                 null,
                 null,
                 null,
-                adminClaimService
+                adminClaimService,
+                mock(LandClaimsLimitService.class)
         );
     }
 

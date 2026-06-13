@@ -22,12 +22,11 @@ public final class ClaimCostService {
         this.claimCostConfig = Objects.requireNonNull(claimCostConfig, "claimCostConfig");
     }
 
-    public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<String> permissions, Set<ClaimChunk> selectedChunks) {
+    public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<ClaimChunk> selectedChunks) {
         Objects.requireNonNull(ownerId, "ownerId");
-        Objects.requireNonNull(permissions, "permissions");
         Objects.requireNonNull(selectedChunks, "selectedChunks");
 
-        int allowedChunks = limitService.resolveLimit(permissions);
+        int allowedChunks = limitService.getLimit(ownerId);
         int existingChunks = claimIndex.findAll().stream()
                 .filter(claim -> claim.owner() == OwnerType.PLAYER && ownerId.equals(claim.ownerUuid()))
                 .mapToInt(claim -> claim.claimChunks().size())

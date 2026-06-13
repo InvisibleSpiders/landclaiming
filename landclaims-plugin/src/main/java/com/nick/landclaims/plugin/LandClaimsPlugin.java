@@ -1,6 +1,7 @@
 package com.nick.landclaims.plugin;
 
 import com.nick.landclaims.api.LandClaimsApi;
+import com.nick.landclaims.api.limit.LandClaimsLimitService;
 import com.nick.landclaims.plugin.api.BukkitLandClaimsApi;
 import com.nick.landclaims.plugin.admin.AdminClaimService;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
@@ -18,7 +19,9 @@ import com.nick.landclaims.plugin.flag.FlagRegistry;
 import com.nick.landclaims.plugin.flag.ClaimFlagService;
 import com.nick.landclaims.plugin.limit.ClaimCostConfig;
 import com.nick.landclaims.plugin.limit.ClaimCostService;
+import com.nick.landclaims.plugin.limit.ClaimLimitRepository;
 import com.nick.landclaims.plugin.limit.LimitService;
+import com.nick.landclaims.plugin.limit.SqlClaimLimitRepository;
 import com.nick.landclaims.plugin.listener.ClaimToolListener;
 import com.nick.landclaims.plugin.listener.ClaimBoundaryNotificationListener;
 import com.nick.landclaims.plugin.listener.DeniedClaimAccessListener;
@@ -46,11 +49,10 @@ import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import javax.sql.DataSource;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.permissions.PermissionDefault;
@@ -59,6 +61,7 @@ import org.bukkit.plugin.ServicePriority;
 
 public final class LandClaimsPlugin extends JavaPlugin {
     private LandClaimsApi landClaimsApi;
+    private LimitService limitService;
     private ChunkBorderVisualService chunkBorderVisualService;
     private EntityControlService entityControlService;
 
@@ -76,19 +79,27 @@ public final class LandClaimsPlugin extends JavaPlugin {
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
-        ClaimRepository claimRepository = createClaimRepository();
+        HavenDataSource havenDataSource = HavenAPI.get(HavenDataSource.class);
+        havenDataSource.registerMigrations(
+                "landclaims",
+                "db/migrations/landclaims",
+                getClass().getClassLoader()
+        );
+        DataSource dataSource = havenDataSource.getDataSource();
+        ClaimRepository claimRepository = new SqlClaimRepository(dataSource);
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.load(claimRepository.findAllClaims());
-        Map<String, Integer> limitPermissions = loadLimitPermissions(loadYamlResource("permissions.yml"));
         PermissionBankService permissionBankService = new PermissionBankService(getServer().getPluginManager());
-        permissionBankService.registerLimitPermissions(limitPermissions);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "commands", PermissionDefault.TRUE);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "admin", PermissionDefault.OP);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "bypass", PermissionDefault.OP);
-        LimitService limitService = new LimitService(
-                getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("landclaims.limit.default", 10)),
-                limitPermissions
+        ClaimLimitRepository claimLimitRepository = new SqlClaimLimitRepository(dataSource);
+        limitService = new LimitService(
+                getConfig().getInt("limits.default-claim-limit", 10),
+                claimLimitRepository
         );
+        getServer().getServicesManager().register(
+                LandClaimsLimitService.class, limitService, this, ServicePriority.Normal);
         ClaimCostService claimCostService = new ClaimCostService(
                 claimIndex,
                 limitService,
@@ -194,7 +205,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
                                 claimIndex,
                                 flagRegistry,
                                 getConfig().getInt("claiming.max-name-length", 32)
-                        )
+                        ),
+                        limitService
                 );
         Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
                 .setExecutor(claimsCommand);
@@ -213,6 +225,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
         if (entityControlService != null) {
             entityControlService.stop();
             entityControlService = null;
+        }
+        if (limitService != null) {
+            getServer().getServicesManager().unregister(LandClaimsLimitService.class, limitService);
+            limitService = null;
         }
         if (landClaimsApi != null) {
             getServer().getServicesManager().unregister(LandClaimsApi.class, landClaimsApi);
@@ -238,19 +254,6 @@ public final class LandClaimsPlugin extends JavaPlugin {
     private YamlConfiguration loadYamlResource(String resourceName) {
         File resourceFile = getDataFolder().toPath().resolve(resourceName).toFile();
         return YamlConfiguration.loadConfiguration(resourceFile);
-    }
-
-    private Map<String, Integer> loadLimitPermissions(YamlConfiguration permissionsConfiguration) {
-        ConfigurationSection limitsSection = permissionsConfiguration.getConfigurationSection("limits");
-        if (limitsSection == null) {
-            return Map.of();
-        }
-
-        Map<String, Integer> limitPermissions = new HashMap<>();
-        for (String permissionNode : limitsSection.getKeys(false)) {
-            limitPermissions.put(permissionNode, limitsSection.getInt(permissionNode));
-        }
-        return Map.copyOf(limitPermissions);
     }
 
     private void registerConfiguredPermissions(
@@ -294,13 +297,4 @@ public final class LandClaimsPlugin extends JavaPlugin {
         );
     }
 
-    private ClaimRepository createClaimRepository() {
-        HavenDataSource havenDataSource = HavenAPI.get(HavenDataSource.class);
-        havenDataSource.registerMigrations(
-                "landclaims",
-                "db/migrations/landclaims",
-                getClass().getClassLoader()
-        );
-        return new SqlClaimRepository(havenDataSource.getDataSource());
-    }
 }

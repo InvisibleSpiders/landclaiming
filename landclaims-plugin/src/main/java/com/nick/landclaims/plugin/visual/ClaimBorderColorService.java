@@ -63,7 +63,7 @@ public final class ClaimBorderColorService {
         }
 
         if (claimCostService != null) {
-            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, permissions, chunks);
+            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, chunks);
             if (quote.cost() > 0.0) {
                 return BorderColor.AQUA;
             }

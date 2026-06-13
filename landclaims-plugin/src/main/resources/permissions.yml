@@ -1,9 +1,4 @@
 # Permission nodes registered at startup for permission editor discovery.
-limits:
-  landclaims.limit.default: 10
-  landclaims.limit.member: 25
-  landclaims.limit.vip: 75
-  landclaims.limit.elite: 150
 flag-edit:
   landclaims.flag.edit.basic:
     - build
@@ -30,5 +25,6 @@ admin:
   landclaims.admin.userclaims.teleport: "Allows staff to teleport to player claims."
   landclaims.admin.userclaims.transfer: "Allows staff to transfer player claims."
   landclaims.admin.reload: "Allows staff to reload LandClaims configuration when supported."
+  landclaims.admin.limit: "Allows staff to view and modify per-player claim chunk limits."
 bypass:
   landclaims.bypass.entry-deny: "Allows staff to enter claims even when listed as denied."
