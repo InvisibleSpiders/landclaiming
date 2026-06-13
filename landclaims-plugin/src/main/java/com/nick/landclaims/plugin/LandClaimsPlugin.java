@@ -205,7 +205,8 @@ public final class LandClaimsPlugin extends JavaPlugin {
                                 claimIndex,
                                 flagRegistry,
                                 getConfig().getInt("claiming.max-name-length", 32)
-                        )
+                        ),
+                        limitService
                 );
         Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
                 .setExecutor(claimsCommand);

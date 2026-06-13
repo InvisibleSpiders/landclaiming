@@ -48,7 +48,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", ""}))
-                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims");
+                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims", "limit");
     }
 
     @Test
@@ -522,7 +522,8 @@ class ClaimsCommandAdminTest {
                 null,
                 null,
                 null,
-                adminClaimService
+                adminClaimService,
+                null
         );
     }
 
