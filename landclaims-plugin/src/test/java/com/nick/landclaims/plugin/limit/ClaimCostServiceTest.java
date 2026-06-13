@@ -78,16 +78,15 @@ class ClaimCostServiceTest {
     @Test
     void reloadUpdatesConfig() {
         ClaimIndex index = new ClaimIndex();
-        LimitService limitService = new LimitService(5, Map.of());
         ClaimCostService service = new ClaimCostService(
-                index, limitService,
+                index, limitOf(5),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0));
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
 
         service.reload(new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 999.0, 999.0, 2.0));
 
-        ClaimCostQuote quote = service.quotePlayerClaim(ownerId, Set.of(),
+        ClaimCostQuote quote = service.quotePlayerClaim(ownerId,
                 Set.of(new ClaimChunk(worldId, 0, 0),
                        new ClaimChunk(worldId, 1, 0),
                        new ClaimChunk(worldId, 2, 0),
