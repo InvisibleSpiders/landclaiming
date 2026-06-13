@@ -46,10 +46,19 @@ import com.nick.landclaims.plugin.visual.ClaimBorderColorService;
 import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import dev.invisiblespiders.haven.api.HavenAPI;
 import dev.invisiblespiders.haven.api.model.ReloadResult;
+import dev.invisiblespiders.haven.api.model.SuiteHealthReport;
+import dev.invisiblespiders.haven.api.model.SuiteHealthSeverity;
 import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
+import dev.invisiblespiders.haven.api.service.HavenSuiteEntry;
+import dev.invisiblespiders.haven.api.service.HavenSuiteRegistry;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -60,7 +69,8 @@ import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.ServicePriority;
 
-public final class LandClaimsPlugin extends JavaPlugin {
+public final class LandClaimsPlugin extends JavaPlugin
+        implements HavenSuiteEntry {
     private LandClaimsApi landClaimsApi;
     private LimitService limitService;
     private ChunkBorderVisualService chunkBorderVisualService;
@@ -73,6 +83,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
     private DeniedClaimAccessListener deniedClaimAccessListener;
     private ClaimBoundaryNotificationListener claimBoundaryNotificationListener;
     private ClaimIndex claimIndex;
+    private HavenDataSource havenDataSource;
 
     @Override
     public void onEnable() {
@@ -88,7 +99,7 @@ public final class LandClaimsPlugin extends JavaPlugin {
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
-        HavenDataSource havenDataSource = HavenAPI.get(HavenDataSource.class);
+        havenDataSource = HavenAPI.get(HavenDataSource.class);
         havenDataSource.registerMigrations(
                 "landclaims",
                 "db/migrations/landclaims",
@@ -216,6 +227,10 @@ public final class LandClaimsPlugin extends JavaPlugin {
         claimCommand.setTabCompleter(claimsCommand);
 
         getLogger().info("LandClaims enabled.");
+        HavenSuiteRegistry suiteRegistry = HavenAPI.get(HavenSuiteRegistry.class);
+        if (suiteRegistry != null) {
+            suiteRegistry.register(this);
+        }
     }
 
     public ReloadResult performReload() {
@@ -257,7 +272,44 @@ public final class LandClaimsPlugin extends JavaPlugin {
     }
 
     @Override
+    public String pluginName() {
+        return getName();
+    }
+
+    @Override
+    public String pluginVersion() {
+        return getDescription().getVersion();
+    }
+
+    @Override
+    public List<SuiteHealthReport> health() {
+        List<SuiteHealthReport> reports = new ArrayList<>();
+        if (havenDataSource != null) {
+            try (Connection connection = havenDataSource.getDataSource().getConnection();
+                 PreparedStatement statement = connection.prepareStatement("SELECT 1")) {
+                statement.execute();
+                reports.add(new SuiteHealthReport(SuiteHealthSeverity.PASS, "database", "connected"));
+            } catch (SQLException e) {
+                reports.add(new SuiteHealthReport(SuiteHealthSeverity.FAIL, "database", e.getMessage()));
+            }
+        }
+        int claimCount = claimIndex != null ? claimIndex.findAll().size() : 0;
+        reports.add(new SuiteHealthReport(SuiteHealthSeverity.PASS, "claims",
+                claimCount + " loaded"));
+        return reports;
+    }
+
+    @Override
+    public ReloadResult reload() {
+        return performReload();
+    }
+
+    @Override
     public void onDisable() {
+        HavenSuiteRegistry suiteRegistry = HavenAPI.get(HavenSuiteRegistry.class);
+        if (suiteRegistry != null) {
+            suiteRegistry.unregister(getName());
+        }
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.clearAll();
             chunkBorderVisualService = null;
