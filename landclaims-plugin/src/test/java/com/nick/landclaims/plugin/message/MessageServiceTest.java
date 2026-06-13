@@ -89,4 +89,22 @@ class MessageServiceTest {
         assertThatNullPointerException()
                 .isThrownBy(() -> service.renderPlain("claim.created", placeholders));
     }
+
+    @Test
+    void reloadSwapsMessageMap() {
+        MessageService service = new MessageService(Map.of("key.one", "old value"));
+
+        service.reload(Map.of("key.one", "new value"));
+
+        assertThat(service.renderPlain("key.one", Map.of())).isEqualTo("new value");
+    }
+
+    @Test
+    void reloadWithNewKeyMakesItAvailable() {
+        MessageService service = new MessageService(Map.of("key.one", "original"));
+
+        service.reload(Map.of("key.one", "original", "key.two", "added"));
+
+        assertThat(service.renderPlain("key.two", Map.of())).isEqualTo("added");
+    }
 }
