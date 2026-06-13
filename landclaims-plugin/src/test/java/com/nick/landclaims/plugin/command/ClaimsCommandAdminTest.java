@@ -52,7 +52,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", ""}))
-                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims", "limit", "reload");
+                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims", "limit", "reload", "browse");
     }
 
     @Test
@@ -550,7 +550,8 @@ class ClaimsCommandAdminTest {
                 null,
                 new AdminClaimService(),
                 mock(LandClaimsLimitService.class),
-                reloadAction
+                reloadAction,
+                null
         );
     }
 
@@ -606,6 +607,7 @@ class ClaimsCommandAdminTest {
                 null,
                 adminClaimService,
                 mock(LandClaimsLimitService.class),
+                null,
                 null
         );
     }
