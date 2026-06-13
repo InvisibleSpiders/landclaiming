@@ -20,11 +20,11 @@ import org.bukkit.event.player.PlayerQuitEvent;
 public final class ClaimBoundaryNotificationListener implements Listener {
     private final ClaimIndex claimIndex;
     private final MessageService messageService;
-    private final boolean enabled;
-    private final boolean enterEnabled;
-    private final boolean exitEnabled;
-    private final BoundaryMessageDelivery enterDelivery;
-    private final BoundaryMessageDelivery exitDelivery;
+    private boolean enabled;
+    private boolean enterEnabled;
+    private boolean exitEnabled;
+    private BoundaryMessageDelivery enterDelivery;
+    private BoundaryMessageDelivery exitDelivery;
     private final Map<UUID, Claim> currentClaims = new java.util.HashMap<>();
 
     public ClaimBoundaryNotificationListener(
@@ -54,6 +54,17 @@ public final class ClaimBoundaryNotificationListener implements Listener {
         this.enterEnabled = enterEnabled;
         this.exitEnabled = exitEnabled;
         BoundaryMessageDelivery defaultDelivery = BoundaryMessageDelivery.from(deliveryMode, BoundaryMessageDelivery.ACTION_BAR);
+        this.enterDelivery = BoundaryMessageDelivery.from(enterDeliveryMode, defaultDelivery);
+        this.exitDelivery = BoundaryMessageDelivery.from(exitDeliveryMode, defaultDelivery);
+    }
+
+    public void reload(boolean newEnabled, boolean newEnterEnabled, boolean newExitEnabled,
+            String deliveryMode, String enterDeliveryMode, String exitDeliveryMode) {
+        this.enabled = newEnabled;
+        this.enterEnabled = newEnterEnabled;
+        this.exitEnabled = newExitEnabled;
+        BoundaryMessageDelivery defaultDelivery = BoundaryMessageDelivery.from(
+                deliveryMode, BoundaryMessageDelivery.ACTION_BAR);
         this.enterDelivery = BoundaryMessageDelivery.from(enterDeliveryMode, defaultDelivery);
         this.exitDelivery = BoundaryMessageDelivery.from(exitDeliveryMode, defaultDelivery);
     }
