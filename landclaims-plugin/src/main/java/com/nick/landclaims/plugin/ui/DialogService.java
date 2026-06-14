@@ -4,7 +4,6 @@ import com.nick.landclaims.plugin.message.MessageService;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
-import io.papermc.paper.registry.data.dialog.DialogInstancesProvider;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
 import java.util.ArrayList;
@@ -18,9 +17,15 @@ import org.bukkit.entity.Player;
 
 public final class DialogService {
     private final boolean preferDialogs;
+    private final DialogRenderer dialogRenderer;
 
     public DialogService(boolean preferDialogs) {
+        this(preferDialogs, new PaperDialogRenderer());
+    }
+
+    DialogService(boolean preferDialogs, DialogRenderer dialogRenderer) {
         this.preferDialogs = preferDialogs;
+        this.dialogRenderer = Objects.requireNonNull(dialogRenderer, "dialogRenderer");
     }
 
     public void openClaimMenu(Player player, ClaimMenu menu, MessageService messageService) {
@@ -28,6 +33,13 @@ public final class DialogService {
         Objects.requireNonNull(menu, "menu");
         Objects.requireNonNull(messageService, "messageService");
 
+        if (preferDialogs && tryOpenClaimMenuDialog(player, menu)) {
+            return;
+        }
+        openClaimMenuChat(player, menu, messageService);
+    }
+
+    private void openClaimMenuChat(Player player, ClaimMenu menu, MessageService messageService) {
         player.sendMessage(messageService.render("claim.menu.title", Map.of("claim_name", menu.title())));
         player.sendMessage(messageService.render("claim.menu.owner-type", Map.of("owner_type", menu.ownerType())));
         player.sendMessage(messageService.render("claim.menu.chunks", Map.of("chunk_count", String.valueOf(menu.chunkCount()))));
@@ -51,7 +63,7 @@ public final class DialogService {
         Objects.requireNonNull(editor, "editor");
         Objects.requireNonNull(messageService, "messageService");
 
-        if (preferDialogs && tryOpenDialog(player, editor)) {
+        if (preferDialogs && tryOpenFlagEditorDialog(player, editor)) {
             return;
         }
         openFlagEditorChat(player, editor, messageService);
@@ -71,42 +83,20 @@ public final class DialogService {
         }
     }
 
-    private boolean tryOpenDialog(Player player, ClaimFlagEditor editor) {
+    private boolean tryOpenClaimMenuDialog(Player player, ClaimMenu menu) {
         try {
-            return buildAndShowDialog(player, editor);
+            return dialogRenderer.openClaimMenu(player, menu);
         } catch (LinkageError | RuntimeException error) {
             return false;
         }
     }
 
-    private boolean buildAndShowDialog(Player player, ClaimFlagEditor editor) {
-        DialogInstancesProvider provider = DialogInstancesProvider.instance();
-
-        List<ActionButton> buttons = new ArrayList<>();
-        for (ClaimFlagEditorRow row : editor.rows()) {
-            Component label = Component.text(row.label() + " — " + row.stateLabel());
-            Component tooltip = Component.text(row.description());
-            DialogAction action = DialogAction.staticAction(ClickEvent.runCommand(row.toggleCommand()));
-            ActionButton button = provider.actionButtonBuilder(label)
-                    .tooltip(tooltip)
-                    .action(action)
-                    .build();
-            buttons.add(button);
+    private boolean tryOpenFlagEditorDialog(Player player, ClaimFlagEditor editor) {
+        try {
+            return dialogRenderer.openFlagEditor(player, editor);
+        } catch (LinkageError | RuntimeException error) {
+            return false;
         }
-
-        Component title = Component.text(editor.claimName());
-        DialogBase base = provider.dialogBaseBuilder(title)
-                .afterAction(DialogBase.DialogAfterAction.NONE)
-                .build();
-
-        Dialog dialog = Dialog.create(factory -> {
-            factory.empty()
-                    .base(base)
-                    .type(DialogType.multiAction(buttons).build());
-        });
-
-        player.showDialog(dialog);
-        return true;
     }
 
     public void openClaimSetup(Player player) {
@@ -114,4 +104,59 @@ public final class DialogService {
         player.sendMessage(Component.text("Claim setup dialog coming soon.", NamedTextColor.YELLOW));
     }
 
+    interface DialogRenderer {
+        boolean openClaimMenu(Player player, ClaimMenu menu);
+
+        boolean openFlagEditor(Player player, ClaimFlagEditor editor);
+    }
+
+    private static final class PaperDialogRenderer implements DialogRenderer {
+        @Override
+        public boolean openClaimMenu(Player player, ClaimMenu menu) {
+            List<ActionButton> buttons = new ArrayList<>();
+            for (ClaimMenuAction row : menu.actions()) {
+                buttons.add(ActionButton.builder(Component.text(row.label()))
+                        .tooltip(Component.text(row.command()))
+                        .action(DialogAction.staticAction(ClickEvent.runCommand(row.command())))
+                        .build());
+            }
+
+            DialogBase base = DialogBase.builder(Component.text(menu.title()))
+                    .afterAction(DialogBase.DialogAfterAction.CLOSE)
+                    .build();
+
+            Dialog dialog = Dialog.create(factory -> {
+                factory.empty()
+                        .base(base)
+                        .type(DialogType.multiAction(buttons).build());
+            });
+
+            player.showDialog(dialog);
+            return true;
+        }
+
+        @Override
+        public boolean openFlagEditor(Player player, ClaimFlagEditor editor) {
+            List<ActionButton> buttons = new ArrayList<>();
+            for (ClaimFlagEditorRow row : editor.rows()) {
+                buttons.add(ActionButton.builder(Component.text(row.label() + " - " + row.stateLabel()))
+                        .tooltip(Component.text(row.description()))
+                        .action(DialogAction.staticAction(ClickEvent.runCommand(row.toggleCommand())))
+                        .build());
+            }
+
+            DialogBase base = DialogBase.builder(Component.text(editor.claimName()))
+                    .afterAction(DialogBase.DialogAfterAction.NONE)
+                    .build();
+
+            Dialog dialog = Dialog.create(factory -> {
+                factory.empty()
+                        .base(base)
+                        .type(DialogType.multiAction(buttons).build());
+            });
+
+            player.showDialog(dialog);
+            return true;
+        }
+    }
 }
