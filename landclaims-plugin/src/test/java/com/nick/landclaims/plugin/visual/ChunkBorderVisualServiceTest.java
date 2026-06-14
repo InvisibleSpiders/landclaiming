@@ -14,7 +14,7 @@ class ChunkBorderVisualServiceTest {
     @Test
     void showSelectionReplacesPreviousVisualForPlayer() {
         RecordingRenderer renderer = new RecordingRenderer();
-        ChunkBorderVisualService service = new ChunkBorderVisualService(renderer, 160);
+        ChunkBorderVisualService service = new ChunkBorderVisualService(renderer, 160, (worldId, blockX, blockZ) -> 64.0D);
         UUID playerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
         Player player = player(playerId, 72.0);
@@ -29,7 +29,7 @@ class ChunkBorderVisualServiceTest {
     @Test
     void clearRemovesActiveVisualForPlayerOnlyWhenPresent() {
         RecordingRenderer renderer = new RecordingRenderer();
-        ChunkBorderVisualService service = new ChunkBorderVisualService(renderer, 160);
+        ChunkBorderVisualService service = new ChunkBorderVisualService(renderer, 160, (worldId, blockX, blockZ) -> 64.0D);
         UUID playerId = UUID.randomUUID();
 
         assertThat(service.clear(playerId)).isFalse();
@@ -39,6 +39,29 @@ class ChunkBorderVisualServiceTest {
         assertThat(service.clear(playerId)).isTrue();
         assertThat(service.clear(playerId)).isFalse();
         assertThat(renderer.clearCalls()).isEqualTo(1);
+    }
+
+    @Test
+    void showSelectionUsesGroundHeightProviderInsteadOfPlayerY() {
+        RecordingRenderer renderer = new RecordingRenderer();
+        ChunkBorderVisualService service = new ChunkBorderVisualService(
+                renderer,
+                100,
+                (worldId, blockX, blockZ) -> 80.0D + blockX + blockZ
+        );
+        UUID playerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+
+        service.showSelection(player(playerId, 20.0), Set.of(new ClaimChunk(worldId, 0, 0)), BorderColor.GREEN);
+
+        assertThat(renderer.lastPlan().edges()).hasSize(64);
+        assertThat(renderer.lastPlan().edges())
+                .noneMatch(edge -> edge.y() == 20.15D)
+                .anySatisfy(edge -> {
+                    assertThat(edge.x1()).isEqualTo(0);
+                    assertThat(edge.z1()).isEqualTo(0);
+                    assertThat(edge.y()).isEqualTo(80.0D);
+                });
     }
 
     private static Player player(UUID playerId, double y) {

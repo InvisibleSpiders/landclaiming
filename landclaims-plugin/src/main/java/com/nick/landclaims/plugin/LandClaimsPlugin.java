@@ -400,7 +400,7 @@ public final class LandClaimsPlugin extends JavaPlugin
                         getConfig().getDouble("visuals.border.thickness", 0.08D),
                         (float) getConfig().getDouble("visuals.border.view-range", 96.0D)
                 ),
-                getConfig().getInt("visuals.border.duration-ticks", 0)
+                getConfig().getInt("visuals.border.duration-ticks", 100)
         );
     }
 
