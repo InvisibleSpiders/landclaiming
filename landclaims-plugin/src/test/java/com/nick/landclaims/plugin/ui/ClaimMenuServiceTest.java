@@ -10,7 +10,9 @@ import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.message.MessageService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,7 +49,10 @@ class ClaimMenuServiceTest {
         assertThat(menu.viewerOwnsClaim()).isTrue();
         assertThat(menu.adminClaim()).isFalse();
         assertThat(menu.actions()).extracting(ClaimMenuAction::command)
-                .containsExactly("/claim flags", "/claim member list", "/claim info");
+                .containsExactly(
+                        "/claim flags " + claim.id(),
+                        "/claim member list " + claim.id(),
+                        "/claim info " + claim.id());
     }
 
     @Test
@@ -125,11 +130,50 @@ class ClaimMenuServiceTest {
                 .containsExactly("Flags", "Members", "Info");
     }
 
+    @Test
+    void buildsDashboardForOwnedClaims() {
+        ClaimMenuService service = new ClaimMenuService(messages());
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Claim home = playerClaim("Home", ownerId, worldId, 0);
+        Claim mine = playerClaim("Mine", ownerId, worldId, 1);
+
+        ClaimDashboard dashboard = service.buildDashboard(List.of(mine, home), Optional.of(home));
+
+        assertThat(dashboard.claims()).extracting(ClaimDashboardRow::claimName)
+                .containsExactly("Home", "Mine");
+        assertThat(dashboard.claims()).extracting(ClaimDashboardRow::manageCommand)
+                .containsExactly("/claim menu " + home.id(), "/claim menu " + mine.id());
+        assertThat(dashboard.claims()).extracting(ClaimDashboardRow::currentClaim)
+                .containsExactly(true, false);
+        assertThat(dashboard.actions()).extracting(ClaimMenuAction::command)
+                .containsExactly("/claim create", "/claim cost", "/claim tool");
+    }
+
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
+        return new Claim(
+                UUID.randomUUID(),
+                name,
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                Map.of(),
+                Set.of(),
+                Instant.parse("2026-06-08T00:00:00Z"),
+                Instant.parse("2026-06-08T00:00:00Z")
+        );
+    }
+
     private static MessageService messages() {
-        return new MessageService(Map.of(
-                "claim.menu.action-labels.flags", "Flags",
-                "claim.menu.action-labels.members", "Members",
-                "claim.menu.action-labels.info", "Info"
+        return new MessageService(Map.ofEntries(
+                Map.entry("claim.menu.action-labels.flags", "Flags"),
+                Map.entry("claim.menu.action-labels.members", "Members"),
+                Map.entry("claim.menu.action-labels.info", "Info"),
+                Map.entry("claim.dashboard.title", "My Claims"),
+                Map.entry("claim.dashboard.action-labels.create", "Create Claim"),
+                Map.entry("claim.dashboard.action-labels.cost", "Claim Cost"),
+                Map.entry("claim.dashboard.action-labels.tool", "Claim Tool")
         ));
     }
 }
