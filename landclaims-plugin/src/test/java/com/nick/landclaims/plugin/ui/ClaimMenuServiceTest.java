@@ -53,7 +53,9 @@ class ClaimMenuServiceTest {
                         "/claim flags " + claim.id(),
                         "/claim member list " + claim.id(),
                         "/claim denied " + claim.id(),
-                        "/claim info " + claim.id());
+                        "/claim info " + claim.id(),
+                        "/claim viewborder " + claim.id(),
+                        "/claim delete " + claim.id());
     }
 
     @Test
@@ -78,7 +80,7 @@ class ClaimMenuServiceTest {
         assertThat(menu.adminClaim()).isTrue();
         assertThat(menu.viewerOwnsClaim()).isFalse();
         assertThat(menu.actions()).extracting(ClaimMenuAction::label)
-                .containsExactly("Flags", "Members", "Denied Players", "Info");
+                .containsExactly("Flags", "Members", "Denied Players", "Info", "View Border", "Delete Claim");
     }
 
     @Test
@@ -87,7 +89,9 @@ class ClaimMenuServiceTest {
                 "claim.menu.action-labels.flags", "Configure Flags",
                 "claim.menu.action-labels.members", "Manage Members",
                 "claim.menu.action-labels.denied", "Denied List",
-                "claim.menu.action-labels.info", "View Info"
+                "claim.menu.action-labels.info", "View Info",
+                "claim.menu.action-labels.viewborder", "Show Border",
+                "claim.menu.action-labels.delete", "Abandon Claim"
         )));
         UUID worldId = UUID.randomUUID();
         Claim claim = new Claim(
@@ -106,7 +110,13 @@ class ClaimMenuServiceTest {
         ClaimMenu menu = service.buildMenu(claim, UUID.randomUUID());
 
         assertThat(menu.actions()).extracting(ClaimMenuAction::label)
-                .containsExactly("Configure Flags", "Manage Members", "Denied List", "View Info");
+                .containsExactly(
+                        "Configure Flags",
+                        "Manage Members",
+                        "Denied List",
+                        "View Info",
+                        "Show Border",
+                        "Abandon Claim");
     }
 
     @Test
@@ -129,7 +139,7 @@ class ClaimMenuServiceTest {
         ClaimMenu menu = service.buildMenu(claim, UUID.randomUUID());
 
         assertThat(menu.actions()).extracting(ClaimMenuAction::label)
-                .containsExactly("Flags", "Members", "Denied Players", "Info");
+                .containsExactly("Flags", "Members", "Denied Players", "Info", "View Border", "Delete Claim");
     }
 
     @Test
@@ -173,6 +183,8 @@ class ClaimMenuServiceTest {
                 Map.entry("claim.menu.action-labels.members", "Members"),
                 Map.entry("claim.menu.action-labels.denied", "Denied Players"),
                 Map.entry("claim.menu.action-labels.info", "Info"),
+                Map.entry("claim.menu.action-labels.viewborder", "View Border"),
+                Map.entry("claim.menu.action-labels.delete", "Delete Claim"),
                 Map.entry("claim.dashboard.title", "My Claims"),
                 Map.entry("claim.dashboard.action-labels.create", "Create Claim"),
                 Map.entry("claim.dashboard.action-labels.cost", "Claim Cost"),

@@ -13,6 +13,7 @@ import com.nick.landclaims.plugin.claim.ClaimMemberResult;
 import com.nick.landclaims.plugin.claim.ClaimMemberService;
 import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.ClaimValidationResult;
+import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.claim.PendingClaimMerge;
 import com.nick.landclaims.plugin.claim.PendingClaimMergeService;
 import com.nick.landclaims.plugin.economy.ClaimPaymentResult;
@@ -30,6 +31,7 @@ import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
 import com.nick.landclaims.plugin.ui.ClaimDeniedPlayerViewRow;
 import com.nick.landclaims.plugin.ui.ClaimDeniedPlayersView;
+import com.nick.landclaims.plugin.ui.ClaimCreatePreview;
 import com.nick.landclaims.plugin.ui.ClaimFlagEditor;
 import com.nick.landclaims.plugin.ui.ClaimFlagEditorService;
 import com.nick.landclaims.plugin.ui.ClaimInfoView;
@@ -45,6 +47,7 @@ import com.nick.landclaims.plugin.visual.BorderColor;
 import com.nick.landclaims.plugin.visual.ClaimBorderColorService;
 import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import dev.invisiblespiders.haven.api.model.ReloadResult;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +94,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "denied",
             "delete",
             "abandon",
+            "deleteconfirm",
             "admin",
             "cancel",
             "info"
@@ -206,8 +210,14 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1 && args[0].equalsIgnoreCase("viewborder")) {
             return viewBorder(player);
         }
+        if (args.length == 2 && args[0].equalsIgnoreCase("viewborder")) {
+            return viewBorder(player, args[1]);
+        }
         if (args.length >= 1 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("createconfirm")) {
+            return createClaimConfirmed(player, args);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("member")) {
             return manageMembers(player, args);
@@ -220,6 +230,13 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1 && (args[0].equalsIgnoreCase("delete")
                 || args[0].equalsIgnoreCase("abandon"))) {
             return deleteOwnedClaim(player);
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("delete")
+                || args[0].equalsIgnoreCase("abandon"))) {
+            return confirmDeleteOwnedClaim(player, args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("deleteconfirm")) {
+            return deleteOwnedClaim(player, args[1]);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("flag")) {
             return manageFlags(player, args);
@@ -1103,6 +1120,20 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean viewBorder(Player player, String claimIdText) {
+        if (claimIndex == null || chunkBorderVisualService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        Optional<Claim> claim = manageableClaimById(player, claimIdText);
+        if (claim.isEmpty()) {
+            return true;
+        }
+        chunkBorderVisualService.showSelection(player, claim.orElseThrow().claimChunks(), BorderColor.GOLD);
+        player.sendMessage(message("claim.visual.border-claim"));
+        return true;
+    }
+
     private boolean openFlagEditor(Player player) {
         if (claimFlagService == null || claimFlagEditorService == null || claimIndex == null || dialogService == null) {
             player.sendMessage(message("command.unavailable.claim-info"));
@@ -1281,6 +1312,14 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             }
             return listDeniedPlayers(player, claim.orElseThrow());
         }
+        if ((args[0].equalsIgnoreCase("deny") || args[0].equalsIgnoreCase("undeny")) && args.length >= 3) {
+            Optional<Claim> scopedClaim = findManageableClaimArgument(player, args[1]);
+            if (scopedClaim.isPresent()) {
+                return args[0].equalsIgnoreCase("deny")
+                        ? denyPlayer(player, scopedClaim.orElseThrow(), args[2])
+                        : undenyPlayer(player, scopedClaim.orElseThrow(), args[2]);
+            }
+        }
 
         Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isEmpty()) {
@@ -1297,42 +1336,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args[0].equalsIgnoreCase("deny")) {
-            Optional<UUID> targetId = resolveOnlinePlayerOrUuid(player, args[1]);
-            if (targetId.isEmpty()) {
-                player.sendMessage(message("claim.deny.player-not-found", Map.of("player", args[1])));
-                return true;
-            }
-            ClaimDenyResult result = claimDenyService.denyPlayer(
-                    player.getUniqueId(),
-                    claim.orElseThrow(),
-                    targetId.orElseThrow(),
-                    player::hasPermission
-            );
-            if (!result.allowed()) {
-                player.sendMessage(message(result.messageKey()));
-                return true;
-            }
-            player.sendMessage(message("claim.deny.added", Map.of("player", playerName(player, targetId.orElseThrow()))));
-            return true;
+            return denyPlayer(player, claim.orElseThrow(), args[1]);
         }
         if (args[0].equalsIgnoreCase("undeny")) {
-            Optional<UUID> targetId = findExistingDeniedPlayer(claim.orElseThrow(), player, args[1]);
-            if (targetId.isEmpty()) {
-                player.sendMessage(message("claim.deny.not-denied", Map.of("player", args[1])));
-                return true;
-            }
-            ClaimDenyResult result = claimDenyService.allowPlayer(
-                    player.getUniqueId(),
-                    claim.orElseThrow(),
-                    targetId.orElseThrow(),
-                    player::hasPermission
-            );
-            if (!result.allowed()) {
-                player.sendMessage(message(result.messageKey()));
-                return true;
-            }
-            player.sendMessage(message("claim.deny.removed", Map.of("player", playerName(player, targetId.orElseThrow()))));
-            return true;
+            return undenyPlayer(player, claim.orElseThrow(), args[1]);
         }
 
         player.sendMessage(message("claim.deny.usage"));
@@ -1340,14 +1347,27 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean listDeniedPlayers(Player player, Claim claim) {
+        List<ClaimMenuAction> actions = new ArrayList<>();
+        actions.add(new ClaimMenuAction(
+                actionLabel("deny-player", "Deny Player"),
+                "/claim deny " + claim.id() + " <player|uuid>"
+        ));
+        List<ClaimDeniedPlayerViewRow> rows = new ArrayList<>();
+        claim.deniedPlayers().stream()
+                .sorted(java.util.Comparator.comparing(UUID::toString))
+                .forEach(deniedPlayer -> {
+                    String name = playerName(player, deniedPlayer);
+                    rows.add(new ClaimDeniedPlayerViewRow(name));
+                    actions.add(new ClaimMenuAction(
+                            actionLabel("allow-player", "Allow " + name),
+                            "/claim undeny " + claim.id() + " " + deniedPlayer
+                    ));
+                });
         ClaimDeniedPlayersView view = new ClaimDeniedPlayersView(
                 claim.id(),
                 claim.name(),
-                claim.deniedPlayers().stream()
-                        .sorted(java.util.Comparator.comparing(UUID::toString))
-                        .map(deniedPlayer -> new ClaimDeniedPlayerViewRow(playerName(player, deniedPlayer)))
-                        .toList(),
-                List.of(),
+                rows,
+                actions,
                 backToClaimMenu(claim)
         );
         if (dialogService != null) {
@@ -1363,6 +1383,46 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         for (ClaimDeniedPlayerViewRow row : view.deniedPlayers()) {
             player.sendMessage(message("claim.deny.list-entry", Map.of("player", row.playerName())));
         }
+        return true;
+    }
+
+    private boolean denyPlayer(Player player, Claim claim, String target) {
+        Optional<UUID> targetId = resolveOnlinePlayerOrUuid(player, target);
+        if (targetId.isEmpty()) {
+            player.sendMessage(message("claim.deny.player-not-found", Map.of("player", target)));
+            return true;
+        }
+        ClaimDenyResult result = claimDenyService.denyPlayer(
+                player.getUniqueId(),
+                claim,
+                targetId.orElseThrow(),
+                player::hasPermission
+        );
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("claim.deny.added", Map.of("player", playerName(player, targetId.orElseThrow()))));
+        return true;
+    }
+
+    private boolean undenyPlayer(Player player, Claim claim, String target) {
+        Optional<UUID> targetId = findExistingDeniedPlayer(claim, player, target);
+        if (targetId.isEmpty()) {
+            player.sendMessage(message("claim.deny.not-denied", Map.of("player", target)));
+            return true;
+        }
+        ClaimDenyResult result = claimDenyService.allowPlayer(
+                player.getUniqueId(),
+                claim,
+                targetId.orElseThrow(),
+                player::hasPermission
+        );
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("claim.deny.removed", Map.of("player", playerName(player, targetId.orElseThrow()))));
         return true;
     }
 
@@ -1403,6 +1463,14 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             }
             return listMembers(player, claim.orElseThrow());
         }
+        if ((args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove")) && args.length >= 4) {
+            Optional<Claim> scopedClaim = findManageableClaimArgument(player, args[2]);
+            if (scopedClaim.isPresent()) {
+                return args[1].equalsIgnoreCase("add")
+                        ? addMember(player, scopedClaim.orElseThrow(), args)
+                        : removeMember(player, scopedClaim.orElseThrow(), args[3]);
+            }
+        }
 
         Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isEmpty()) {
@@ -1419,54 +1487,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args[1].equalsIgnoreCase("add")) {
-            // Require the target to be currently online to guarantee we get the correct Mojang UUID.
-            // getOfflinePlayer(String) returns a name-derived UUID for players who have never joined,
-            // which would persist the wrong UUID as a member on online-mode servers.
-            Player target = player.getServer().getPlayerExact(args[2]);
-            if (target == null) {
-                player.sendMessage(message("claim.member.player-not-found", Map.of("player", args[2])));
-                return true;
-            }
-            ClaimRole role = args.length >= 4 ? parseRole(args[3]).orElse(null) : ClaimRole.MEMBER;
-            if (role == null) {
-                player.sendMessage(message("claim.member.invalid-role"));
-                return true;
-            }
-            ClaimMemberResult result = claimMemberService.addMember(
-                    player.getUniqueId(),
-                    claim.orElseThrow(),
-                    target.getUniqueId(),
-                    role
-            );
-            if (!result.allowed()) {
-                player.sendMessage(message(result.messageKey()));
-                return true;
-            }
-            player.sendMessage(message("claim.member.added", Map.of(
-                    "player", target.getName(),
-                    "role", role.name().toLowerCase()
-            )));
-            return true;
+            return addMember(player, claim.orElseThrow(), args);
         }
         if (args[1].equalsIgnoreCase("remove")) {
-            Optional<ClaimMember> targetMember = findExistingMember(claim.orElseThrow(), player, args[2]);
-            if (targetMember.isEmpty()) {
-                player.sendMessage(message("claim.member.not-found", Map.of("player", args[2])));
-                return true;
-            }
-            ClaimMemberResult result = claimMemberService.removeMember(
-                    player.getUniqueId(),
-                    claim.orElseThrow(),
-                    targetMember.orElseThrow().memberUuid()
-            );
-            if (!result.allowed()) {
-                player.sendMessage(message(result.messageKey()));
-                return true;
-            }
-            player.sendMessage(message("claim.member.removed", Map.of(
-                    "player", memberName(player.getServer().getOfflinePlayer(targetMember.orElseThrow().memberUuid()))
-            )));
-            return true;
+            return removeMember(player, claim.orElseThrow(), args[2]);
         }
 
         player.sendMessage(message("claim.member.usage"));
@@ -1474,20 +1498,28 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean listMembers(Player player, Claim claim) {
+        List<ClaimMenuAction> actions = new ArrayList<>();
+        actions.add(new ClaimMenuAction(
+                actionLabel("add-member", "Add Member"),
+                "/claim member add " + claim.id() + " <player> [member|manager]"
+        ));
+        List<ClaimMemberViewRow> rows = new ArrayList<>();
+        claim.members().stream()
+                .sorted(java.util.Comparator.comparing(member -> member.memberUuid().toString()))
+                .forEach(member -> {
+                    OfflinePlayer offlinePlayer = player.getServer().getOfflinePlayer(member.memberUuid());
+                    String name = memberName(offlinePlayer);
+                    rows.add(new ClaimMemberViewRow(name, member.role().name().toLowerCase()));
+                    actions.add(new ClaimMenuAction(
+                            actionLabel("remove-member", "Remove " + name),
+                            "/claim member remove " + claim.id() + " " + member.memberUuid()
+                    ));
+                });
         ClaimMembersView view = new ClaimMembersView(
                 claim.id(),
                 claim.name(),
-                claim.members().stream()
-                        .sorted(java.util.Comparator.comparing(member -> member.memberUuid().toString()))
-                        .map(member -> {
-                            OfflinePlayer offlinePlayer = player.getServer().getOfflinePlayer(member.memberUuid());
-                            return new ClaimMemberViewRow(
-                                    memberName(offlinePlayer),
-                                    member.role().name().toLowerCase()
-                            );
-                        })
-                        .toList(),
-                List.of(),
+                rows,
+                actions,
                 backToClaimMenu(claim)
         );
         if (dialogService != null) {
@@ -1506,6 +1538,63 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                     "role", row.role()
             )));
         }
+        return true;
+    }
+
+    private boolean addMember(Player player, Claim claim, String[] args) {
+        int targetIndex = args.length >= 4 && findManageableClaimArgument(player, args[2]).isPresent() ? 3 : 2;
+        if (args.length <= targetIndex) {
+            player.sendMessage(message("claim.member.usage"));
+            return true;
+        }
+        // Require the target to be currently online to guarantee we get the correct Mojang UUID.
+        // getOfflinePlayer(String) returns a name-derived UUID for players who have never joined,
+        // which would persist the wrong UUID as a member on online-mode servers.
+        Player target = player.getServer().getPlayerExact(args[targetIndex]);
+        if (target == null) {
+            player.sendMessage(message("claim.member.player-not-found", Map.of("player", args[targetIndex])));
+            return true;
+        }
+        ClaimRole role = args.length > targetIndex + 1 ? parseRole(args[targetIndex + 1]).orElse(null) : ClaimRole.MEMBER;
+        if (role == null) {
+            player.sendMessage(message("claim.member.invalid-role"));
+            return true;
+        }
+        ClaimMemberResult result = claimMemberService.addMember(
+                player.getUniqueId(),
+                claim,
+                target.getUniqueId(),
+                role
+        );
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("claim.member.added", Map.of(
+                "player", target.getName(),
+                "role", role.name().toLowerCase()
+        )));
+        return true;
+    }
+
+    private boolean removeMember(Player player, Claim claim, String target) {
+        Optional<ClaimMember> targetMember = findExistingMember(claim, player, target);
+        if (targetMember.isEmpty()) {
+            player.sendMessage(message("claim.member.not-found", Map.of("player", target)));
+            return true;
+        }
+        ClaimMemberResult result = claimMemberService.removeMember(
+                player.getUniqueId(),
+                claim,
+                targetMember.orElseThrow().memberUuid()
+        );
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("claim.member.removed", Map.of(
+                "player", memberName(player.getServer().getOfflinePlayer(targetMember.orElseThrow().memberUuid()))
+        )));
         return true;
     }
 
@@ -1670,6 +1759,72 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean confirmDeleteOwnedClaim(Player player, String claimIdText) {
+        if (adminClaimService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        Optional<Claim> claim = ownedClaimById(player, claimIdText);
+        if (claim.isEmpty()) {
+            return true;
+        }
+        Claim foundClaim = claim.orElseThrow();
+        player.sendMessage(message("claim.delete.confirm-title", Map.of(
+                "claim_name", foundClaim.name(),
+                "claim_id", foundClaim.id().toString()
+        )));
+        player.sendMessage(message("claim.delete.actions-header"));
+        sendClaimDeleteAction(player, "Confirm Delete", "/claim deleteconfirm " + foundClaim.id());
+        sendClaimDeleteAction(player, actionLabel("back", "Back"), "/claim menu " + foundClaim.id());
+        return true;
+    }
+
+    private boolean deleteOwnedClaim(Player player, String claimIdText) {
+        if (adminClaimService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        Optional<Claim> claim = ownedClaimById(player, claimIdText);
+        if (claim.isEmpty()) {
+            return true;
+        }
+        Claim foundClaim = claim.orElseThrow();
+        AdminClaimResult result = adminClaimService.deletePlayerClaim(foundClaim.id());
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+        player.sendMessage(message("claim.deleted", Map.of(
+                "claim_name", foundClaim.name(),
+                "claim_id", foundClaim.id().toString()
+        )));
+        return true;
+    }
+
+    private Optional<Claim> ownedClaimById(Player player, String claimIdText) {
+        if (claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return Optional.empty();
+        }
+        Optional<Claim> claim = manageableClaimById(player, claimIdText);
+        if (claim.isEmpty()) {
+            return Optional.empty();
+        }
+        Claim foundClaim = claim.orElseThrow();
+        if (foundClaim.owner() != OwnerType.PLAYER || !player.getUniqueId().equals(foundClaim.ownerUuid())) {
+            player.sendMessage(message("claim.delete.not-owner"));
+            return Optional.empty();
+        }
+        return claim;
+    }
+
+    private void sendClaimDeleteAction(Player player, String label, String command) {
+        player.sendMessage(message("claim.delete.action", Map.of(
+                "label", label,
+                "command", command
+        )).clickEvent(ClickEvent.runCommand(command)));
+    }
+
     private boolean giveTool(Player player) {
         if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
             player.sendMessage(message("command.tool.no-permission"));
@@ -1685,7 +1840,79 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         String claimName = args.length == 1
                 ? nextDefaultClaimName(player.getUniqueId())
                 : String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        if (dialogService != null && dialogService.prefersDialogs()) {
+            return previewCreateClaim(player, claimName);
+        }
         return createClaim(player, claimName, false);
+    }
+
+    private boolean createClaimConfirmed(Player player, String[] args) {
+        String claimName = args.length == 1
+                ? nextDefaultClaimName(player.getUniqueId())
+                : String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        return createClaim(player, claimName, false);
+    }
+
+    private boolean previewCreateClaim(Player player, String claimName) {
+        if (!player.hasPermission(CLAIM_CREATE_PERMISSION)) {
+            player.sendMessage(message("command.claim.no-permission"));
+            return true;
+        }
+        if (!isClaimCreationAvailable(player)) {
+            return true;
+        }
+        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        if (pendingSelection.isEmpty()) {
+            player.sendMessage(message("claim.selection-required"));
+            return true;
+        }
+        Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
+        ItemStack mainHandItem = player.getInventory().getItemInMainHand();
+        if (!claimToolService.isClaimTool(mainHandItem)) {
+            player.sendMessage(message("claim.hold-tool"));
+            return true;
+        }
+        if (claimToolService.currentCharges(mainHandItem) < chunks.size()) {
+            player.sendMessage(message("claim.not-enough-charges", Map.of(
+                    "needed", String.valueOf(chunks.size()),
+                    "available", String.valueOf(claimToolService.currentCharges(mainHandItem))
+            )));
+            return true;
+        }
+
+        ClaimCostQuote quote = claimCostService == null
+                ? new ClaimCostQuote(chunks.size(), 0, chunks.size(), chunks.size(), 0, 0.0D)
+                : claimCostService.quotePlayerClaim(player.getUniqueId(), chunks);
+        String cost = createPreviewCostText(quote);
+        dialogService.openClaimCreatePreview(
+                player,
+                new ClaimCreatePreview(
+                        claimName,
+                        quote.selectedChunks(),
+                        quote.proposedTotalChunks(),
+                        quote.allowedChunks(),
+                        quote.overageChunks(),
+                        cost,
+                        new ClaimMenuAction(actionLabel("confirm-create", "Create Claim"),
+                                "/claim createconfirm " + claimName),
+                        new ClaimMenuAction(actionLabel("cancel", "Cancel"), "/claim cancel")
+                ),
+                messageService
+        );
+        return true;
+    }
+
+    private String createPreviewCostText(ClaimCostQuote quote) {
+        if (claimCostService != null && quote.overageChunks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
+            return messageService.renderPlainOrDefault("claim.cost-preview.unavailable", Map.of(), "not available");
+        }
+        if (quote.cost() <= 0.0D) {
+            return messageService.renderPlainOrDefault("claim.cost-preview.free", Map.of(), "free");
+        }
+        if (claimPaymentService == null) {
+            return String.format(java.util.Locale.ROOT, "%.2f", quote.cost());
+        }
+        return claimPaymentService.format(quote.cost());
     }
 
     private String nextDefaultClaimName(UUID ownerId) {
@@ -2002,6 +2229,17 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return Optional.empty();
         }
         return claim;
+    }
+
+    private Optional<Claim> findManageableClaimArgument(Player player, String claimIdText) {
+        Optional<UUID> claimId = parseUuid(claimIdText);
+        if (claimId.isEmpty()) {
+            return Optional.empty();
+        }
+        return claimIndex.findAll().stream()
+                .filter(candidate -> candidate.id().equals(claimId.orElseThrow()))
+                .filter(candidate -> canManageClaim(player, candidate))
+                .findFirst();
     }
 
     private boolean canManageClaim(Player player, Claim claim) {

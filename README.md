@@ -2,7 +2,7 @@
 
 LandClaims is a Paper land claiming plugin that protects land by chunks. It uses a charged golden hoe claim tool, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
 
-This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing with descriptions, a claim menu shell, enforced claim protection flags, admin claim commands, advanced entity-control flags, and the public `LandClaimsApi` service for other plugins.
+This branch is an MVP foundation. The current build includes claim-tool selection, optional-name claim creation, same-name merge confirmation, claim cost previews, member and deny management, dialog-backed claim menus, clickable flag editing with descriptions, enforced claim protection flags, admin claim commands, advanced entity-control flags, and the public `LandClaimsApi` service for other plugins.
 
 ## Requirements
 
@@ -21,16 +21,17 @@ Feature PRs should follow the [development checklist](docs/development-checklist
 2. Place the jar in your Paper server `plugins` folder.
 3. Restart the server.
 4. Edit generated files in `plugins/LandClaims/`.
-5. Restart the server after configuration changes. Runtime reload via `/claim admin reload` is planned but not complete in this build.
+5. Restart the server after configuration changes, or use `/claim admin reload` for supported runtime-reloadable settings.
 
 ## Quick Start
 
 - Run `/claim tool` to receive the claim tool.
 - Right-click two chunks with the tool to record selection corners.
 - Run `/claim cost` to preview allowance and over-limit cost.
-- Run `/claim create <name>` to create the claim.
-- Run `/claim menu` while standing in a claim to open the current claim management shell.
-- Run `/claim flags` while standing in a claim to open clickable flag toggles.
+- Run `/claim create [name]` to preview and create the claim.
+- Run `/claim` to open your claims dashboard from anywhere.
+- Run `/claim menu` while in a claim, or `/claim menu <claim-id>`, to manage a specific claim.
+- Run `/claim flags` while in a claim, or `/claim flags <claim-id>`, to open clickable flag controls.
 - Run `/claim viewborder` to show the current selection, claim, or chunk border.
 - Switch away from the claim tool or double crouch within the configured window to clear an active selection.
 
@@ -44,22 +45,22 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 
 | Command | Permission | Description |
 | --- | --- | --- |
-| `/claim` | `landclaims.use` | Shows the command help output. |
+| `/claim` | `landclaims.gui` | Opens the player's claims dashboard. |
 | `/claim tool` | `landclaims.tool.use` | Gives the configured claim tool. The default item is a charged golden hoe. |
-| `/claim create <name>` | `landclaims.claim` | Creates a player claim from the current completed two-corner selection. |
+| `/claim create [name]` | `landclaims.claim` | Previews and creates a player claim from the current completed two-corner selection. |
 | `/claim cost` | `landclaims.claim` | Previews selected chunks, allowance, over-limit chunks, and cost. `/claim quote` is also accepted. |
-| `/claim menu` | `landclaims.gui` | Opens the claim management menu for the claim at the player's current chunk. |
-| `/claim flags` | `landclaims.gui` | Opens the clickable flag editor for the claim at the player's current chunk. |
-| `/claim viewborder` | `landclaims.use` | Shows the pending selection border, the current claim border, or the current chunk border. |
+| `/claim menu [claim-id]` | `landclaims.gui` | Opens the player's claims dashboard, the current claim menu, or a specific owned/managed claim menu by UUID. |
+| `/claim flags [claim-id]` | `landclaims.gui` | Opens the clickable flag editor for the current claim or a specific owned/managed claim by UUID. |
+| `/claim viewborder [claim-id]` | `landclaims.use` | Shows the pending selection border, the current claim border, the current chunk border, or a specific owned/managed claim border by UUID. |
 | `/claim flag list` | `landclaims.gui` | Opens the same flag editor as `/claim flags`. |
-| `/claim flag set <flag> <true\|false>` | Claim owner plus `landclaims.flag.<flag>` | Sets a claim flag directly. Also accepts `on/off` and `yes/no`. |
-| `/claim flag toggle <flag>` | Claim owner plus `landclaims.flag.<flag>` | Toggles a claim flag and redraws the flag editor. |
-| `/claim member list` | Any player in claim | Lists members for the claim at the player's current chunk. |
-| `/claim member add <player> [member\|manager]` | Claim owner or manager | Adds an online player to the claim. Managers can only add `member` role entries. |
-| `/claim member remove <player>` | Claim owner or manager | Removes an existing claim member. Managers cannot remove other managers. |
-| `/claim deny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Denies a player from entering the claim at the player's current chunk. Names must be online; UUIDs are accepted. |
-| `/claim undeny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Removes a player from the current claim's denied-entry list. |
-| `/claim denied` | `landclaims.deny.manage` | Lists players denied from entering the current claim. |
+| `/claim flag set <flag> <off\|visitors\|all>` | Claim owner or manager plus `landclaims.flag.<flag>` | Sets a claim flag directly. |
+| `/claim flag cycle <flag>` | Claim owner or manager plus `landclaims.flag.<flag>` | Cycles a claim flag and redraws the flag editor. |
+| `/claim member list [claim-id]` | Claim owner or manager | Lists members for the current claim or a specific owned/managed claim by UUID. |
+| `/claim member add [claim-id] <player> [member\|manager]` | Claim owner or manager | Adds an online player to the current claim or a specific owned/managed claim by UUID. Managers can only add `member` role entries. |
+| `/claim member remove [claim-id] <player>` | Claim owner or manager | Removes an existing member from the current claim or a specific owned/managed claim by UUID. Managers cannot remove other managers. |
+| `/claim deny [claim-id] <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Denies a player from entering the current claim or a specific owned/managed claim by UUID. Names must be online; UUIDs are accepted. |
+| `/claim undeny [claim-id] <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Removes a player from the current claim or a specific owned/managed claim's denied-entry list. |
+| `/claim denied [claim-id]` | `landclaims.deny.manage` | Lists players denied from the current claim or a specific owned/managed claim by UUID. |
 | `/claim admin create <name>` | `landclaims.admin.claim.create` | Creates a server-owned admin claim from the current completed selection. |
 | `/claim admin list` | `landclaims.admin.claim.list` | Lists server-owned admin claims and their IDs. |
 | `/claim admin delete <claim-id>` | `landclaims.admin.claim.delete` | Deletes a server-owned admin claim by UUID. |
@@ -70,8 +71,8 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 | `/claim admin userclaims teleport <claim-id>` | `landclaims.admin.userclaims.teleport` | Teleports to the center of a player claim's first chunk. |
 | `/claim admin userclaims transfer <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.transfer` | Transfers player claim ownership. Names must be online; UUIDs are accepted. |
 | `/claim admin userclaims flag list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists flags for a player claim by UUID. |
-| `/claim admin userclaims flag set <claim-id> <flag> <true\|false>` | `landclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
-| `/claim admin userclaims flag toggle <claim-id> <flag>` | `landclaims.admin.userclaims.edit` | Toggles a player claim flag by UUID. |
+| `/claim admin userclaims flag set <claim-id> <flag> <off\|visitors\|all>` | `landclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
+| `/claim admin userclaims flag cycle <claim-id> <flag>` | `landclaims.admin.userclaims.edit` | Cycles a player claim flag by UUID. |
 | `/claim admin userclaims member list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
 | `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `landclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
 | `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
@@ -119,7 +120,7 @@ Relevant config:
 visuals:
   border:
     enabled: true
-    duration-ticks: 0
+    duration-ticks: 100
     thickness: 0.08
     view-range: 96.0
 ```
@@ -187,7 +188,7 @@ access-denial:
 | `landclaims.admin.userclaims.teleport` | child of `landclaims.admin` | Allows teleporting to player claims by UUID. |
 | `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Allows transferring player claim ownership by UUID. |
 | `landclaims.admin.limit` | child of `landclaims.admin` | Allows viewing and changing player claim chunk limits. |
-| `landclaims.admin.reload` | child of `landclaims.admin` | Planned runtime reload command. |
+| `landclaims.admin.reload` | child of `landclaims.admin` | Allows reloading supported LandClaims configuration and message settings. |
 
 ## Flags
 
@@ -221,7 +222,7 @@ Protection edge behavior:
 
 ## Advanced Entity Control
 
-Advanced entity-control flags are claim-level customizations. They are off by default, can be toggled from `/claim flags`, and are designed to become part of the future claim upgrade UI.
+Advanced entity-control flags are claim-level customizations. They are off by default, can be cycled from `/claim flags`, and are designed to become part of the future claim upgrade UI.
 
 Relevant config:
 

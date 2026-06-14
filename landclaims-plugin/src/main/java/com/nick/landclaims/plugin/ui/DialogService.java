@@ -17,7 +17,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 public final class DialogService {
-    private final boolean preferDialogs;
+    private boolean preferDialogs;
     private final DialogRenderer dialogRenderer;
 
     public DialogService(boolean preferDialogs) {
@@ -27,6 +27,14 @@ public final class DialogService {
     DialogService(boolean preferDialogs, DialogRenderer dialogRenderer) {
         this.preferDialogs = preferDialogs;
         this.dialogRenderer = Objects.requireNonNull(dialogRenderer, "dialogRenderer");
+    }
+
+    public boolean prefersDialogs() {
+        return preferDialogs;
+    }
+
+    public void reload(boolean preferDialogs) {
+        this.preferDialogs = preferDialogs;
     }
 
     public void openClaimMenu(Player player, ClaimMenu menu, MessageService messageService) {
@@ -332,6 +340,57 @@ public final class DialogService {
         player.sendMessage(Component.text("Claim setup dialog coming soon.", NamedTextColor.YELLOW));
     }
 
+    public void openClaimCreatePreview(Player player, ClaimCreatePreview preview, MessageService messageService) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(preview, "preview");
+        Objects.requireNonNull(messageService, "messageService");
+
+        if (preferDialogs && tryOpenClaimCreatePreviewDialog(player, preview, messageService)) {
+            return;
+        }
+        Map<String, String> placeholders = createPreviewPlaceholders(preview);
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.create-preview.title",
+                placeholders,
+                "<gold>Create claim <yellow><claim_name></yellow>?"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.create-preview.selection",
+                placeholders,
+                "<gray>Selection: <yellow><selected_chunks></yellow> chunks"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.create-preview.current-total",
+                placeholders,
+                "<gray>Total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.create-preview.over-limit",
+                placeholders,
+                "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.create-preview.cost",
+                placeholders,
+                "<gray>Cost: <green><cost></green>"));
+        sendActions(player, messageService, "claim.create-preview", List.of(preview.confirmAction()), preview.cancelAction());
+    }
+
+    private boolean tryOpenClaimCreatePreviewDialog(Player player, ClaimCreatePreview preview, MessageService messageService) {
+        try {
+            return dialogRenderer.openClaimCreatePreview(player, preview, messageService);
+        } catch (LinkageError | RuntimeException error) {
+            return false;
+        }
+    }
+
+    private static Map<String, String> createPreviewPlaceholders(ClaimCreatePreview preview) {
+        return Map.of(
+                "claim_name", preview.claimName(),
+                "selected_chunks", String.valueOf(preview.selectedChunks()),
+                "proposed_total_chunks", String.valueOf(preview.proposedTotalChunks()),
+                "allowed_chunks", String.valueOf(preview.allowedChunks()),
+                "overage_chunks", String.valueOf(preview.overageChunks()),
+                "cost", preview.cost()
+        );
+    }
+
     interface DialogRenderer {
         boolean openClaimMenu(Player player, ClaimMenu menu, MessageService messageService);
 
@@ -344,6 +403,8 @@ public final class DialogService {
         boolean openClaimMembers(Player player, ClaimMembersView members, MessageService messageService);
 
         boolean openDeniedPlayers(Player player, ClaimDeniedPlayersView denied, MessageService messageService);
+
+        boolean openClaimCreatePreview(Player player, ClaimCreatePreview preview, MessageService messageService);
     }
 
     private static final class PaperDialogRenderer implements DialogRenderer {
@@ -609,6 +670,45 @@ public final class DialogService {
                     .type(buttons.isEmpty()
                             ? DialogType.notice(backButton(messageService, denied.backAction()))
                             : DialogType.multiAction(buttons, backButton(messageService, denied.backAction()), 2)));
+
+            player.showDialog(dialog);
+            return true;
+        }
+
+        @Override
+        public boolean openClaimCreatePreview(Player player, ClaimCreatePreview preview, MessageService messageService) {
+            Map<String, String> placeholders = createPreviewPlaceholders(preview);
+            List<DialogBody> body = List.of(
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.create-preview.selection",
+                            placeholders,
+                            "<gray>Selection: <yellow><selected_chunks></yellow> chunks")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.create-preview.current-total",
+                            placeholders,
+                            "<gray>Total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.create-preview.over-limit",
+                            placeholders,
+                            "<gray>Over limit: <yellow><overage_chunks></yellow> chunks")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.create-preview.cost",
+                            placeholders,
+                            "<gray>Cost: <green><cost></green>"))
+            );
+            DialogBase base = DialogBase.builder(messageService.renderOrDefault(
+                    "claim.create-preview.title",
+                    placeholders,
+                    "<gold>Create claim <yellow><claim_name></yellow>?"))
+                    .body(body)
+                    .afterAction(DialogBase.DialogAfterAction.CLOSE)
+                    .build();
+            Dialog dialog = Dialog.create(factory -> factory.empty()
+                    .base(base)
+                    .type(DialogType.multiAction(
+                            List.of(actionButton(messageService, "claim.create-preview", preview.confirmAction())),
+                            backButton(messageService, preview.cancelAction()),
+                            1)));
 
             player.showDialog(dialog);
             return true;

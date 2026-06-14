@@ -86,6 +86,7 @@ public final class LandClaimsPlugin extends JavaPlugin
     private ClaimBoundaryNotificationListener claimBoundaryNotificationListener;
     private ClaimIndex claimIndex;
     private HavenDataSource havenDataSource;
+    private DialogService dialogService;
 
     @Override
     public void onEnable() {
@@ -212,6 +213,7 @@ public final class LandClaimsPlugin extends JavaPlugin
                 adminClaimService, claimCostService, claimPaymentService, messageService);
         getServer().getPluginManager().registerEvents(
                 new AdminClaimBrowserListener(adminClaimBrowserService), this);
+        dialogService = new DialogService(getConfig().getBoolean("ui.prefer-dialogs", true));
         ClaimsCommand claimsCommand = new ClaimsCommand(
                         claimToolService,
                         selectionService,
@@ -226,7 +228,7 @@ public final class LandClaimsPlugin extends JavaPlugin
                         new ClaimFlagService(claimRepository, claimIndex, flagRegistry),
                         new ClaimFlagEditorService(messageService),
                         new ClaimMenuService(messageService),
-                        new DialogService(getConfig().getBoolean("ui.prefer-dialogs", true)),
+                        dialogService,
                         new InventoryGuiFallbackService(),
                         chunkBorderVisualService,
                         claimBorderColorService,
@@ -269,6 +271,8 @@ public final class LandClaimsPlugin extends JavaPlugin
                     getConfig().getBoolean("access-denial.enabled", true),
                     getConfig().getBoolean("access-denial.knockback.enabled", true),
                     getConfig().getDouble("access-denial.knockback.strength", 0.65D));
+            dialogService.reload(
+                    getConfig().getBoolean("ui.prefer-dialogs", true));
             String defaultDel = getConfig().getString("notifications.claim-boundary.delivery", "action_bar");
             claimBoundaryNotificationListener.reload(
                     getConfig().getBoolean("notifications.claim-boundary.enabled", true),
@@ -347,6 +351,7 @@ public final class LandClaimsPlugin extends JavaPlugin
         claimToolListener = null;
         deniedClaimAccessListener = null;
         claimBoundaryNotificationListener = null;
+        dialogService = null;
         claimIndex = null;
         getLogger().info("LandClaims disabled.");
     }
@@ -395,7 +400,7 @@ public final class LandClaimsPlugin extends JavaPlugin
                         getConfig().getDouble("visuals.border.thickness", 0.08D),
                         (float) getConfig().getDouble("visuals.border.view-range", 96.0D)
                 ),
-                getConfig().getInt("visuals.border.duration-ticks", 0)
+                getConfig().getInt("visuals.border.duration-ticks", 100)
         );
     }
 
