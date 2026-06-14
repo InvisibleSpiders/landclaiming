@@ -12,6 +12,16 @@ claim:
   over-limit-disabled: "<red>This claim exceeds your claim limit."
   create:
     default-name-prefix: "Claim"
+  create-preview:
+    title: "<gold>Create claim <yellow><claim_name></yellow>?"
+    selection: "<gray>Selection: <yellow><selected_chunks></yellow> chunks"
+    current-total: "<gray>Total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"
+    over-limit: "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"
+    cost: "<gray>Cost: <green><cost></green>"
+    actions-header: "<gold>Actions:"
+    action: "<gray>- <yellow><label></yellow> (<command>)"
+    button: "<yellow><label></yellow>"
+    tooltip: "<gray><command></gray>"
   refund-failed: "<red>Claim creation failed and your refund of <yellow><cost></yellow> could not be processed. Contact an administrator."
   boundary:
     enter: "<gold>Entering <yellow><claim_name></yellow></gold>"
@@ -33,6 +43,9 @@ claim:
   deleted: "<green>Deleted claim <white><claim_name></white>."
   delete:
     not-owner: "<red>Only the claim owner can delete this claim."
+    confirm-title: "<gold>Delete claim <yellow><claim_name></yellow>?"
+    actions-header: "<gold>Actions:"
+    action: "<gray>- <yellow><label></yellow> (<command>)"
   info:
     unclaimed: "<yellow>This chunk is not claimed."
     name: "<gold>Claim: <yellow><claim_name></yellow>"
@@ -195,7 +208,13 @@ claim:
       members: "Members"
       denied: "Denied Players"
       info: "Info"
+      viewborder: "View Border"
+      delete: "Delete Claim"
       back: "Back"
+      confirm-create: "Create Claim"
+      cancel: "Cancel"
+      add-member: "Add Member"
+      deny-player: "Deny Player"
     dialog:
       title: "<gold>Claim Menu: <yellow><claim_name></yellow>"
       button: "<yellow><label></yellow>"

@@ -33,7 +33,9 @@ public final class ClaimMenuService {
                         new ClaimMenuAction(actionLabel("flags"), "/claim flags " + claim.id()),
                         new ClaimMenuAction(actionLabel("members"), "/claim member list " + claim.id()),
                         new ClaimMenuAction(actionLabel("denied"), "/claim denied " + claim.id()),
-                        new ClaimMenuAction(actionLabel("info"), "/claim info " + claim.id())
+                        new ClaimMenuAction(actionLabel("info"), "/claim info " + claim.id()),
+                        new ClaimMenuAction(actionLabel("viewborder"), "/claim viewborder " + claim.id()),
+                        new ClaimMenuAction(actionLabel("delete"), "/claim delete " + claim.id())
                 )
         );
     }
@@ -77,6 +79,8 @@ public final class ClaimMenuService {
             case "members" -> "Members";
             case "denied" -> "Denied Players";
             case "info" -> "Info";
+            case "viewborder" -> "View Border";
+            case "delete" -> "Delete Claim";
             default -> actionKey;
         };
     }

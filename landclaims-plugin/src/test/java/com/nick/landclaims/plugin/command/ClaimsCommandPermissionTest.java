@@ -31,6 +31,8 @@ import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
 import com.nick.landclaims.plugin.ui.ClaimMenuService;
 import com.nick.landclaims.plugin.ui.DialogService;
+import com.nick.landclaims.plugin.visual.BorderColor;
+import com.nick.landclaims.plugin.visual.ChunkBorderVisualService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -268,6 +270,136 @@ class ClaimsCommandPermissionTest {
     }
 
     @Test
+    void createWithDialogPreferenceOpensConfirmationWithoutSaving() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService creationService = new ClaimCreationService(
+                repository,
+                claimIndex,
+                new ClaimService(),
+                FlagRegistry.createDefault(),
+                3,
+                3,
+                32
+        );
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        ClaimToolService toolService = mock(ClaimToolService.class);
+        ItemStack tool = mock(ItemStack.class);
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("landclaims.claim")).thenReturn(true);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItemInMainHand()).thenReturn(tool);
+        when(toolService.isClaimTool(tool)).thenReturn(true);
+        when(toolService.currentCharges(tool)).thenReturn(10);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                toolService,
+                selectionService,
+                creationService,
+                claimIndex,
+                new ClaimCostService(
+                        claimIndex,
+                        new LimitService(5, emptyLimitRepository()),
+                        new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                ),
+                new ClaimPaymentService(new NoopEconomyService()),
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                new DialogService(true),
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"create"});
+
+        assertThat(repository.savedClaims).isEmpty();
+        assertThat(plain(messages)).containsExactly(
+                "Create claim Claim 1?",
+                "Selection: 1 chunks",
+                "Total after claim: 1 / 5 chunks",
+                "Over limit: 0 chunks",
+                "Cost: free",
+                "Actions:",
+                "- Create Claim (/claim createconfirm Claim 1)",
+                "- Cancel (/claim cancel)"
+        );
+    }
+
+    @Test
+    void createConfirmWithoutNameCreatesNextDefaultClaimName() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService creationService = new ClaimCreationService(
+                repository,
+                claimIndex,
+                new ClaimService(),
+                FlagRegistry.createDefault(),
+                3,
+                3,
+                32
+        );
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        ClaimToolService toolService = mock(ClaimToolService.class);
+        ItemStack tool = mock(ItemStack.class);
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("landclaims.claim")).thenReturn(true);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItemInMainHand()).thenReturn(tool);
+        when(toolService.isClaimTool(tool)).thenReturn(true);
+        when(toolService.currentCharges(tool)).thenReturn(10);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                toolService,
+                selectionService,
+                creationService,
+                claimIndex,
+                null,
+                null,
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                new DialogService(true),
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"createconfirm"});
+
+        assertThat(repository.savedClaims).hasSize(1);
+        assertThat(repository.savedClaims.get(0).name()).isEqualTo("Claim 1");
+        assertThat(plain(messages)).containsExactly("Claim Claim 1 created.");
+    }
+
+    @Test
     void rootCommandOpensOwnedClaimDashboardAnywhere() {
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
@@ -374,8 +506,71 @@ class ClaimsCommandPermissionTest {
                 "Members for Home",
                 "- Helper (manager)",
                 "Actions:",
+                "- Add Member (/claim member add " + claim.id() + " <player> [member|manager])",
+                "- Remove Helper (/claim member remove " + claim.id() + " " + memberId + ")",
                 "- Back (/claim menu " + claim.id() + ")"
         );
+    }
+
+    @Test
+    void memberRemoveWithClaimIdDoesNotRequireStandingInClaim() {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                Map.of(),
+                Set.of(new ClaimMember(memberId, ClaimRole.MEMBER)),
+                java.time.Instant.now(),
+                java.time.Instant.now()
+        );
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        org.bukkit.Server server = mock(org.bukkit.Server.class);
+        org.bukkit.OfflinePlayer member = mock(org.bukkit.OfflinePlayer.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.getServer()).thenReturn(server);
+        when(server.getOfflinePlayer(memberId)).thenReturn(member);
+        when(member.getName()).thenReturn("Helper");
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                detailMessages(),
+                new ClaimMemberService(repository, claimIndex),
+                null,
+                null,
+                null,
+                null,
+                new DialogService(false),
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim",
+                new String[]{"member", "remove", claim.id().toString(), memberId.toString()});
+
+        assertThat(repository.savedClaims).hasSize(1);
+        assertThat(repository.savedClaims.get(0).members()).isEmpty();
+        assertThat(plain(messages)).containsExactly("Removed Helper from this claim.");
     }
 
     @Test
@@ -506,8 +701,73 @@ class ClaimsCommandPermissionTest {
                 "Denied players for Home",
                 "- Visitor",
                 "Actions:",
+                "- Deny Player (/claim deny " + claim.id() + " <player|uuid>)",
+                "- Allow Visitor (/claim undeny " + claim.id() + " " + deniedId + ")",
                 "- Back (/claim menu " + claim.id() + ")"
         );
+    }
+
+    @Test
+    void undenyWithClaimIdDoesNotRequireStandingInClaim() {
+        UUID ownerId = UUID.randomUUID();
+        UUID deniedId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                Map.of(),
+                Set.of(),
+                Set.of(deniedId),
+                java.time.Instant.now(),
+                java.time.Instant.now()
+        );
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        org.bukkit.Server server = mock(org.bukkit.Server.class);
+        org.bukkit.OfflinePlayer denied = mock(org.bukkit.OfflinePlayer.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("landclaims.deny.manage")).thenReturn(true);
+        when(player.getServer()).thenReturn(server);
+        when(server.getOfflinePlayer(deniedId)).thenReturn(denied);
+        when(denied.getName()).thenReturn("Visitor");
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                detailMessages(),
+                null,
+                new ClaimDenyService(repository, claimIndex),
+                null,
+                null,
+                null,
+                new DialogService(false),
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim",
+                new String[]{"undeny", claim.id().toString(), deniedId.toString()});
+
+        assertThat(repository.savedClaims).hasSize(1);
+        assertThat(repository.savedClaims.get(0).deniedPlayers()).isEmpty();
+        assertThat(plain(messages)).containsExactly("Allowed Visitor back into this claim.");
     }
 
     @Test
@@ -551,6 +811,94 @@ class ClaimsCommandPermissionTest {
         assertThat(plain(messages)).containsExactly("Only the claim owner can delete this claim.");
     }
 
+    @Test
+    void deleteWithClaimIdRequiresConfirmationAndDoesNotNeedStandingInClaim() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = commandForClaimDeletion(repository, claimIndex);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"delete", claim.id().toString()});
+
+        assertThat(repository.deletedClaims).isEmpty();
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(claim);
+        assertThat(plain(messages)).containsExactly(
+                "Delete claim Home?",
+                "Actions:",
+                "- Confirm Delete (/claim deleteconfirm " + claim.id() + ")",
+                "- Back (/claim menu " + claim.id() + ")"
+        );
+    }
+
+    @Test
+    void deleteConfirmWithClaimIdDeletesOwnedClaimAnywhere() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = playerClaim("Home", ownerId, worldId, 0);
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = commandForClaimDeletion(repository, claimIndex);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"deleteconfirm", claim.id().toString()});
+
+        assertThat(repository.deletedClaims).containsExactly(claim.id());
+        assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).isEmpty();
+        assertThat(plain(messages)).containsExactly("Deleted claim Home.");
+    }
+
+    @Test
+    void viewBorderWithClaimIdShowsOwnedClaimBorderAnywhere() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = playerClaim("Home", ownerId, worldId, 0);
+        claimIndex.add(claim);
+        ChunkBorderVisualService visualService = mock(ChunkBorderVisualService.class);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                visualService,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"viewborder", claim.id().toString()});
+
+        verify(visualService).showSelection(player, claim.claimChunks(), BorderColor.GOLD);
+        assertThat(plain(messages)).containsExactly("Showing this claim border.");
+    }
+
     private static MessageService messages() {
         return new MessageService(Map.ofEntries(
                 Map.entry("command.claim.no-permission", "<red>You do not have permission to create claims."),
@@ -563,11 +911,22 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.cost-preview.unavailable", "not available"),
                 Map.entry("claim.deleted", "<green>Deleted claim <white><claim_name></white>."),
                 Map.entry("claim.delete.not-owner", "<red>Only the claim owner can delete this claim."),
+                Map.entry("claim.delete.confirm-title", "<gold>Delete claim <yellow><claim_name></yellow>?"),
+                Map.entry("claim.delete.actions-header", "<gold>Actions:"),
+                Map.entry("claim.delete.action", "<gray>- <yellow><label></yellow> (<command>)"),
+                Map.entry("claim.visual.border-claim", "<green>Showing this claim border."),
                 Map.entry("claim.info.unclaimed", "<yellow>You are not standing in a claim."),
                 Map.entry("claim.selection-required", "<red>Select chunks first."),
                 Map.entry("claim.hold-tool", "<red>Hold the claim tool."),
                 Map.entry("claim.not-enough-charges", "<red>Need <needed>, have <available>."),
                 Map.entry("claim.created", "<green>Claim <claim_name> created."),
+                Map.entry("claim.create-preview.title", "<gold>Create claim <yellow><claim_name></yellow>?"),
+                Map.entry("claim.create-preview.selection", "<gray>Selection: <yellow><selected_chunks></yellow> chunks"),
+                Map.entry("claim.create-preview.current-total", "<gray>Total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"),
+                Map.entry("claim.create-preview.over-limit", "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"),
+                Map.entry("claim.create-preview.cost", "<gray>Cost: <green><cost></green>"),
+                Map.entry("claim.create-preview.actions-header", "<gold>Actions:"),
+                Map.entry("claim.create-preview.action", "<gray>- <yellow><label></yellow> (<command>)"),
                 Map.entry("claim.create-denied", "<red><reason>"),
                 Map.entry("claim.charged", "<green>Charged <cost>.")
         ));
@@ -600,9 +959,11 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.member.list-empty", "<yellow>This claim has no members."),
                 Map.entry("claim.member.list-header", "<gold>Claim members:"),
                 Map.entry("claim.member.list-entry", "<gray>- <yellow><player></yellow> (<role>)"),
+                Map.entry("claim.member.removed", "<green>Removed <yellow><player></yellow> from this claim."),
                 Map.entry("claim.deny.list-empty", "<yellow>This claim has no denied players."),
                 Map.entry("claim.deny.list-header", "<gold>Denied players:"),
                 Map.entry("claim.deny.list-entry", "<gray>- <yellow><player></yellow>"),
+                Map.entry("claim.deny.removed", "<green>Allowed <yellow><player></yellow> back into this claim."),
                 Map.entry("claim.info.name", "<gold>Claim: <yellow><claim_name></yellow>"),
                 Map.entry("claim.info.owner-type", "<gray>Owner type: <white><owner_type></white>"),
                 Map.entry("claim.info.chunks", "<gray>Chunks: <white><chunk_count></white>"),

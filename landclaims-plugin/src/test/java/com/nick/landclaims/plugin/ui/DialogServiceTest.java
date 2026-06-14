@@ -107,6 +107,21 @@ class DialogServiceTest {
     }
 
     @Test
+    void opensClaimCreatePreviewWithDialogRendererWhenPreferred() {
+        Player player = mock(Player.class);
+        DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
+        ClaimCreatePreview preview = createPreview();
+        MessageService messages = messages();
+        when(renderer.openClaimCreatePreview(player, preview, messages)).thenReturn(true);
+        DialogService service = new DialogService(true, renderer);
+
+        service.openClaimCreatePreview(player, preview, messages);
+
+        verify(renderer).openClaimCreatePreview(player, preview, messages);
+        verify(player, never()).sendMessage(any(Component.class));
+    }
+
+    @Test
     void fallsBackToChatWhenDialogsAreNotPreferred() {
         Player player = mock(Player.class);
         DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
@@ -171,6 +186,22 @@ class DialogServiceTest {
                 .toList();
         org.assertj.core.api.Assertions.assertThat(plain)
                 .noneMatch(message -> message.contains("Missing message:"));
+    }
+
+    @Test
+    void reloadUpdatesDialogPreference() {
+        Player player = mock(Player.class);
+        DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
+        ClaimMenu menu = menu();
+        MessageService messages = messages();
+        when(renderer.openClaimMenu(player, menu, messages)).thenReturn(true);
+        DialogService service = new DialogService(false, renderer);
+
+        service.openClaimMenu(player, menu, messages);
+        service.reload(true);
+        service.openClaimMenu(player, menu, messages);
+
+        verify(renderer).openClaimMenu(player, menu, messages);
     }
 
     private static ClaimMenu menu() {
@@ -250,6 +281,19 @@ class DialogServiceTest {
                 List.of(new ClaimDeniedPlayerViewRow("Visitor")),
                 List.of(new ClaimMenuAction("Info", "/claim info")),
                 new ClaimMenuAction("Back", "/claim menu")
+        );
+    }
+
+    private static ClaimCreatePreview createPreview() {
+        return new ClaimCreatePreview(
+                "Home",
+                2,
+                4,
+                5,
+                0,
+                "free",
+                new ClaimMenuAction("Create Claim", "/claim createconfirm Home"),
+                new ClaimMenuAction("Cancel", "/claim cancel")
         );
     }
 
