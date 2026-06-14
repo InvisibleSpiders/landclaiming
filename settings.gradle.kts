@@ -27,5 +27,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "landclaims"
-include("landclaims-api", "landclaims-plugin")
+rootProject.name = "havenclaims"
+include("havenclaims-api", "havenclaims-plugin")

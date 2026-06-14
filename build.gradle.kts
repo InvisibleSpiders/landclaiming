@@ -5,7 +5,7 @@ plugins {
 subprojects {
     apply(plugin = "java")
 
-    group = "com.nick"
+    group = "com.invisiblespiders"
     version = "1.7.0-SNAPSHOT"
 
     extensions.configure<JavaPluginExtension> {

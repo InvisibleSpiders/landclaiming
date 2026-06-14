@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-    api(project(":landclaims-api"))
+    api(project(":havenclaims-api"))
 
     compileOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")
     compileOnly("dev.invisiblespiders.haven:haven-api:1.0.0")
@@ -33,13 +33,13 @@ tasks.processResources {
 }
 
 tasks.jar {
-    archiveBaseName.set("LandClaims")
+    archiveBaseName.set("HavenClaims")
     archiveVersion.set(project.version.toString())
     enabled = false
 }
 
 tasks.shadowJar {
-    archiveBaseName.set("LandClaims")
+    archiveBaseName.set("HavenClaims")
     archiveVersion.set(project.version.toString())
     archiveClassifier.set("")
 }
