@@ -37,8 +37,31 @@ public final class MessageService {
         return miniMessage.deserialize(template, placeholderResolver(placeholders));
     }
 
+    public Component renderOrDefault(String key, Map<String, String> placeholders, String fallbackTemplate) {
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(placeholders, "placeholders");
+        Objects.requireNonNull(fallbackTemplate, "fallbackTemplate");
+
+        String template = messages.getOrDefault(key, fallbackTemplate);
+        return miniMessage.deserialize(template, placeholderResolver(placeholders));
+    }
+
     public String renderPlain(String key, Map<String, String> placeholders) {
         return plainTextSerializer.serialize(render(key, placeholders));
+    }
+
+    public String renderPlainText(Component component) {
+        return plainTextSerializer.serialize(Objects.requireNonNull(component, "component"));
+    }
+
+    public String renderPlainOrDefault(String key, Map<String, String> placeholders, String fallback) {
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(placeholders, "placeholders");
+        Objects.requireNonNull(fallback, "fallback");
+        if (!messages.containsKey(key)) {
+            return fallback;
+        }
+        return renderPlain(key, placeholders);
     }
 
     private static TagResolver placeholderResolver(Map<String, String> placeholders) {

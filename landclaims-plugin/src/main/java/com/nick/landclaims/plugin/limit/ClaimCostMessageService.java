@@ -10,9 +10,23 @@ public final class ClaimCostMessageService {
     }
 
     public static List<Component> preview(ClaimCostQuote quote, String formattedCost, MessageService messageService) {
-        String costText = quote.cost() <= 0.0
-                ? messageService.renderPlain("claim.cost-preview.free", Map.of())
-                : formattedCost;
+        return preview(quote, formattedCost, messageService, true);
+    }
+
+    public static List<Component> preview(
+            ClaimCostQuote quote,
+            String formattedCost,
+            MessageService messageService,
+            boolean paidOverLimitEnabled
+    ) {
+        String costText;
+        if (quote.overageChunks() > 0 && !paidOverLimitEnabled) {
+            costText = messageService.renderPlain("claim.cost-preview.unavailable", Map.of());
+        } else if (quote.cost() <= 0.0) {
+            costText = messageService.renderPlain("claim.cost-preview.free", Map.of());
+        } else {
+            costText = formattedCost;
+        }
         Map<String, String> placeholders = Map.of(
                 "selected_chunks", String.valueOf(quote.selectedChunks()),
                 "proposed_total_chunks", String.valueOf(quote.proposedTotalChunks()),

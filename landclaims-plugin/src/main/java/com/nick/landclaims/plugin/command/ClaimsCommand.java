@@ -82,6 +82,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "deny",
             "undeny",
             "denied",
+            "delete",
+            "abandon",
             "admin",
             "cancel",
             "info"
@@ -198,6 +200,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 || args[0].equalsIgnoreCase("undeny")
                 || args[0].equalsIgnoreCase("denied"))) {
             return manageDeniedPlayers(player, args);
+        }
+        if (args.length == 1 && (args[0].equalsIgnoreCase("delete")
+                || args[0].equalsIgnoreCase("abandon"))) {
+            return deleteOwnedClaim(player);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("flag")) {
             return manageFlags(player, args);
@@ -1499,8 +1505,45 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 player.getUniqueId(),
                 pendingSelection.orElseThrow()
         );
-        ClaimCostMessageService.preview(quote, claimPaymentService.format(quote.cost()), messageService)
+        ClaimCostMessageService.preview(
+                quote,
+                claimPaymentService.format(quote.cost()),
+                messageService,
+                claimCostService.isPaidOverLimitEnabled()
+        )
                 .forEach(player::sendMessage);
+        return true;
+    }
+
+    private boolean deleteOwnedClaim(Player player) {
+        if (adminClaimService == null || claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+
+        Optional<Claim> claim = claimAtPlayer(player);
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.info.unclaimed"));
+            return true;
+        }
+
+        Claim foundClaim = claim.orElseThrow();
+        if (foundClaim.owner() != com.nick.landclaims.plugin.claim.OwnerType.PLAYER
+                || !player.getUniqueId().equals(foundClaim.ownerUuid())) {
+            player.sendMessage(message("claim.delete.not-owner"));
+            return true;
+        }
+
+        AdminClaimResult result = adminClaimService.deletePlayerClaim(foundClaim.id());
+        if (!result.allowed()) {
+            player.sendMessage(message(result.messageKey()));
+            return true;
+        }
+
+        player.sendMessage(message("claim.deleted", Map.of(
+                "claim_name", foundClaim.name(),
+                "claim_id", foundClaim.id().toString()
+        )));
         return true;
     }
 
@@ -1758,6 +1801,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("command.help.deny"));
         player.sendMessage(message("command.help.flag"));
         player.sendMessage(message("command.help.cost"));
+        player.sendMessage(message("command.help.delete"));
         player.sendMessage(message("command.help.cancel"));
         player.sendMessage(message("command.help.info"));
         player.sendMessage(message("command.help.admin"));

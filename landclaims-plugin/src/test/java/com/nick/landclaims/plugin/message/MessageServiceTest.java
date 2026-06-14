@@ -63,6 +63,36 @@ class MessageServiceTest {
     }
 
     @Test
+    void renderPlainOrDefaultUsesFallbackWhenKeyIsMissing() {
+        MessageService service = new MessageService(Map.of());
+
+        String rendered = service.renderPlainOrDefault("claim.missing", Map.of(), "Fallback");
+
+        assertThat(rendered).isEqualTo("Fallback");
+    }
+
+    @Test
+    void renderPlainOrDefaultUsesConfiguredMessageWhenKeyExists() {
+        MessageService service = new MessageService(Map.of("claim.label", "<yellow><label></yellow>"));
+
+        String rendered = service.renderPlainOrDefault("claim.label", Map.of("label", "Build"), "Fallback");
+
+        assertThat(rendered).isEqualTo("Build");
+    }
+
+    @Test
+    void renderOrDefaultUsesFallbackTemplateWhenKeyIsMissing() {
+        MessageService service = new MessageService(Map.of());
+
+        String rendered = service.renderPlainText(service.renderOrDefault(
+                "claim.missing",
+                Map.of("label", "Build"),
+                "<yellow><label></yellow>"));
+
+        assertThat(rendered).isEqualTo("Build");
+    }
+
+    @Test
     void constructorDefensivelyCopiesMessages() {
         Map<String, String> messages = new HashMap<>();
         messages.put("claim.created", "Claim <claim_name> created.");
