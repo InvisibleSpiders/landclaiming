@@ -32,6 +32,7 @@ public final class ClaimMenuService {
                 List.of(
                         new ClaimMenuAction(actionLabel("flags"), "/claim flags " + claim.id()),
                         new ClaimMenuAction(actionLabel("members"), "/claim member list " + claim.id()),
+                        new ClaimMenuAction(actionLabel("denied"), "/claim denied " + claim.id()),
                         new ClaimMenuAction(actionLabel("info"), "/claim info " + claim.id())
                 )
         );
@@ -74,6 +75,7 @@ public final class ClaimMenuService {
         return switch (actionKey) {
             case "flags" -> "Flags";
             case "members" -> "Members";
+            case "denied" -> "Denied Players";
             case "info" -> "Info";
             default -> actionKey;
         };

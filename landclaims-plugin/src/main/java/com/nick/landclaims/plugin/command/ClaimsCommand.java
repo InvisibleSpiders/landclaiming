@@ -28,9 +28,15 @@ import com.nick.landclaims.plugin.limit.ClaimCostService;
 import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import com.nick.landclaims.plugin.ui.ClaimDeniedPlayerViewRow;
+import com.nick.landclaims.plugin.ui.ClaimDeniedPlayersView;
 import com.nick.landclaims.plugin.ui.ClaimFlagEditor;
 import com.nick.landclaims.plugin.ui.ClaimFlagEditorService;
+import com.nick.landclaims.plugin.ui.ClaimInfoView;
+import com.nick.landclaims.plugin.ui.ClaimMemberViewRow;
+import com.nick.landclaims.plugin.ui.ClaimMembersView;
 import com.nick.landclaims.plugin.ui.ClaimMenu;
+import com.nick.landclaims.plugin.ui.ClaimMenuAction;
 import com.nick.landclaims.plugin.ui.ClaimMenuService;
 import com.nick.landclaims.plugin.ui.AdminClaimBrowserService;
 import com.nick.landclaims.plugin.ui.DialogService;
@@ -1268,6 +1274,14 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("denied") && args.length == 2) {
+            Optional<Claim> claim = manageableClaimById(player, args[1]);
+            if (claim.isEmpty()) {
+                return true;
+            }
+            return listDeniedPlayers(player, claim.orElseThrow());
+        }
+
         Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isEmpty()) {
             player.sendMessage(message("claim.info.unclaimed"));
@@ -1326,17 +1340,29 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean listDeniedPlayers(Player player, Claim claim) {
-        if (claim.deniedPlayers().isEmpty()) {
-            player.sendMessage(message("claim.deny.list-empty"));
+        ClaimDeniedPlayersView view = new ClaimDeniedPlayersView(
+                claim.id(),
+                claim.name(),
+                claim.deniedPlayers().stream()
+                        .sorted(java.util.Comparator.comparing(UUID::toString))
+                        .map(deniedPlayer -> new ClaimDeniedPlayerViewRow(playerName(player, deniedPlayer)))
+                        .toList(),
+                List.of(),
+                backToClaimMenu(claim)
+        );
+        if (dialogService != null) {
+            dialogService.openDeniedPlayers(player, view, messageService);
             return true;
         }
 
+        if (view.deniedPlayers().isEmpty()) {
+            player.sendMessage(message("claim.deny.list-empty"));
+            return true;
+        }
         player.sendMessage(message("claim.deny.list-header"));
-        claim.deniedPlayers().stream()
-                .sorted(java.util.Comparator.comparing(UUID::toString))
-                .forEach(deniedPlayer -> player.sendMessage(message("claim.deny.list-entry", Map.of(
-                        "player", playerName(player, deniedPlayer)
-                ))));
+        for (ClaimDeniedPlayerViewRow row : view.deniedPlayers()) {
+            player.sendMessage(message("claim.deny.list-entry", Map.of("player", row.playerName())));
+        }
         return true;
     }
 
@@ -1448,21 +1474,38 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean listMembers(Player player, Claim claim) {
-        if (claim.members().isEmpty()) {
-            player.sendMessage(message("claim.member.list-empty"));
+        ClaimMembersView view = new ClaimMembersView(
+                claim.id(),
+                claim.name(),
+                claim.members().stream()
+                        .sorted(java.util.Comparator.comparing(member -> member.memberUuid().toString()))
+                        .map(member -> {
+                            OfflinePlayer offlinePlayer = player.getServer().getOfflinePlayer(member.memberUuid());
+                            return new ClaimMemberViewRow(
+                                    memberName(offlinePlayer),
+                                    member.role().name().toLowerCase()
+                            );
+                        })
+                        .toList(),
+                List.of(),
+                backToClaimMenu(claim)
+        );
+        if (dialogService != null) {
+            dialogService.openClaimMembers(player, view, messageService);
             return true;
         }
 
+        if (view.members().isEmpty()) {
+            player.sendMessage(message("claim.member.list-empty"));
+            return true;
+        }
         player.sendMessage(message("claim.member.list-header"));
-        claim.members().stream()
-                .sorted(java.util.Comparator.comparing(member -> member.memberUuid().toString()))
-                .forEach(member -> {
-                    OfflinePlayer offlinePlayer = player.getServer().getOfflinePlayer(member.memberUuid());
-                    player.sendMessage(message("claim.member.list-entry", Map.of(
-                            "player", memberName(offlinePlayer),
-                            "role", member.role().name().toLowerCase()
-                    )));
-                });
+        for (ClaimMemberViewRow row : view.members()) {
+            player.sendMessage(message("claim.member.list-entry", Map.of(
+                    "player", row.playerName(),
+                    "role", row.role()
+            )));
+        }
         return true;
     }
 
@@ -1869,11 +1912,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Claim foundClaim = claim.orElseThrow();
-        player.sendMessage(message("claim.info.name", Map.of("claim_name", foundClaim.name())));
-        player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", foundClaim.owner().name())));
-        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(foundClaim.claimChunks().size()))));
-        player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(foundClaim.ownerUuid())))));
+        showInfo(player, claim.orElseThrow());
         return true;
     }
 
@@ -1886,12 +1925,44 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (claim.isEmpty()) {
             return true;
         }
-        Claim foundClaim = claim.orElseThrow();
-        player.sendMessage(message("claim.info.name", Map.of("claim_name", foundClaim.name())));
-        player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", foundClaim.owner().name())));
-        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(foundClaim.claimChunks().size()))));
-        player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(foundClaim.ownerUuid())))));
+        showInfo(player, claim.orElseThrow());
         return true;
+    }
+
+    private void showInfo(Player player, Claim claim) {
+        ClaimInfoView view = new ClaimInfoView(
+                claim.id(),
+                claim.name(),
+                claim.owner().name(),
+                claim.claimChunks().size(),
+                claim.members().size(),
+                claim.deniedPlayers().size(),
+                claim.flags().size(),
+                player.getUniqueId().equals(claim.ownerUuid()),
+                List.of(
+                        new ClaimMenuAction(actionLabel("flags", "Flags"), "/claim flags " + claim.id()),
+                        new ClaimMenuAction(actionLabel("members", "Members"), "/claim member list " + claim.id()),
+                        new ClaimMenuAction(actionLabel("denied", "Denied Players"), "/claim denied " + claim.id())
+                ),
+                backToClaimMenu(claim)
+        );
+        if (dialogService != null) {
+            dialogService.openClaimInfo(player, view, messageService);
+            return;
+        }
+
+        player.sendMessage(message("claim.info.name", Map.of("claim_name", claim.name())));
+        player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", claim.owner().name())));
+        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(claim.claimChunks().size()))));
+        player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(claim.ownerUuid())))));
+    }
+
+    private ClaimMenuAction backToClaimMenu(Claim claim) {
+        return new ClaimMenuAction(actionLabel("back", "Back"), "/claim menu " + claim.id());
+    }
+
+    private String actionLabel(String actionKey, String defaultValue) {
+        return messageService.renderPlainOrDefault("claim.menu.action-labels." + actionKey, Map.of(), defaultValue);
     }
 
     private Optional<Claim> claimAtPlayer(Player player) {

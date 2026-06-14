@@ -52,6 +52,7 @@ class ClaimMenuServiceTest {
                 .containsExactly(
                         "/claim flags " + claim.id(),
                         "/claim member list " + claim.id(),
+                        "/claim denied " + claim.id(),
                         "/claim info " + claim.id());
     }
 
@@ -77,7 +78,7 @@ class ClaimMenuServiceTest {
         assertThat(menu.adminClaim()).isTrue();
         assertThat(menu.viewerOwnsClaim()).isFalse();
         assertThat(menu.actions()).extracting(ClaimMenuAction::label)
-                .containsExactly("Flags", "Members", "Info");
+                .containsExactly("Flags", "Members", "Denied Players", "Info");
     }
 
     @Test
@@ -85,6 +86,7 @@ class ClaimMenuServiceTest {
         ClaimMenuService service = new ClaimMenuService(new MessageService(Map.of(
                 "claim.menu.action-labels.flags", "Configure Flags",
                 "claim.menu.action-labels.members", "Manage Members",
+                "claim.menu.action-labels.denied", "Denied List",
                 "claim.menu.action-labels.info", "View Info"
         )));
         UUID worldId = UUID.randomUUID();
@@ -104,7 +106,7 @@ class ClaimMenuServiceTest {
         ClaimMenu menu = service.buildMenu(claim, UUID.randomUUID());
 
         assertThat(menu.actions()).extracting(ClaimMenuAction::label)
-                .containsExactly("Configure Flags", "Manage Members", "View Info");
+                .containsExactly("Configure Flags", "Manage Members", "Denied List", "View Info");
     }
 
     @Test
@@ -127,7 +129,7 @@ class ClaimMenuServiceTest {
         ClaimMenu menu = service.buildMenu(claim, UUID.randomUUID());
 
         assertThat(menu.actions()).extracting(ClaimMenuAction::label)
-                .containsExactly("Flags", "Members", "Info");
+                .containsExactly("Flags", "Members", "Denied Players", "Info");
     }
 
     @Test
@@ -169,6 +171,7 @@ class ClaimMenuServiceTest {
         return new MessageService(Map.ofEntries(
                 Map.entry("claim.menu.action-labels.flags", "Flags"),
                 Map.entry("claim.menu.action-labels.members", "Members"),
+                Map.entry("claim.menu.action-labels.denied", "Denied Players"),
                 Map.entry("claim.menu.action-labels.info", "Info"),
                 Map.entry("claim.dashboard.title", "My Claims"),
                 Map.entry("claim.dashboard.action-labels.create", "Create Claim"),
