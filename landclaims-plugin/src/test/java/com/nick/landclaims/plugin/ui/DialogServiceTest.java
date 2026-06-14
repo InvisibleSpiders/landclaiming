@@ -62,6 +62,51 @@ class DialogServiceTest {
     }
 
     @Test
+    void opensClaimInfoWithDialogRendererWhenPreferred() {
+        Player player = mock(Player.class);
+        DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
+        ClaimInfoView info = info();
+        MessageService messages = messages();
+        when(renderer.openClaimInfo(player, info, messages)).thenReturn(true);
+        DialogService service = new DialogService(true, renderer);
+
+        service.openClaimInfo(player, info, messages);
+
+        verify(renderer).openClaimInfo(player, info, messages);
+        verify(player, never()).sendMessage(any(Component.class));
+    }
+
+    @Test
+    void opensClaimMembersWithDialogRendererWhenPreferred() {
+        Player player = mock(Player.class);
+        DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
+        ClaimMembersView members = members();
+        MessageService messages = messages();
+        when(renderer.openClaimMembers(player, members, messages)).thenReturn(true);
+        DialogService service = new DialogService(true, renderer);
+
+        service.openClaimMembers(player, members, messages);
+
+        verify(renderer).openClaimMembers(player, members, messages);
+        verify(player, never()).sendMessage(any(Component.class));
+    }
+
+    @Test
+    void opensDeniedPlayersWithDialogRendererWhenPreferred() {
+        Player player = mock(Player.class);
+        DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
+        ClaimDeniedPlayersView denied = deniedPlayers();
+        MessageService messages = messages();
+        when(renderer.openDeniedPlayers(player, denied, messages)).thenReturn(true);
+        DialogService service = new DialogService(true, renderer);
+
+        service.openDeniedPlayers(player, denied, messages);
+
+        verify(renderer).openDeniedPlayers(player, denied, messages);
+        verify(player, never()).sendMessage(any(Component.class));
+    }
+
+    @Test
     void fallsBackToChatWhenDialogsAreNotPreferred() {
         Player player = mock(Player.class);
         DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
@@ -99,6 +144,27 @@ class DialogServiceTest {
         DialogService service = new DialogService(false);
 
         service.openClaimDashboard(player, dashboard(), new MessageService(Map.of()));
+
+        List<String> plain = sentMessages.stream()
+                .map(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()::serialize)
+                .toList();
+        org.assertj.core.api.Assertions.assertThat(plain)
+                .noneMatch(message -> message.contains("Missing message:"));
+    }
+
+    @Test
+    void claimDetailChatFallbacksUseDefaultsWhenMessagesAreMissing() {
+        Player player = mock(Player.class);
+        List<Component> sentMessages = new java.util.ArrayList<>();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            sentMessages.add(invocation.getArgument(0));
+            return null;
+        }).when(player).sendMessage(any(Component.class));
+        DialogService service = new DialogService(false);
+
+        service.openClaimInfo(player, info(), new MessageService(Map.of()));
+        service.openClaimMembers(player, members(), new MessageService(Map.of()));
+        service.openDeniedPlayers(player, deniedPlayers(), new MessageService(Map.of()));
 
         List<String> plain = sentMessages.stream()
                 .map(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()::serialize)
@@ -149,6 +215,41 @@ class DialogServiceTest {
                         "/claim menu " + java.util.UUID.randomUUID()
                 )),
                 List.of(new ClaimMenuAction("Create Claim", "/claim create"))
+        );
+    }
+
+    private static ClaimInfoView info() {
+        return new ClaimInfoView(
+                java.util.UUID.randomUUID(),
+                "Home",
+                "PLAYER",
+                3,
+                1,
+                1,
+                2,
+                true,
+                List.of(new ClaimMenuAction("Flags", "/claim flags")),
+                new ClaimMenuAction("Back", "/claim menu")
+        );
+    }
+
+    private static ClaimMembersView members() {
+        return new ClaimMembersView(
+                java.util.UUID.randomUUID(),
+                "Home",
+                List.of(new ClaimMemberViewRow("Helper", "manager")),
+                List.of(new ClaimMenuAction("Info", "/claim info")),
+                new ClaimMenuAction("Back", "/claim menu")
+        );
+    }
+
+    private static ClaimDeniedPlayersView deniedPlayers() {
+        return new ClaimDeniedPlayersView(
+                java.util.UUID.randomUUID(),
+                "Home",
+                List.of(new ClaimDeniedPlayerViewRow("Visitor")),
+                List.of(new ClaimMenuAction("Info", "/claim info")),
+                new ClaimMenuAction("Back", "/claim menu")
         );
     }
 

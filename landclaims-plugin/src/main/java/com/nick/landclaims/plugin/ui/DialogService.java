@@ -5,6 +5,7 @@ import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
 import java.util.ArrayList;
 import java.util.List;
@@ -103,6 +104,121 @@ public final class DialogService {
         }
     }
 
+    public void openClaimInfo(Player player, ClaimInfoView info, MessageService messageService) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(info, "info");
+        Objects.requireNonNull(messageService, "messageService");
+
+        if (preferDialogs && tryOpenClaimInfoDialog(player, info, messageService)) {
+            return;
+        }
+        openClaimInfoChat(player, info, messageService);
+    }
+
+    private void openClaimInfoChat(Player player, ClaimInfoView info, MessageService messageService) {
+        Map<String, String> placeholders = infoPlaceholders(info);
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.info.name",
+                placeholders,
+                "<gold>Claim: <yellow><claim_name></yellow>"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.info.owner-type",
+                placeholders,
+                "<gray>Owner type: <white><owner_type></white>"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.info.chunks",
+                placeholders,
+                "<gray>Chunks: <white><chunk_count></white>"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.info.members",
+                placeholders,
+                "<gray>Members: <white><member_count></white>"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.info.denied",
+                placeholders,
+                "<gray>Denied players: <white><denied_count></white>"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.info.flags",
+                placeholders,
+                "<gray>Configured flags: <white><flag_count></white>"));
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.info.you-own",
+                placeholders,
+                "<gray>You are owner: <white><is_owner></white>"));
+        sendActions(player, messageService, "claim.info", info.actions(), info.backAction());
+    }
+
+    public void openClaimMembers(Player player, ClaimMembersView members, MessageService messageService) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(members, "members");
+        Objects.requireNonNull(messageService, "messageService");
+
+        if (preferDialogs && tryOpenClaimMembersDialog(player, members, messageService)) {
+            return;
+        }
+        openClaimMembersChat(player, members, messageService);
+    }
+
+    private void openClaimMembersChat(Player player, ClaimMembersView members, MessageService messageService) {
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.member.dialog.title",
+                Map.of("claim_id", members.claimId().toString(), "claim_name", members.claimName()),
+                "<gold>Members for <yellow><claim_name></yellow>"));
+        if (members.members().isEmpty()) {
+            player.sendMessage(messageService.renderOrDefault(
+                    "claim.member.list-empty",
+                    Map.of("claim_id", members.claimId().toString(), "claim_name", members.claimName()),
+                    "<yellow>This claim has no members."));
+        }
+        for (ClaimMemberViewRow row : members.members()) {
+            player.sendMessage(messageService.renderOrDefault(
+                    "claim.member.dialog.row",
+                    Map.of(
+                            "claim_id", members.claimId().toString(),
+                            "claim_name", members.claimName(),
+                            "player", row.playerName(),
+                            "role", row.role()
+                    ),
+                    "<gray>- <yellow><player></yellow> (<role>)"));
+        }
+        sendActions(player, messageService, "claim.member.dialog", members.actions(), members.backAction());
+    }
+
+    public void openDeniedPlayers(Player player, ClaimDeniedPlayersView denied, MessageService messageService) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(denied, "denied");
+        Objects.requireNonNull(messageService, "messageService");
+
+        if (preferDialogs && tryOpenDeniedPlayersDialog(player, denied, messageService)) {
+            return;
+        }
+        openDeniedPlayersChat(player, denied, messageService);
+    }
+
+    private void openDeniedPlayersChat(Player player, ClaimDeniedPlayersView denied, MessageService messageService) {
+        player.sendMessage(messageService.renderOrDefault(
+                "claim.deny.dialog.title",
+                Map.of("claim_id", denied.claimId().toString(), "claim_name", denied.claimName()),
+                "<gold>Denied players for <yellow><claim_name></yellow>"));
+        if (denied.deniedPlayers().isEmpty()) {
+            player.sendMessage(messageService.renderOrDefault(
+                    "claim.deny.list-empty",
+                    Map.of("claim_id", denied.claimId().toString(), "claim_name", denied.claimName()),
+                    "<yellow>This claim has no denied players."));
+        }
+        for (ClaimDeniedPlayerViewRow row : denied.deniedPlayers()) {
+            player.sendMessage(messageService.renderOrDefault(
+                    "claim.deny.dialog.row",
+                    Map.of(
+                            "claim_id", denied.claimId().toString(),
+                            "claim_name", denied.claimName(),
+                            "player", row.playerName()
+                    ),
+                    "<gray>- <yellow><player></yellow>"));
+        }
+        sendActions(player, messageService, "claim.deny.dialog", denied.actions(), denied.backAction());
+    }
+
     public void openFlagEditor(Player player, ClaimFlagEditor editor, MessageService messageService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(editor, "editor");
@@ -152,6 +268,65 @@ public final class DialogService {
         }
     }
 
+    private boolean tryOpenClaimInfoDialog(Player player, ClaimInfoView info, MessageService messageService) {
+        try {
+            return dialogRenderer.openClaimInfo(player, info, messageService);
+        } catch (LinkageError | RuntimeException error) {
+            return false;
+        }
+    }
+
+    private boolean tryOpenClaimMembersDialog(Player player, ClaimMembersView members, MessageService messageService) {
+        try {
+            return dialogRenderer.openClaimMembers(player, members, messageService);
+        } catch (LinkageError | RuntimeException error) {
+            return false;
+        }
+    }
+
+    private boolean tryOpenDeniedPlayersDialog(Player player, ClaimDeniedPlayersView denied, MessageService messageService) {
+        try {
+            return dialogRenderer.openDeniedPlayers(player, denied, messageService);
+        } catch (LinkageError | RuntimeException error) {
+            return false;
+        }
+    }
+
+    private void sendActions(
+            Player player,
+            MessageService messageService,
+            String prefix,
+            List<ClaimMenuAction> actions,
+            ClaimMenuAction backAction
+    ) {
+        player.sendMessage(messageService.renderOrDefault(prefix + ".actions-header", Map.of(), "<gold>Actions:"));
+        for (ClaimMenuAction action : actions) {
+            sendAction(player, messageService, prefix, action);
+        }
+        sendAction(player, messageService, prefix, backAction);
+    }
+
+    private void sendAction(Player player, MessageService messageService, String prefix, ClaimMenuAction action) {
+        player.sendMessage(messageService.renderOrDefault(
+                prefix + ".action",
+                Map.of("label", action.label(), "command", action.command()),
+                "<gray>- <yellow><label></yellow> (<command>)")
+                .clickEvent(ClickEvent.runCommand(action.command())));
+    }
+
+    private static Map<String, String> infoPlaceholders(ClaimInfoView info) {
+        return Map.of(
+                "claim_id", info.claimId().toString(),
+                "claim_name", info.claimName(),
+                "owner_type", info.ownerType(),
+                "chunk_count", String.valueOf(info.chunkCount()),
+                "member_count", String.valueOf(info.memberCount()),
+                "denied_count", String.valueOf(info.deniedCount()),
+                "flag_count", String.valueOf(info.flagCount()),
+                "is_owner", String.valueOf(info.viewerOwnsClaim())
+        );
+    }
+
     public void openClaimSetup(Player player) {
         Objects.requireNonNull(player, "player");
         player.sendMessage(Component.text("Claim setup dialog coming soon.", NamedTextColor.YELLOW));
@@ -163,6 +338,12 @@ public final class DialogService {
         boolean openClaimDashboard(Player player, ClaimDashboard dashboard, MessageService messageService);
 
         boolean openFlagEditor(Player player, ClaimFlagEditor editor, MessageService messageService);
+
+        boolean openClaimInfo(Player player, ClaimInfoView info, MessageService messageService);
+
+        boolean openClaimMembers(Player player, ClaimMembersView members, MessageService messageService);
+
+        boolean openDeniedPlayers(Player player, ClaimDeniedPlayersView denied, MessageService messageService);
     }
 
     private static final class PaperDialogRenderer implements DialogRenderer {
@@ -204,7 +385,7 @@ public final class DialogService {
             Dialog dialog = Dialog.create(factory -> {
                 factory.empty()
                         .base(base)
-                        .type(DialogType.multiAction(buttons).build());
+                        .type(DialogType.multiAction(buttons, backButton(messageService, "/claim"), 2));
             });
 
             player.showDialog(dialog);
@@ -260,7 +441,7 @@ public final class DialogService {
             Dialog dialog = Dialog.create(factory -> {
                 factory.empty()
                         .base(base)
-                        .type(DialogType.multiAction(buttons).build());
+                        .type(DialogType.multiAction(buttons, closeButton(messageService), 2));
             });
 
             player.showDialog(dialog);
@@ -302,11 +483,189 @@ public final class DialogService {
             Dialog dialog = Dialog.create(factory -> {
                 factory.empty()
                         .base(base)
-                        .type(DialogType.multiAction(buttons).build());
+                        .type(DialogType.multiAction(buttons, backButton(messageService, "/claim"), 2));
             });
 
             player.showDialog(dialog);
             return true;
+        }
+
+        @Override
+        public boolean openClaimInfo(Player player, ClaimInfoView info, MessageService messageService) {
+            List<DialogBody> body = List.of(
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.info.owner-type",
+                            infoPlaceholders(info),
+                            "<gray>Owner type: <white><owner_type></white>")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.info.chunks",
+                            infoPlaceholders(info),
+                            "<gray>Chunks: <white><chunk_count></white>")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.info.members",
+                            infoPlaceholders(info),
+                            "<gray>Members: <white><member_count></white>")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.info.denied",
+                            infoPlaceholders(info),
+                            "<gray>Denied players: <white><denied_count></white>")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.info.flags",
+                            infoPlaceholders(info),
+                            "<gray>Configured flags: <white><flag_count></white>")),
+                    DialogBody.plainMessage(messageService.renderOrDefault(
+                            "claim.info.you-own",
+                            infoPlaceholders(info),
+                            "<gray>You are owner: <white><is_owner></white>"))
+            );
+            DialogBase base = DialogBase.builder(messageService.renderOrDefault(
+                    "claim.info.dialog.title",
+                    infoPlaceholders(info),
+                    "<gold>Claim: <yellow><claim_name></yellow>"))
+                    .body(body)
+                    .afterAction(DialogBase.DialogAfterAction.CLOSE)
+                    .build();
+
+            List<ActionButton> buttons = actionButtons(info.actions(), messageService, "claim.info.dialog");
+            Dialog dialog = Dialog.create(factory -> factory.empty()
+                    .base(base)
+                    .type(buttons.isEmpty()
+                            ? DialogType.notice(backButton(messageService, info.backAction()))
+                            : DialogType.multiAction(buttons, backButton(messageService, info.backAction()), 2)));
+
+            player.showDialog(dialog);
+            return true;
+        }
+
+        @Override
+        public boolean openClaimMembers(Player player, ClaimMembersView members, MessageService messageService) {
+            List<DialogBody> body = new ArrayList<>();
+            if (members.members().isEmpty()) {
+                body.add(DialogBody.plainMessage(messageService.renderOrDefault(
+                        "claim.member.list-empty",
+                        Map.of("claim_id", members.claimId().toString(), "claim_name", members.claimName()),
+                        "<yellow>This claim has no members.")));
+            }
+            for (ClaimMemberViewRow row : members.members()) {
+                body.add(DialogBody.plainMessage(messageService.renderOrDefault(
+                        "claim.member.dialog.row",
+                        Map.of(
+                                "claim_id", members.claimId().toString(),
+                                "claim_name", members.claimName(),
+                                "player", row.playerName(),
+                                "role", row.role()
+                        ),
+                        "<gray>- <yellow><player></yellow> (<role>)")));
+            }
+            DialogBase base = DialogBase.builder(messageService.renderOrDefault(
+                    "claim.member.dialog.title",
+                    Map.of("claim_id", members.claimId().toString(), "claim_name", members.claimName()),
+                    "<gold>Members for <yellow><claim_name></yellow>"))
+                    .body(body)
+                    .afterAction(DialogBase.DialogAfterAction.CLOSE)
+                    .build();
+
+            List<ActionButton> buttons = actionButtons(members.actions(), messageService, "claim.member.dialog");
+            Dialog dialog = Dialog.create(factory -> factory.empty()
+                    .base(base)
+                    .type(buttons.isEmpty()
+                            ? DialogType.notice(backButton(messageService, members.backAction()))
+                            : DialogType.multiAction(buttons, backButton(messageService, members.backAction()), 2)));
+
+            player.showDialog(dialog);
+            return true;
+        }
+
+        @Override
+        public boolean openDeniedPlayers(Player player, ClaimDeniedPlayersView denied, MessageService messageService) {
+            List<DialogBody> body = new ArrayList<>();
+            if (denied.deniedPlayers().isEmpty()) {
+                body.add(DialogBody.plainMessage(messageService.renderOrDefault(
+                        "claim.deny.list-empty",
+                        Map.of("claim_id", denied.claimId().toString(), "claim_name", denied.claimName()),
+                        "<yellow>This claim has no denied players.")));
+            }
+            for (ClaimDeniedPlayerViewRow row : denied.deniedPlayers()) {
+                body.add(DialogBody.plainMessage(messageService.renderOrDefault(
+                        "claim.deny.dialog.row",
+                        Map.of(
+                                "claim_id", denied.claimId().toString(),
+                                "claim_name", denied.claimName(),
+                                "player", row.playerName()
+                        ),
+                        "<gray>- <yellow><player></yellow>")));
+            }
+            DialogBase base = DialogBase.builder(messageService.renderOrDefault(
+                    "claim.deny.dialog.title",
+                    Map.of("claim_id", denied.claimId().toString(), "claim_name", denied.claimName()),
+                    "<gold>Denied players for <yellow><claim_name></yellow>"))
+                    .body(body)
+                    .afterAction(DialogBase.DialogAfterAction.CLOSE)
+                    .build();
+
+            List<ActionButton> buttons = actionButtons(denied.actions(), messageService, "claim.deny.dialog");
+            Dialog dialog = Dialog.create(factory -> factory.empty()
+                    .base(base)
+                    .type(buttons.isEmpty()
+                            ? DialogType.notice(backButton(messageService, denied.backAction()))
+                            : DialogType.multiAction(buttons, backButton(messageService, denied.backAction()), 2)));
+
+            player.showDialog(dialog);
+            return true;
+        }
+
+        private static List<ActionButton> actionButtons(
+                List<ClaimMenuAction> actions,
+                MessageService messageService,
+                String prefix
+        ) {
+            List<ActionButton> buttons = new ArrayList<>();
+            for (ClaimMenuAction action : actions) {
+                buttons.add(actionButton(messageService, prefix, action));
+            }
+            return buttons;
+        }
+
+        private static ActionButton actionButton(MessageService messageService, String prefix, ClaimMenuAction action) {
+            Map<String, String> placeholders = Map.of(
+                    "label", action.label(),
+                    "command", action.command()
+            );
+            return ActionButton.builder(messageService.renderOrDefault(
+                            prefix + ".button",
+                            placeholders,
+                            "<yellow><label></yellow>"))
+                    .tooltip(messageService.renderOrDefault(
+                            prefix + ".tooltip",
+                            placeholders,
+                            "<gray><command></gray>"))
+                    .action(DialogAction.staticAction(ClickEvent.runCommand(action.command())))
+                    .build();
+        }
+
+        private static ActionButton backButton(MessageService messageService, String command) {
+            return backButton(messageService, new ClaimMenuAction("Back", command));
+        }
+
+        private static ActionButton backButton(MessageService messageService, ClaimMenuAction action) {
+            return ActionButton.builder(messageService.renderOrDefault(
+                            "dialog.back",
+                            Map.of("label", action.label(), "command", action.command()),
+                            "<yellow><label></yellow>"))
+                    .tooltip(messageService.renderOrDefault(
+                            "dialog.back-tooltip",
+                            Map.of("label", action.label(), "command", action.command()),
+                            "<gray><command></gray>"))
+                    .action(DialogAction.staticAction(ClickEvent.runCommand(action.command())))
+                    .build();
+        }
+
+        private static ActionButton closeButton(MessageService messageService) {
+            return ActionButton.builder(messageService.renderOrDefault(
+                            "dialog.close",
+                            Map.of(),
+                            "<yellow>Close</yellow>"))
+                    .build();
         }
     }
 }

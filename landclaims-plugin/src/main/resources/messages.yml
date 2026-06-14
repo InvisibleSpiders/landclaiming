@@ -38,7 +38,16 @@ claim:
     name: "<gold>Claim: <yellow><claim_name></yellow>"
     owner-type: "<gray>Owner type: <white><owner_type></white>"
     chunks: "<gray>Chunks: <white><chunk_count></white>"
+    members: "<gray>Members: <white><member_count></white>"
+    denied: "<gray>Denied players: <white><denied_count></white>"
+    flags: "<gray>Configured flags: <white><flag_count></white>"
     you-own: "<gray>You are owner: <white><is_owner></white>"
+    actions-header: "<gold>Actions:"
+    action: "<gray>- <yellow><label></yellow> (<command>)"
+    dialog:
+      title: "<gold>Claim: <yellow><claim_name></yellow>"
+      button: "<yellow><label></yellow>"
+      tooltip: "<gray><command></gray>"
   merge:
     prompt: "<yellow>Claim <gold><claim_name></gold> borders <gold><merge_count></gold> same-name claim(s). Merge them? "
     confirm-button: "<green>[Merge]</green>"
@@ -62,6 +71,13 @@ claim:
     list-empty: "<yellow>This claim has no members."
     list-header: "<gold>Claim members:"
     list-entry: "<gray>- <yellow><player></yellow> <gray>(<role>)</gray>"
+    dialog:
+      title: "<gold>Members for <yellow><claim_name></yellow>"
+      row: "<gray>- <yellow><player></yellow> <gray>(<role>)</gray>"
+      actions-header: "<gold>Actions:"
+      action: "<gray>- <yellow><label></yellow> (<command>)"
+      button: "<yellow><label></yellow>"
+      tooltip: "<gray><command></gray>"
   deny:
     usage: "<red>Usage: /claim <deny|undeny> <player|uuid> or /claim denied"
     no-permission: "<red>You do not have permission to manage denied claim access."
@@ -76,6 +92,13 @@ claim:
     list-empty: "<yellow>This claim has no denied players."
     list-header: "<gold>Denied players:"
     list-entry: "<gray>- <yellow><player></yellow>"
+    dialog:
+      title: "<gold>Denied players for <yellow><claim_name></yellow>"
+      row: "<gray>- <yellow><player></yellow>"
+      actions-header: "<gold>Actions:"
+      action: "<gray>- <yellow><label></yellow> (<command>)"
+      button: "<yellow><label></yellow>"
+      tooltip: "<gray><command></gray>"
     entry-denied: "<red>You are denied access to <white><claim_name></white>."
   flag:
     usage: "<red>Usage: /claim flag <list|set|cycle> <flag> [off|visitors|all]"
@@ -170,7 +193,9 @@ claim:
     action-labels:
       flags: "Flags"
       members: "Members"
+      denied: "Denied Players"
       info: "Info"
+      back: "Back"
     dialog:
       title: "<gold>Claim Menu: <yellow><claim_name></yellow>"
       button: "<yellow><label></yellow>"
@@ -229,6 +254,9 @@ dialog:
   setup-title: "<gold>Create Claim</gold>"
   confirm: "<green>Confirm</green>"
   cancel: "<red>Cancel</red>"
+  back: "<yellow><label></yellow>"
+  back-tooltip: "<gray><command></gray>"
+  close: "<yellow>Close</yellow>"
 admin:
   teleported: "<green>Teleported to <white><claim_name></white>."
   claim:

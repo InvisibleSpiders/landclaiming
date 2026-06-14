@@ -11,6 +11,7 @@ import com.nick.landclaims.api.limit.LandClaimsLimitService;
 import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
+import com.nick.landclaims.plugin.claim.ClaimDenyService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
 import com.nick.landclaims.plugin.claim.ClaimMember;
 import com.nick.landclaims.plugin.claim.ClaimMemberService;
@@ -351,13 +352,13 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 null,
-                memberMessages(),
+                detailMessages(),
                 new ClaimMemberService(repository, claimIndex),
                 null,
                 null,
                 null,
                 null,
-                null,
+                new DialogService(false),
                 null,
                 null,
                 null,
@@ -370,8 +371,142 @@ class ClaimsCommandPermissionTest {
         command.onCommand(player, mock(Command.class), "claim", new String[]{"member", "list", claim.id().toString()});
 
         assertThat(plain(messages)).containsExactly(
-                "Claim members:",
-                "- Helper (manager)"
+                "Members for Home",
+                "- Helper (manager)",
+                "Actions:",
+                "- Back (/claim menu " + claim.id() + ")"
+        );
+    }
+
+    @Test
+    void infoWithClaimIdUsesClaimDetailDialogFallbackAnywhere() {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        UUID deniedId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0), new ClaimChunk(worldId, 1, 0)),
+                Map.of("build", com.nick.landclaims.api.flag.FlagState.ALL),
+                Set.of(new ClaimMember(memberId, ClaimRole.MEMBER)),
+                Set.of(deniedId),
+                java.time.Instant.now(),
+                java.time.Instant.now()
+        );
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                detailMessages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                new DialogService(false),
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"info", claim.id().toString()});
+
+        assertThat(plain(messages)).containsExactly(
+                "Claim: Home",
+                "Owner type: PLAYER",
+                "Chunks: 2",
+                "Members: 1",
+                "Denied players: 1",
+                "Configured flags: 1",
+                "You are owner: true",
+                "Actions:",
+                "- Flags (/claim flags " + claim.id() + ")",
+                "- Members (/claim member list " + claim.id() + ")",
+                "- Denied Players (/claim denied " + claim.id() + ")",
+                "- Back (/claim menu " + claim.id() + ")"
+        );
+    }
+
+    @Test
+    void deniedPlayersWithClaimIdDoesNotRequireStandingInClaim() {
+        UUID ownerId = UUID.randomUUID();
+        UUID deniedId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                Map.of(),
+                Set.of(),
+                Set.of(deniedId),
+                java.time.Instant.now(),
+                java.time.Instant.now()
+        );
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        org.bukkit.Server server = mock(org.bukkit.Server.class);
+        org.bukkit.OfflinePlayer denied = mock(org.bukkit.OfflinePlayer.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("landclaims.deny.manage")).thenReturn(true);
+        when(player.getServer()).thenReturn(server);
+        when(server.getOfflinePlayer(deniedId)).thenReturn(denied);
+        when(denied.getUniqueId()).thenReturn(deniedId);
+        when(denied.getName()).thenReturn("Visitor");
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                detailMessages(),
+                null,
+                new ClaimDenyService(repository, claimIndex),
+                null,
+                null,
+                null,
+                new DialogService(false),
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"denied", claim.id().toString()});
+
+        assertThat(plain(messages)).containsExactly(
+                "Denied players for Home",
+                "- Visitor",
+                "Actions:",
+                "- Back (/claim menu " + claim.id() + ")"
         );
     }
 
@@ -455,15 +590,36 @@ class ClaimsCommandPermissionTest {
         ));
     }
 
-    private static MessageService memberMessages() {
+    private static MessageService detailMessages() {
         return new MessageService(Map.ofEntries(
                 Map.entry("command.unavailable.claim-info", "<red>Claim info is not available yet."),
                 Map.entry("claim.menu.invalid-claim-id", "<red>Claim id must be a UUID."),
                 Map.entry("claim.menu.claim-not-found", "<red>No claim found with that id."),
                 Map.entry("claim.menu.not-owner", "<red>You can only manage claims you own or manage."),
+                Map.entry("claim.deny.no-permission", "<red>You do not have permission to manage denied claim access."),
                 Map.entry("claim.member.list-empty", "<yellow>This claim has no members."),
                 Map.entry("claim.member.list-header", "<gold>Claim members:"),
-                Map.entry("claim.member.list-entry", "<gray>- <yellow><player></yellow> (<role>)")
+                Map.entry("claim.member.list-entry", "<gray>- <yellow><player></yellow> (<role>)"),
+                Map.entry("claim.deny.list-empty", "<yellow>This claim has no denied players."),
+                Map.entry("claim.deny.list-header", "<gold>Denied players:"),
+                Map.entry("claim.deny.list-entry", "<gray>- <yellow><player></yellow>"),
+                Map.entry("claim.info.name", "<gold>Claim: <yellow><claim_name></yellow>"),
+                Map.entry("claim.info.owner-type", "<gray>Owner type: <white><owner_type></white>"),
+                Map.entry("claim.info.chunks", "<gray>Chunks: <white><chunk_count></white>"),
+                Map.entry("claim.info.members", "<gray>Members: <white><member_count></white>"),
+                Map.entry("claim.info.denied", "<gray>Denied players: <white><denied_count></white>"),
+                Map.entry("claim.info.flags", "<gray>Configured flags: <white><flag_count></white>"),
+                Map.entry("claim.info.you-own", "<gray>You are owner: <white><is_owner></white>"),
+                Map.entry("claim.info.actions-header", "<gold>Actions:"),
+                Map.entry("claim.info.action", "<gray>- <yellow><label></yellow> (<command>)"),
+                Map.entry("claim.member.dialog.title", "<gold>Members for <yellow><claim_name></yellow>"),
+                Map.entry("claim.member.dialog.row", "<gray>- <yellow><player></yellow> (<role>)"),
+                Map.entry("claim.member.dialog.actions-header", "<gold>Actions:"),
+                Map.entry("claim.member.dialog.action", "<gray>- <yellow><label></yellow> (<command>)"),
+                Map.entry("claim.deny.dialog.title", "<gold>Denied players for <yellow><claim_name></yellow>"),
+                Map.entry("claim.deny.dialog.row", "<gray>- <yellow><player></yellow>"),
+                Map.entry("claim.deny.dialog.actions-header", "<gold>Actions:"),
+                Map.entry("claim.deny.dialog.action", "<gray>- <yellow><label></yellow> (<command>)")
         ));
     }
 
