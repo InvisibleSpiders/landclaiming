@@ -58,6 +58,51 @@ public final class DialogService {
         }
     }
 
+    public void openClaimDashboard(Player player, ClaimDashboard dashboard, MessageService messageService) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(dashboard, "dashboard");
+        Objects.requireNonNull(messageService, "messageService");
+
+        if (preferDialogs && tryOpenClaimDashboardDialog(player, dashboard, messageService)) {
+            return;
+        }
+        openClaimDashboardChat(player, dashboard, messageService);
+    }
+
+    private void openClaimDashboardChat(Player player, ClaimDashboard dashboard, MessageService messageService) {
+        player.sendMessage(messageService.renderOrDefault("claim.dashboard.title", Map.of(), "<gold>My Claims"));
+        if (dashboard.claims().isEmpty()) {
+            player.sendMessage(messageService.renderOrDefault(
+                    "claim.dashboard.empty",
+                    Map.of(),
+                    "<yellow>You do not have any claims yet."));
+        }
+        for (ClaimDashboardRow row : dashboard.claims()) {
+            player.sendMessage(messageService.renderOrDefault(
+                    "claim.dashboard.claim",
+                    Map.of(
+                            "claim_id", row.claimId().toString(),
+                            "claim_name", row.claimName(),
+                            "chunk_count", String.valueOf(row.chunkCount()),
+                            "is_current", String.valueOf(row.currentClaim()),
+                            "command", row.manageCommand()
+                    ),
+                    "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <command>")
+                    .clickEvent(ClickEvent.runCommand(row.manageCommand())));
+        }
+        player.sendMessage(messageService.renderOrDefault("claim.dashboard.actions-header", Map.of(), "<gold>Actions:"));
+        for (ClaimMenuAction action : dashboard.actions()) {
+            player.sendMessage(messageService.renderOrDefault(
+                    "claim.dashboard.action",
+                    Map.of(
+                            "label", action.label(),
+                            "command", action.command()
+                    ),
+                    "<gray>- <yellow><label></yellow> (<command>)")
+                    .clickEvent(ClickEvent.runCommand(action.command())));
+        }
+    }
+
     public void openFlagEditor(Player player, ClaimFlagEditor editor, MessageService messageService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(editor, "editor");
@@ -99,6 +144,14 @@ public final class DialogService {
         }
     }
 
+    private boolean tryOpenClaimDashboardDialog(Player player, ClaimDashboard dashboard, MessageService messageService) {
+        try {
+            return dialogRenderer.openClaimDashboard(player, dashboard, messageService);
+        } catch (LinkageError | RuntimeException error) {
+            return false;
+        }
+    }
+
     public void openClaimSetup(Player player) {
         Objects.requireNonNull(player, "player");
         player.sendMessage(Component.text("Claim setup dialog coming soon.", NamedTextColor.YELLOW));
@@ -106,6 +159,8 @@ public final class DialogService {
 
     interface DialogRenderer {
         boolean openClaimMenu(Player player, ClaimMenu menu, MessageService messageService);
+
+        boolean openClaimDashboard(Player player, ClaimDashboard dashboard, MessageService messageService);
 
         boolean openFlagEditor(Player player, ClaimFlagEditor editor, MessageService messageService);
     }
@@ -143,6 +198,62 @@ public final class DialogService {
                             "is_admin_claim", String.valueOf(menu.adminClaim())
                     ),
                     "<gold>Claim Menu: <yellow><claim_name></yellow>"))
+                    .afterAction(DialogBase.DialogAfterAction.CLOSE)
+                    .build();
+
+            Dialog dialog = Dialog.create(factory -> {
+                factory.empty()
+                        .base(base)
+                        .type(DialogType.multiAction(buttons).build());
+            });
+
+            player.showDialog(dialog);
+            return true;
+        }
+
+        @Override
+        public boolean openClaimDashboard(Player player, ClaimDashboard dashboard, MessageService messageService) {
+            List<ActionButton> buttons = new ArrayList<>();
+            for (ClaimDashboardRow row : dashboard.claims()) {
+                Map<String, String> placeholders = Map.of(
+                        "claim_id", row.claimId().toString(),
+                        "claim_name", row.claimName(),
+                        "chunk_count", String.valueOf(row.chunkCount()),
+                        "is_current", String.valueOf(row.currentClaim()),
+                        "command", row.manageCommand()
+                );
+                buttons.add(ActionButton.builder(messageService.renderOrDefault(
+                                "claim.dashboard.dialog.claim-button",
+                                placeholders,
+                                "<yellow><claim_name></yellow> <gray>(<chunk_count> chunks)</gray>"))
+                        .tooltip(messageService.renderOrDefault(
+                                "claim.dashboard.dialog.claim-tooltip",
+                                placeholders,
+                                "<gray><command></gray>"))
+                        .action(DialogAction.staticAction(ClickEvent.runCommand(row.manageCommand())))
+                        .build());
+            }
+            for (ClaimMenuAction action : dashboard.actions()) {
+                Map<String, String> placeholders = Map.of(
+                        "label", action.label(),
+                        "command", action.command()
+                );
+                buttons.add(ActionButton.builder(messageService.renderOrDefault(
+                                "claim.dashboard.dialog.action-button",
+                                placeholders,
+                                "<yellow><label></yellow>"))
+                        .tooltip(messageService.renderOrDefault(
+                                "claim.dashboard.dialog.action-tooltip",
+                                placeholders,
+                                "<gray><command></gray>"))
+                        .action(DialogAction.staticAction(ClickEvent.runCommand(action.command())))
+                        .build());
+            }
+
+            DialogBase base = DialogBase.builder(messageService.renderOrDefault(
+                    "claim.dashboard.dialog.title",
+                    Map.of(),
+                    "<gold>My Claims"))
                     .afterAction(DialogBase.DialogAfterAction.CLOSE)
                     .build();
 

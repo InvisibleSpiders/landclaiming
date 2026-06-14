@@ -67,6 +67,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final String CLAIM_CREATE_PERMISSION = "landclaims.claim";
     private static final String CLAIM_MENU_PERMISSION = "landclaims.gui";
     private static final String CLAIM_DENY_PERMISSION = "landclaims.deny.manage";
+    private static final String ADMIN_USERCLAIMS_EDIT_PERMISSION = "landclaims.admin.userclaims.edit";
     private static final String CLAIM_LIMIT_BYPASS_PERMISSION = "landclaims.bypass.claim-limit";
     private static final String CLAIM_BUFFER_BYPASS_PERMISSION = "landclaims.bypass.claim-buffer";
     private static final List<String> ROOT_SUGGESTIONS = List.of(
@@ -181,16 +182,25 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1 && args[0].equalsIgnoreCase("tool")) {
             return giveTool(player);
         }
+        if (args.length == 0) {
+            return openClaimDashboard(player);
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("menu")) {
             return openClaimMenu(player);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("menu")) {
+            return openClaimMenu(player, args[1]);
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("flags")) {
             return openFlagEditor(player);
         }
+        if (args.length == 2 && args[0].equalsIgnoreCase("flags")) {
+            return openFlagEditor(player, args[1]);
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("viewborder")) {
             return viewBorder(player);
         }
-        if (args.length >= 2 && args[0].equalsIgnoreCase("create")) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("create")) {
             return createClaim(player, args);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("member")) {
@@ -225,6 +235,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("info")) {
             return showInfo(player);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
+            return showInfo(player, args[1]);
         }
 
         sendHelp(player);
@@ -1106,8 +1119,27 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean openFlagEditor(Player player, String claimIdText) {
+        if (claimFlagService == null || claimFlagEditorService == null || claimIndex == null || dialogService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        if (!player.hasPermission(CLAIM_MENU_PERMISSION)) {
+            player.sendMessage(message("claim.menu.no-permission"));
+            return true;
+        }
+        Optional<Claim> claim = manageableClaimById(player, claimIdText);
+        if (claim.isEmpty()) {
+            return true;
+        }
+        Claim foundClaim = claim.orElseThrow();
+        ClaimFlagEditor editor = claimFlagEditorService.buildEditor(foundClaim.name(), claimFlagService.listFlags(foundClaim));
+        dialogService.openFlagEditor(player, editor, messageService);
+        return true;
+    }
+
     private boolean openClaimMenu(Player player) {
-        if (claimMenuService == null || claimIndex == null || dialogService == null || inventoryGuiFallbackService == null) {
+        if (claimMenuService == null || claimIndex == null || dialogService == null) {
             player.sendMessage(message("command.unavailable.claim-info"));
             return true;
         }
@@ -1118,12 +1150,52 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isEmpty()) {
-            player.sendMessage(message("claim.info.unclaimed"));
-            return true;
+            return openClaimDashboard(player);
         }
 
         ClaimMenu menu = claimMenuService.buildMenu(claim.orElseThrow(), player.getUniqueId());
         dialogService.openClaimMenu(player, menu, messageService);
+        return true;
+    }
+
+    private boolean openClaimMenu(Player player, String claimIdText) {
+        if (claimMenuService == null || claimIndex == null || dialogService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        if (!player.hasPermission(CLAIM_MENU_PERMISSION)) {
+            player.sendMessage(message("claim.menu.no-permission"));
+            return true;
+        }
+        Optional<Claim> claim = manageableClaimById(player, claimIdText);
+        if (claim.isEmpty()) {
+            return true;
+        }
+        ClaimMenu menu = claimMenuService.buildMenu(claim.orElseThrow(), player.getUniqueId());
+        dialogService.openClaimMenu(player, menu, messageService);
+        return true;
+    }
+
+    private boolean openClaimDashboard(Player player) {
+        if (claimMenuService == null || claimIndex == null || dialogService == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        if (!player.hasPermission(CLAIM_MENU_PERMISSION)) {
+            player.sendMessage(message("claim.menu.no-permission"));
+            return true;
+        }
+
+        List<Claim> ownedClaims = claimIndex.findAll().stream()
+                .filter(claim -> claim.owner() == com.nick.landclaims.plugin.claim.OwnerType.PLAYER)
+                .filter(claim -> player.getUniqueId().equals(claim.ownerUuid()))
+                .toList();
+        Optional<Claim> currentClaim = claimAtPlayerIfAvailable(player)
+                .filter(claim -> ownedClaims.stream().anyMatch(owned -> owned.id().equals(claim.id())));
+        dialogService.openClaimDashboard(
+                player,
+                claimMenuService.buildDashboard(ownedClaims, currentClaim),
+                messageService);
         return true;
     }
 
@@ -1296,6 +1368,14 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (claimMemberService == null || claimIndex == null) {
             player.sendMessage(message("command.unavailable.claim-info"));
             return true;
+        }
+
+        if (args.length == 3 && args[1].equalsIgnoreCase("list")) {
+            Optional<Claim> claim = manageableClaimById(player, args[2]);
+            if (claim.isEmpty()) {
+                return true;
+            }
+            return listMembers(player, claim.orElseThrow());
         }
 
         Optional<Claim> claim = claimAtPlayer(player);
@@ -1559,7 +1639,28 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean createClaim(Player player, String[] args) {
-        return createClaim(player, String.join(" ", Arrays.copyOfRange(args, 1, args.length)), false);
+        String claimName = args.length == 1
+                ? nextDefaultClaimName(player.getUniqueId())
+                : String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        return createClaim(player, claimName, false);
+    }
+
+    private String nextDefaultClaimName(UUID ownerId) {
+        String prefix = messageService.renderPlainOrDefault("claim.create.default-name-prefix", Map.of(), "Claim");
+        if (claimIndex == null) {
+            return prefix + " 1";
+        }
+        Set<String> existingNames = claimIndex.findAll().stream()
+                .filter(claim -> ownerId.equals(claim.ownerUuid()))
+                .map(Claim::name)
+                .collect(Collectors.toSet());
+        int index = 1;
+        String candidate = prefix + " " + index;
+        while (existingNames.contains(candidate)) {
+            index++;
+            candidate = prefix + " " + index;
+        }
+        return candidate;
     }
 
     private boolean createClaim(Player player, String claimName, boolean mergeConfirmed) {
@@ -1776,10 +1877,72 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean showInfo(Player player, String claimIdText) {
+        if (claimIndex == null) {
+            player.sendMessage(message("command.unavailable.claim-info"));
+            return true;
+        }
+        Optional<Claim> claim = manageableClaimById(player, claimIdText);
+        if (claim.isEmpty()) {
+            return true;
+        }
+        Claim foundClaim = claim.orElseThrow();
+        player.sendMessage(message("claim.info.name", Map.of("claim_name", foundClaim.name())));
+        player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", foundClaim.owner().name())));
+        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(foundClaim.claimChunks().size()))));
+        player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(foundClaim.ownerUuid())))));
+        return true;
+    }
+
     private Optional<Claim> claimAtPlayer(Player player) {
         Chunk chunk = player.getLocation().getChunk();
         ClaimChunk claimChunk = new ClaimChunk(player.getWorld().getUID(), chunk.getX(), chunk.getZ());
         return claimIndex.findAt(claimChunk);
+    }
+
+    private Optional<Claim> claimAtPlayerIfAvailable(Player player) {
+        Location location = player.getLocation();
+        if (location == null || player.getWorld() == null) {
+            return Optional.empty();
+        }
+        Chunk chunk = location.getChunk();
+        if (chunk == null) {
+            return Optional.empty();
+        }
+        ClaimChunk claimChunk = new ClaimChunk(player.getWorld().getUID(), chunk.getX(), chunk.getZ());
+        return claimIndex.findAt(claimChunk);
+    }
+
+    private Optional<Claim> manageableClaimById(Player player, String claimIdText) {
+        Optional<UUID> claimId = parseUuid(claimIdText);
+        if (claimId.isEmpty()) {
+            player.sendMessage(message("claim.menu.invalid-claim-id"));
+            return Optional.empty();
+        }
+        Optional<Claim> claim = claimIndex.findAll().stream()
+                .filter(candidate -> candidate.id().equals(claimId.orElseThrow()))
+                .findFirst();
+        if (claim.isEmpty()) {
+            player.sendMessage(message("claim.menu.claim-not-found"));
+            return Optional.empty();
+        }
+        if (!canManageClaim(player, claim.orElseThrow())) {
+            player.sendMessage(message("claim.menu.not-owner"));
+            return Optional.empty();
+        }
+        return claim;
+    }
+
+    private boolean canManageClaim(Player player, Claim claim) {
+        if (player.getUniqueId().equals(claim.ownerUuid())) {
+            return true;
+        }
+        if (player.hasPermission(ADMIN_USERCLAIMS_EDIT_PERMISSION)) {
+            return true;
+        }
+        return claim.members().stream()
+                .anyMatch(member -> member.memberUuid().equals(player.getUniqueId())
+                        && member.role() == ClaimRole.MANAGER);
     }
 
     private boolean isClaimCreationAvailable(Player player) {

@@ -12,6 +12,9 @@ import com.nick.landclaims.plugin.claim.Claim;
 import com.nick.landclaims.plugin.claim.ClaimChunk;
 import com.nick.landclaims.plugin.claim.ClaimCreationService;
 import com.nick.landclaims.plugin.claim.ClaimIndex;
+import com.nick.landclaims.plugin.claim.ClaimMember;
+import com.nick.landclaims.plugin.claim.ClaimMemberService;
+import com.nick.landclaims.plugin.claim.ClaimRole;
 import com.nick.landclaims.plugin.claim.ClaimService;
 import com.nick.landclaims.plugin.claim.OwnerType;
 import com.nick.landclaims.plugin.economy.ClaimPaymentService;
@@ -25,6 +28,8 @@ import com.nick.landclaims.plugin.message.MessageService;
 import com.nick.landclaims.plugin.selection.SelectionService;
 import com.nick.landclaims.plugin.storage.ClaimRepository;
 import com.nick.landclaims.plugin.tool.ClaimToolService;
+import com.nick.landclaims.plugin.ui.ClaimMenuService;
+import com.nick.landclaims.plugin.ui.DialogService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -200,6 +205,177 @@ class ClaimsCommandPermissionTest {
     }
 
     @Test
+    void createWithoutNameUsesNextDefaultClaimName() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim existing = playerClaim("Claim 1", ownerId, worldId, 5);
+        repository.claims.add(existing);
+        claimIndex.add(existing);
+        ClaimCreationService creationService = new ClaimCreationService(
+                repository,
+                claimIndex,
+                new ClaimService(),
+                FlagRegistry.createDefault(),
+                3,
+                3,
+                32
+        );
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        ClaimToolService toolService = mock(ClaimToolService.class);
+        ItemStack tool = mock(ItemStack.class);
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("landclaims.claim")).thenReturn(true);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItemInMainHand()).thenReturn(tool);
+        when(toolService.isClaimTool(tool)).thenReturn(true);
+        when(toolService.currentCharges(tool)).thenReturn(10);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                toolService,
+                selectionService,
+                creationService,
+                claimIndex,
+                null,
+                null,
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"create"});
+
+        assertThat(repository.savedClaims).hasSize(1);
+        assertThat(repository.savedClaims.get(0).name()).isEqualTo("Claim 2");
+        assertThat(plain(messages)).containsExactly("Claim Claim 2 created.");
+    }
+
+    @Test
+    void rootCommandOpensOwnedClaimDashboardAnywhere() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = playerClaim("Home", ownerId, worldId, 0);
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("landclaims.gui")).thenReturn(true);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                dashboardMessages(),
+                null,
+                null,
+                null,
+                null,
+                new ClaimMenuService(dashboardMessages()),
+                new DialogService(false),
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{});
+
+        assertThat(plain(messages)).containsExactly(
+                "My Claims",
+                "- Home (1 chunks) /claim menu " + claim.id(),
+                "Actions:",
+                "- Create Claim (/claim create)",
+                "- Claim Cost (/claim cost)",
+                "- Claim Tool (/claim tool)"
+        );
+    }
+
+    @Test
+    void memberListWithClaimIdDoesNotRequireStandingInClaim() {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                "Home",
+                OwnerType.PLAYER,
+                ownerId,
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                Map.of(),
+                Set.of(new ClaimMember(memberId, ClaimRole.MANAGER)),
+                java.time.Instant.now(),
+                java.time.Instant.now()
+        );
+        repository.claims.add(claim);
+        claimIndex.add(claim);
+        Player player = mock(Player.class);
+        org.bukkit.Server server = mock(org.bukkit.Server.class);
+        org.bukkit.OfflinePlayer member = mock(org.bukkit.OfflinePlayer.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.getServer()).thenReturn(server);
+        when(server.getOfflinePlayer(memberId)).thenReturn(member);
+        when(member.getUniqueId()).thenReturn(memberId);
+        when(member.getName()).thenReturn("Helper");
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                claimIndex,
+                null,
+                null,
+                null,
+                memberMessages(),
+                new ClaimMemberService(repository, claimIndex),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                mock(LandClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"member", "list", claim.id().toString()});
+
+        assertThat(plain(messages)).containsExactly(
+                "Claim members:",
+                "- Helper (manager)"
+        );
+    }
+
+    @Test
     void ownerCanDeleteCurrentPlayerClaim() {
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
@@ -259,6 +435,35 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.created", "<green>Claim <claim_name> created."),
                 Map.entry("claim.create-denied", "<red><reason>"),
                 Map.entry("claim.charged", "<green>Charged <cost>.")
+        ));
+    }
+
+    private static MessageService dashboardMessages() {
+        return new MessageService(Map.ofEntries(
+                Map.entry("claim.menu.no-permission", "<red>You do not have permission to open claim menus."),
+                Map.entry("claim.dashboard.title", "<gold>My Claims"),
+                Map.entry("claim.dashboard.empty", "<yellow>You do not have any claims yet."),
+                Map.entry("claim.dashboard.claim", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <command>"),
+                Map.entry("claim.dashboard.actions-header", "<gold>Actions:"),
+                Map.entry("claim.dashboard.action", "<gray>- <yellow><label></yellow> (<command>)"),
+                Map.entry("claim.dashboard.action-labels.create", "Create Claim"),
+                Map.entry("claim.dashboard.action-labels.cost", "Claim Cost"),
+                Map.entry("claim.dashboard.action-labels.tool", "Claim Tool"),
+                Map.entry("claim.menu.action-labels.flags", "Flags"),
+                Map.entry("claim.menu.action-labels.members", "Members"),
+                Map.entry("claim.menu.action-labels.info", "Info")
+        ));
+    }
+
+    private static MessageService memberMessages() {
+        return new MessageService(Map.ofEntries(
+                Map.entry("command.unavailable.claim-info", "<red>Claim info is not available yet."),
+                Map.entry("claim.menu.invalid-claim-id", "<red>Claim id must be a UUID."),
+                Map.entry("claim.menu.claim-not-found", "<red>No claim found with that id."),
+                Map.entry("claim.menu.not-owner", "<red>You can only manage claims you own or manage."),
+                Map.entry("claim.member.list-empty", "<yellow>This claim has no members."),
+                Map.entry("claim.member.list-header", "<gold>Claim members:"),
+                Map.entry("claim.member.list-entry", "<gray>- <yellow><player></yellow> (<role>)")
         ));
     }
 
