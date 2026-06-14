@@ -33,7 +33,7 @@ public final class DialogService {
         Objects.requireNonNull(menu, "menu");
         Objects.requireNonNull(messageService, "messageService");
 
-        if (preferDialogs && tryOpenClaimMenuDialog(player, menu)) {
+        if (preferDialogs && tryOpenClaimMenuDialog(player, menu, messageService)) {
             return;
         }
         openClaimMenuChat(player, menu, messageService);
@@ -63,7 +63,7 @@ public final class DialogService {
         Objects.requireNonNull(editor, "editor");
         Objects.requireNonNull(messageService, "messageService");
 
-        if (preferDialogs && tryOpenFlagEditorDialog(player, editor)) {
+        if (preferDialogs && tryOpenFlagEditorDialog(player, editor, messageService)) {
             return;
         }
         openFlagEditorChat(player, editor, messageService);
@@ -83,17 +83,17 @@ public final class DialogService {
         }
     }
 
-    private boolean tryOpenClaimMenuDialog(Player player, ClaimMenu menu) {
+    private boolean tryOpenClaimMenuDialog(Player player, ClaimMenu menu, MessageService messageService) {
         try {
-            return dialogRenderer.openClaimMenu(player, menu);
+            return dialogRenderer.openClaimMenu(player, menu, messageService);
         } catch (LinkageError | RuntimeException error) {
             return false;
         }
     }
 
-    private boolean tryOpenFlagEditorDialog(Player player, ClaimFlagEditor editor) {
+    private boolean tryOpenFlagEditorDialog(Player player, ClaimFlagEditor editor, MessageService messageService) {
         try {
-            return dialogRenderer.openFlagEditor(player, editor);
+            return dialogRenderer.openFlagEditor(player, editor, messageService);
         } catch (LinkageError | RuntimeException error) {
             return false;
         }
@@ -105,23 +105,35 @@ public final class DialogService {
     }
 
     interface DialogRenderer {
-        boolean openClaimMenu(Player player, ClaimMenu menu);
+        boolean openClaimMenu(Player player, ClaimMenu menu, MessageService messageService);
 
-        boolean openFlagEditor(Player player, ClaimFlagEditor editor);
+        boolean openFlagEditor(Player player, ClaimFlagEditor editor, MessageService messageService);
     }
 
     private static final class PaperDialogRenderer implements DialogRenderer {
         @Override
-        public boolean openClaimMenu(Player player, ClaimMenu menu) {
+        public boolean openClaimMenu(Player player, ClaimMenu menu, MessageService messageService) {
             List<ActionButton> buttons = new ArrayList<>();
             for (ClaimMenuAction row : menu.actions()) {
-                buttons.add(ActionButton.builder(Component.text(row.label()))
-                        .tooltip(Component.text(row.command()))
+                Map<String, String> placeholders = Map.of(
+                        "label", row.label(),
+                        "command", row.command()
+                );
+                buttons.add(ActionButton.builder(messageService.render("claim.menu.dialog.button", placeholders))
+                        .tooltip(messageService.render("claim.menu.dialog.tooltip", placeholders))
                         .action(DialogAction.staticAction(ClickEvent.runCommand(row.command())))
                         .build());
             }
 
-            DialogBase base = DialogBase.builder(Component.text(menu.title()))
+            DialogBase base = DialogBase.builder(messageService.render("claim.menu.dialog.title", Map.of(
+                            "claim_name", menu.title(),
+                            "owner_type", menu.ownerType(),
+                            "chunk_count", String.valueOf(menu.chunkCount()),
+                            "member_count", String.valueOf(menu.memberCount()),
+                            "flag_count", String.valueOf(menu.flagCount()),
+                            "is_owner", String.valueOf(menu.viewerOwnsClaim()),
+                            "is_admin_claim", String.valueOf(menu.adminClaim())
+                    )))
                     .afterAction(DialogBase.DialogAfterAction.CLOSE)
                     .build();
 
@@ -136,16 +148,27 @@ public final class DialogService {
         }
 
         @Override
-        public boolean openFlagEditor(Player player, ClaimFlagEditor editor) {
+        public boolean openFlagEditor(Player player, ClaimFlagEditor editor, MessageService messageService) {
             List<ActionButton> buttons = new ArrayList<>();
             for (ClaimFlagEditorRow row : editor.rows()) {
-                buttons.add(ActionButton.builder(Component.text(row.label() + " - " + row.stateLabel()))
-                        .tooltip(Component.text(row.description()))
+                Map<String, String> placeholders = Map.of(
+                        "flag", row.key(),
+                        "label", row.label(),
+                        "category", row.category(),
+                        "description", row.description(),
+                        "state", row.stateLabel(),
+                        "next_state", row.nextStateLabel(),
+                        "command", row.toggleCommand()
+                );
+                buttons.add(ActionButton.builder(messageService.render("claim.flag-editor.dialog.button", placeholders))
+                        .tooltip(messageService.render("claim.flag-editor.dialog.tooltip", placeholders))
                         .action(DialogAction.staticAction(ClickEvent.runCommand(row.toggleCommand())))
                         .build());
             }
 
-            DialogBase base = DialogBase.builder(Component.text(editor.claimName()))
+            DialogBase base = DialogBase.builder(messageService.render("claim.flag-editor.dialog.title", Map.of(
+                            "claim_name", editor.claimName()
+                    )))
                     .afterAction(DialogBase.DialogAfterAction.NONE)
                     .build();
 

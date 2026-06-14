@@ -41,6 +41,16 @@ public final class MessageService {
         return plainTextSerializer.serialize(render(key, placeholders));
     }
 
+    public String renderPlainOrDefault(String key, Map<String, String> placeholders, String fallback) {
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(placeholders, "placeholders");
+        Objects.requireNonNull(fallback, "fallback");
+        if (!messages.containsKey(key)) {
+            return fallback;
+        }
+        return renderPlain(key, placeholders);
+    }
+
     private static TagResolver placeholderResolver(Map<String, String> placeholders) {
         TagResolver.Builder resolver = TagResolver.builder();
         for (Map.Entry<String, String> placeholder : placeholders.entrySet()) {

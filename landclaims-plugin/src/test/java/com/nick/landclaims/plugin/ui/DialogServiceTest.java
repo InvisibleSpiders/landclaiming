@@ -21,12 +21,13 @@ class DialogServiceTest {
         Player player = mock(Player.class);
         DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
         ClaimMenu menu = menu();
-        when(renderer.openClaimMenu(player, menu)).thenReturn(true);
+        MessageService messages = messages();
+        when(renderer.openClaimMenu(player, menu, messages)).thenReturn(true);
         DialogService service = new DialogService(true, renderer);
 
-        service.openClaimMenu(player, menu, messages());
+        service.openClaimMenu(player, menu, messages);
 
-        verify(renderer).openClaimMenu(player, menu);
+        verify(renderer).openClaimMenu(player, menu, messages);
         verify(player, never()).sendMessage(any(Component.class));
     }
 
@@ -35,12 +36,13 @@ class DialogServiceTest {
         Player player = mock(Player.class);
         DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
         ClaimFlagEditor editor = editor();
-        when(renderer.openFlagEditor(player, editor)).thenReturn(true);
+        MessageService messages = messages();
+        when(renderer.openFlagEditor(player, editor, messages)).thenReturn(true);
         DialogService service = new DialogService(true, renderer);
 
-        service.openFlagEditor(player, editor, messages());
+        service.openFlagEditor(player, editor, messages);
 
-        verify(renderer).openFlagEditor(player, editor);
+        verify(renderer).openFlagEditor(player, editor, messages);
         verify(player, never()).sendMessage(any(Component.class));
     }
 
@@ -52,7 +54,7 @@ class DialogServiceTest {
 
         service.openClaimMenu(player, menu(), messages());
 
-        verify(renderer, never()).openClaimMenu(any(Player.class), any(ClaimMenu.class));
+        verify(renderer, never()).openClaimMenu(any(Player.class), any(ClaimMenu.class), any(MessageService.class));
         verify(player, atLeastOnce()).sendMessage(any(Component.class));
     }
 
@@ -61,12 +63,13 @@ class DialogServiceTest {
         Player player = mock(Player.class);
         DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
         ClaimMenu menu = menu();
-        when(renderer.openClaimMenu(player, menu)).thenReturn(false);
+        MessageService messages = messages();
+        when(renderer.openClaimMenu(player, menu, messages)).thenReturn(false);
         DialogService service = new DialogService(true, renderer);
 
-        service.openClaimMenu(player, menu, messages());
+        service.openClaimMenu(player, menu, messages);
 
-        verify(renderer).openClaimMenu(player, menu);
+        verify(renderer).openClaimMenu(player, menu, messages);
         verify(player, atLeastOnce()).sendMessage(any(Component.class));
     }
 

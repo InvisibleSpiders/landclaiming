@@ -88,6 +88,64 @@ claim:
   flag-editor:
     title: "<gold>Flags for <yellow><claim_name></yellow>"
     row: "<gray>- <yellow><label></yellow> <dark_gray>(<category>)</dark_gray>: <white><state></white> <green>[Click: <next_state>]</green> <dark_gray>- <description></dark_gray>"
+    flag-labels:
+      build: "Build"
+      break: "Break"
+      interact: "Interact"
+      container_access: "Containers"
+      door_access: "Doors & Gates"
+      switch_access: "Switches"
+      redstone_access: "Redstone Use"
+      entity_damage: "Entity Damage"
+      crop_trample: "Crop Trample"
+      item_pickup: "Item Pickup"
+      item_drop: "Item Drop"
+      piston_protection: "Piston Protection"
+      fluid_flow: "Fluid Flow"
+      explosion_damage: "Explosion Damage"
+      fire_spread: "Fire Spread"
+      mob_griefing: "Mob Griefing"
+      remove_hostile_entities: "Remove Hostiles"
+      remove_passive_entities: "Remove Passives"
+    flag-descriptions:
+      build: "Allow non-members to place blocks."
+      break: "Allow non-members to break blocks."
+      interact: "Allow generic block interaction."
+      container_access: "Allow chest, barrel, furnace, and hopper access."
+      door_access: "Allow doors, trapdoors, and fence gates."
+      switch_access: "Allow buttons, levers, and pressure plates."
+      redstone_access: "Allow repeater and comparator interaction."
+      entity_damage: "Allow non-members to damage entities here."
+      crop_trample: "Allow farmland trampling in this claim."
+      item_pickup: "Allow non-members to pick up items here."
+      item_drop: "Allow non-members to drop items here."
+      piston_protection: "Block piston movement touching this claim."
+      fluid_flow: "Allow water and lava to flow into this claim."
+      explosion_damage: "Allow explosions to damage claimed blocks."
+      fire_spread: "Allow fire to spread into this claim."
+      mob_griefing: "Allow entity block changes in this claim."
+      remove_hostile_entities: "Removes hostile mobs unless named or tamed."
+      remove_passive_entities: "Removes passive mobs unless named or tamed."
+    state-labels:
+      entity-control:
+        enabled: "REMOVING"
+        disabled: "KEEPING"
+      access:
+        enabled: "ALLOWED"
+        disabled: "DENIED"
+      environment:
+        enabled: "ALLOWED"
+        disabled: "BLOCKED"
+      protection:
+        enabled: "PROTECTED"
+        disabled: "UNPROTECTED"
+      generic:
+        enabled: "ENABLED"
+        disabled: "DISABLED"
+    dialog:
+      title: "<gold>Flags for <yellow><claim_name></yellow>"
+      button: "<yellow><label></yellow> <gray>-</gray> <white><state></white>"
+      tooltip: "<gray><description></gray> <dark_gray>Next: <next_state></dark_gray>"
   visual:
     border-selection: "<green>Showing your pending claim selection border.</green> <gray>Color: <yellow><color></yellow>."
     border-claim: "<green>Showing this claim border."
@@ -104,6 +162,14 @@ claim:
     admin-claim: "<red>Admin claim protections are active here."
     actions-header: "<gold>Actions:"
     action: "<gray>- <yellow><label></yellow> <dark_gray>(<command>)</dark_gray>"
+    action-labels:
+      flags: "Flags"
+      members: "Members"
+      info: "Info"
+    dialog:
+      title: "<gold>Claim Menu: <yellow><claim_name></yellow>"
+      button: "<yellow><label></yellow>"
+      tooltip: "<gray><command></gray>"
     fallback-opened: "<yellow>Opening claim menu fallback."
 tool:
   name: "<gold>Claiming Hoe</gold>"
