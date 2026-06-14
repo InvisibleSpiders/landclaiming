@@ -47,6 +47,21 @@ class DialogServiceTest {
     }
 
     @Test
+    void opensDashboardWithDialogRendererWhenPreferred() {
+        Player player = mock(Player.class);
+        DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
+        ClaimDashboard dashboard = dashboard();
+        MessageService messages = messages();
+        when(renderer.openClaimDashboard(player, dashboard, messages)).thenReturn(true);
+        DialogService service = new DialogService(true, renderer);
+
+        service.openClaimDashboard(player, dashboard, messages);
+
+        verify(renderer).openClaimDashboard(player, dashboard, messages);
+        verify(player, never()).sendMessage(any(Component.class));
+    }
+
+    @Test
     void fallsBackToChatWhenDialogsAreNotPreferred() {
         Player player = mock(Player.class);
         DialogService.DialogRenderer renderer = mock(DialogService.DialogRenderer.class);
@@ -71,6 +86,25 @@ class DialogServiceTest {
 
         verify(renderer).openClaimMenu(player, menu, messages);
         verify(player, atLeastOnce()).sendMessage(any(Component.class));
+    }
+
+    @Test
+    void dashboardChatFallbackUsesDefaultsWhenMessagesAreMissing() {
+        Player player = mock(Player.class);
+        List<Component> sentMessages = new java.util.ArrayList<>();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            sentMessages.add(invocation.getArgument(0));
+            return null;
+        }).when(player).sendMessage(any(Component.class));
+        DialogService service = new DialogService(false);
+
+        service.openClaimDashboard(player, dashboard(), new MessageService(Map.of()));
+
+        List<String> plain = sentMessages.stream()
+                .map(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()::serialize)
+                .toList();
+        org.assertj.core.api.Assertions.assertThat(plain)
+                .noneMatch(message -> message.contains("Missing message:"));
     }
 
     private static ClaimMenu menu() {
@@ -101,6 +135,20 @@ class DialogServiceTest {
                         "DENIED",
                         "/claim flag cycle build"
                 ))
+        );
+    }
+
+    private static ClaimDashboard dashboard() {
+        return new ClaimDashboard(
+                "My Claims",
+                List.of(new ClaimDashboardRow(
+                        java.util.UUID.randomUUID(),
+                        "Home",
+                        3,
+                        true,
+                        "/claim menu " + java.util.UUID.randomUUID()
+                )),
+                List.of(new ClaimMenuAction("Create Claim", "/claim create"))
         );
     }
 

@@ -10,6 +10,8 @@ claim:
   hold-tool: "<red>Hold your claim tool to create a claim."
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
   over-limit-disabled: "<red>This claim exceeds your claim limit."
+  create:
+    default-name-prefix: "Claim"
   refund-failed: "<red>Claim creation failed and your refund of <yellow><cost></yellow> could not be processed. Contact an administrator."
   boundary:
     enter: "<gold>Entering <yellow><claim_name></yellow></gold>"
@@ -153,6 +155,9 @@ claim:
     color-help: "<gray>Green: claimable. Red: blocked. Yellow: can merge. Aqua: claimable with cost. Gold: existing or created claim.</gray>"
   menu:
     no-permission: "<red>You do not have permission to open claim menus."
+    invalid-claim-id: "<red>Claim id must be a UUID."
+    claim-not-found: "<red>No claim found with that id."
+    not-owner: "<red>You can only manage claims you own or manage."
     title: "<gold>Claim Menu: <yellow><claim_name></yellow>"
     owner-type: "<gray>Owner type: <white><owner_type></white>"
     chunks: "<gray>Chunks: <white><chunk_count></white>"
@@ -171,6 +176,22 @@ claim:
       button: "<yellow><label></yellow>"
       tooltip: "<gray><command></gray>"
     fallback-opened: "<yellow>Opening claim menu fallback."
+  dashboard:
+    title: "<gold>My Claims"
+    empty: "<yellow>You do not have any claims yet."
+    claim: "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <command>"
+    actions-header: "<gold>Actions:"
+    action: "<gray>- <yellow><label></yellow> (<command>)"
+    action-labels:
+      create: "Create Claim"
+      cost: "Claim Cost"
+      tool: "Claim Tool"
+    dialog:
+      title: "<gold>My Claims"
+      claim-button: "<yellow><claim_name></yellow> <gray>(<chunk_count> chunks)</gray>"
+      claim-tooltip: "<gray><command></gray>"
+      action-button: "<yellow><label></yellow>"
+      action-tooltip: "<gray><command></gray>"
 tool:
   name: "<gold>Claiming Hoe</gold>"
   lore:
@@ -195,7 +216,7 @@ command:
     flags: "<yellow>/claim flags</yellow><gray> - opens the flag editor for this chunk.</gray>"
     viewborder: "<yellow>/claim viewborder</yellow><gray> - shows the current selection, claim, or chunk border.</gray>"
     tool: "<yellow>/claim tool</yellow><gray> - gives you the configured claiming tool.</gray>"
-    create: "<yellow>/claim create <name></yellow><gray> - creates a claim from your pending selection.</gray>"
+    create: "<yellow>/claim create [name]</yellow><gray> - creates a claim from your pending selection.</gray>"
     member: "<yellow>/claim member <add|remove|list></yellow><gray> - manages members for the claim you are standing in.</gray>"
     deny: "<yellow>/claim deny|undeny|denied</yellow><gray> - manages players denied from entering this claim.</gray>"
     flag: "<yellow>/claim flag <list|set></yellow><gray> - views or edits flags for the claim you are standing in.</gray>"
