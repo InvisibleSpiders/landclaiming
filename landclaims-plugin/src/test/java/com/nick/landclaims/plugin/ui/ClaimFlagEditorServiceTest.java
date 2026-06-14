@@ -86,6 +86,35 @@ class ClaimFlagEditorServiceTest {
     }
 
     @Test
+    void usesDefaultStateLabelsWhenMessagesAreMissing() {
+        ClaimFlagEditorService service = new ClaimFlagEditorService(new MessageService(Map.of()));
+
+        ClaimFlagEditor editor = service.buildEditor("Home", List.of(
+                new ClaimFlagRow("build", "Access", "Build", "Allow block placement.", FlagKind.PLAYER_ACTION, FlagState.ALL, "landclaims.flag.build"),
+                new ClaimFlagRow("fluid_flow", "Environment", "Fluid Flow", "Allow water and lava.", FlagKind.WORLD_EFFECT, FlagState.OFF, "landclaims.flag.fluid_flow")
+        ));
+
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::stateLabel)
+                .containsExactly("ALLOWED", "BLOCKED");
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::nextStateLabel)
+                .containsExactly("DENIED", "ALLOWED");
+    }
+
+    @Test
+    void usesDefaultFlagLabelsAndDescriptionsWhenMessagesAreMissing() {
+        ClaimFlagEditorService service = new ClaimFlagEditorService(new MessageService(Map.of()));
+
+        ClaimFlagEditor editor = service.buildEditor("Home", List.of(
+                new ClaimFlagRow("build", "Access", "Build", "Allow block placement.", FlagKind.PLAYER_ACTION, FlagState.ALL, "landclaims.flag.build")
+        ));
+
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::label)
+                .containsExactly("Build");
+        assertThat(editor.rows()).extracting(ClaimFlagEditorRow::description)
+                .containsExactly("Allow block placement.");
+    }
+
+    @Test
     void usesConfiguredFlagLabelsAndDescriptions() {
         MessageService messages = new MessageService(Map.ofEntries(
                 Map.entry("claim.flag-editor.state-labels.access.enabled", "ALLOWED"),

@@ -36,6 +36,18 @@ public final class ClaimMenuService {
     }
 
     private String actionLabel(String actionKey) {
-        return messageService.renderPlain("claim.menu.action-labels." + actionKey, Map.of());
+        return messageService.renderPlainOrDefault(
+                "claim.menu.action-labels." + actionKey,
+                Map.of(),
+                defaultActionLabel(actionKey));
+    }
+
+    private String defaultActionLabel(String actionKey) {
+        return switch (actionKey) {
+            case "flags" -> "Flags";
+            case "members" -> "Members";
+            case "info" -> "Info";
+            default -> actionKey;
+        };
     }
 }

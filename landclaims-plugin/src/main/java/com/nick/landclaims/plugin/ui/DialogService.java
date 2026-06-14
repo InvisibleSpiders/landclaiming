@@ -119,13 +119,21 @@ public final class DialogService {
                         "label", row.label(),
                         "command", row.command()
                 );
-                buttons.add(ActionButton.builder(messageService.render("claim.menu.dialog.button", placeholders))
-                        .tooltip(messageService.render("claim.menu.dialog.tooltip", placeholders))
+                buttons.add(ActionButton.builder(messageService.renderOrDefault(
+                                "claim.menu.dialog.button",
+                                placeholders,
+                                "<yellow><label></yellow>"))
+                        .tooltip(messageService.renderOrDefault(
+                                "claim.menu.dialog.tooltip",
+                                placeholders,
+                                "<gray><command></gray>"))
                         .action(DialogAction.staticAction(ClickEvent.runCommand(row.command())))
                         .build());
             }
 
-            DialogBase base = DialogBase.builder(messageService.render("claim.menu.dialog.title", Map.of(
+            DialogBase base = DialogBase.builder(messageService.renderOrDefault(
+                    "claim.menu.dialog.title",
+                    Map.of(
                             "claim_name", menu.title(),
                             "owner_type", menu.ownerType(),
                             "chunk_count", String.valueOf(menu.chunkCount()),
@@ -133,7 +141,8 @@ public final class DialogService {
                             "flag_count", String.valueOf(menu.flagCount()),
                             "is_owner", String.valueOf(menu.viewerOwnsClaim()),
                             "is_admin_claim", String.valueOf(menu.adminClaim())
-                    )))
+                    ),
+                    "<gold>Claim Menu: <yellow><claim_name></yellow>"))
                     .afterAction(DialogBase.DialogAfterAction.CLOSE)
                     .build();
 
@@ -160,15 +169,22 @@ public final class DialogService {
                         "next_state", row.nextStateLabel(),
                         "command", row.toggleCommand()
                 );
-                buttons.add(ActionButton.builder(messageService.render("claim.flag-editor.dialog.button", placeholders))
-                        .tooltip(messageService.render("claim.flag-editor.dialog.tooltip", placeholders))
+                buttons.add(ActionButton.builder(messageService.renderOrDefault(
+                                "claim.flag-editor.dialog.button",
+                                placeholders,
+                                "<yellow><label></yellow> <gray>-</gray> <white><state></white>"))
+                        .tooltip(messageService.renderOrDefault(
+                                "claim.flag-editor.dialog.tooltip",
+                                placeholders,
+                                "<gray><description></gray> <dark_gray>Next: <next_state></dark_gray>"))
                         .action(DialogAction.staticAction(ClickEvent.runCommand(row.toggleCommand())))
                         .build());
             }
 
-            DialogBase base = DialogBase.builder(messageService.render("claim.flag-editor.dialog.title", Map.of(
-                            "claim_name", editor.claimName()
-                    )))
+            DialogBase base = DialogBase.builder(messageService.renderOrDefault(
+                    "claim.flag-editor.dialog.title",
+                    Map.of("claim_name", editor.claimName()),
+                    "<gold>Flags for <yellow><claim_name></yellow>"))
                     .afterAction(DialogBase.DialogAfterAction.NONE)
                     .build();
 

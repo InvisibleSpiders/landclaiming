@@ -102,6 +102,29 @@ class ClaimMenuServiceTest {
                 .containsExactly("Configure Flags", "Manage Members", "View Info");
     }
 
+    @Test
+    void usesDefaultActionLabelsWhenMessagesAreMissing() {
+        ClaimMenuService service = new ClaimMenuService(new MessageService(Map.of()));
+        UUID worldId = UUID.randomUUID();
+        Claim claim = new Claim(
+                UUID.randomUUID(),
+                "Spawn",
+                OwnerType.PLAYER,
+                UUID.randomUUID(),
+                worldId,
+                Set.of(new ClaimChunk(worldId, 0, 0)),
+                Map.of(),
+                Set.of(),
+                Instant.parse("2026-06-08T00:00:00Z"),
+                Instant.parse("2026-06-08T00:00:00Z")
+        );
+
+        ClaimMenu menu = service.buildMenu(claim, UUID.randomUUID());
+
+        assertThat(menu.actions()).extracting(ClaimMenuAction::label)
+                .containsExactly("Flags", "Members", "Info");
+    }
+
     private static MessageService messages() {
         return new MessageService(Map.of(
                 "claim.menu.action-labels.flags", "Flags",

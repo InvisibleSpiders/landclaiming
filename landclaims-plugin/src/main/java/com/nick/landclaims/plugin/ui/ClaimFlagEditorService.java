@@ -73,6 +73,19 @@ public final class ClaimFlagEditorService {
 
     private String stateLabel(String group, boolean enabled) {
         String stateKey = enabled ? "enabled" : "disabled";
-        return messageService.renderPlain("claim.flag-editor.state-labels." + group + "." + stateKey, Map.of());
+        return messageService.renderPlainOrDefault(
+                "claim.flag-editor.state-labels." + group + "." + stateKey,
+                Map.of(),
+                defaultStateLabel(group, enabled));
+    }
+
+    private String defaultStateLabel(String group, boolean enabled) {
+        return switch (group) {
+            case "entity-control" -> enabled ? "REMOVING" : "KEEPING";
+            case "access" -> enabled ? "ALLOWED" : "DENIED";
+            case "environment" -> enabled ? "ALLOWED" : "BLOCKED";
+            case "protection" -> enabled ? "PROTECTED" : "UNPROTECTED";
+            default -> enabled ? "ENABLED" : "DISABLED";
+        };
     }
 }
