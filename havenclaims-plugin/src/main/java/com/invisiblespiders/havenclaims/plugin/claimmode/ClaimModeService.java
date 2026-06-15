@@ -76,7 +76,8 @@ public final class ClaimModeService {
     public ExitResult exit(Player player, ExitReason reason) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(reason, "reason");
-        ClaimModeSession session = sessions.remove(player.getUniqueId());
+        UUID playerId = player.getUniqueId();
+        ClaimModeSession session = sessions.get(playerId);
         if (session == null) {
             return ExitResult.NOT_ACTIVE;
         }
@@ -95,6 +96,7 @@ public final class ClaimModeService {
         }
 
         appendHistory(session, reason, restoreResults);
+        sessions.remove(playerId, session);
         if (recovery) {
             return ExitResult.RECOVERY;
         }

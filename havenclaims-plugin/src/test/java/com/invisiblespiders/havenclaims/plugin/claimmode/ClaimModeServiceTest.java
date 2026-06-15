@@ -288,6 +288,26 @@ class ClaimModeServiceTest {
     }
 
     @Test
+    void exitKeepsSessionActiveWhenRestoreThrowsBeforeAllSnapshotsAccountedFor() {
+        PlayerFixture fixture = playerFixture();
+        ItemStack diamondBackup = item(Material.DIAMOND, 3, bytes(90));
+        fixture.setStoredItem(0, diamondBackup);
+        ClaimModeService service = service(true);
+
+        service.enter(fixture.player());
+        try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(90)))
+                    .thenThrow(new IllegalStateException("restore exploded"));
+
+            assertThatThrownBy(() -> service.exit(fixture.player(), ClaimModeService.ExitReason.MANUAL))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("restore exploded");
+        }
+
+        assertThat(service.isInClaimMode(fixture.playerId())).isTrue();
+    }
+
+    @Test
     void restoreAllContinuesWhenOnePlayersHistoryAppendFails() throws Exception {
         Path fileInsteadOfDirectory = tempDir.resolve("history-blocker-all");
         Files.writeString(fileInsteadOfDirectory, "occupied", StandardCharsets.UTF_8);
@@ -338,6 +358,7 @@ class ClaimModeServiceTest {
             service.restoreAll(List.of(first.player(), second.player()), ClaimModeService.ExitReason.PLUGIN_DISABLE);
         }
 
+        assertThat(service.isInClaimMode(first.playerId())).isTrue();
         assertThat(service.isInClaimMode(second.playerId())).isFalse();
         assertThat(second.slot(0)).isSameAs(secondRestored);
     }
