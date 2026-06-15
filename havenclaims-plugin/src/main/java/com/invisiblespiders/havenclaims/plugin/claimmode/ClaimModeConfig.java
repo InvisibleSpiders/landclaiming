@@ -23,13 +23,19 @@ public record ClaimModeConfig(
     public static ClaimModeConfig from(FileConfiguration configuration) {
         boolean enabled = configuration.getBoolean("claim-mode.enabled", true);
         int historyPerPlayer = configuration.getInt("claim-mode.history-per-player", 5);
-        List<String> blocked = configuration.getStringList("claim-mode.blocked-commands");
-        List<String> allowed = configuration.getStringList("claim-mode.allowed-commands");
+        String blockedPath = "claim-mode.blocked-commands";
+        String allowedPath = "claim-mode.allowed-commands";
+        List<String> blocked = configuration.contains(blockedPath)
+                ? configuration.getStringList(blockedPath)
+                : DEFAULT_BLOCKED_COMMANDS;
+        List<String> allowed = configuration.contains(allowedPath)
+                ? configuration.getStringList(allowedPath)
+                : DEFAULT_ALLOWED_COMMANDS;
         return new ClaimModeConfig(
                 enabled,
                 historyPerPlayer,
-                blocked.isEmpty() ? DEFAULT_BLOCKED_COMMANDS : blocked,
-                allowed.isEmpty() ? DEFAULT_ALLOWED_COMMANDS : allowed
+                blocked,
+                allowed
         );
     }
 
