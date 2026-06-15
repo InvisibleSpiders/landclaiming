@@ -1,6 +1,7 @@
 package com.invisiblespiders.havenclaims.plugin.claimmode;
 
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import net.kyori.adventure.text.Component;
@@ -13,6 +14,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 public final class ClaimModeItemCodec {
     private static final PlainTextComponentSerializer PLAIN_TEXT = PlainTextComponentSerializer.plainText();
+    private static final int MAX_LORE_LINES = 3;
+    private static final int MAX_LORE_LINE_LENGTH = 120;
 
     private ClaimModeItemCodec() {
     }
@@ -41,11 +44,13 @@ public final class ClaimModeItemCodec {
         String name = displayName(meta);
         int damage = meta instanceof Damageable damageable ? damageable.getDamage() : 0;
         Map<String, Integer> enchantments = enchantments(meta);
+        List<String> lore = lore(meta);
 
         return "type=" + item.getType()
                 + ", amount=" + item.getAmount()
                 + ", damage=" + damage
                 + ", name=" + name
+                + ", lore=" + lore
                 + ", enchantments=" + enchantments;
     }
 
@@ -57,6 +62,18 @@ public final class ClaimModeItemCodec {
         return displayName == null ? "" : PLAIN_TEXT.serialize(displayName);
     }
 
+    private static List<String> lore(ItemMeta meta) {
+        if (meta == null || !meta.hasLore() || meta.lore() == null) {
+            return List.of();
+        }
+        return meta.lore().stream()
+                .limit(MAX_LORE_LINES)
+                .map(ClaimModeItemCodec::plainText)
+                .map(ClaimModeItemCodec::sanitizeSummaryValue)
+                .map(line -> bound(line, MAX_LORE_LINE_LENGTH))
+                .toList();
+    }
+
     private static Map<String, Integer> enchantments(ItemMeta meta) {
         Map<String, Integer> enchantments = new TreeMap<>();
         if (meta == null) {
@@ -66,5 +83,24 @@ public final class ClaimModeItemCodec {
             enchantments.put(entry.getKey().getKey().toString(), entry.getValue());
         }
         return enchantments;
+    }
+
+    private static String plainText(Component component) {
+        return component == null ? "" : PLAIN_TEXT.serialize(component);
+    }
+
+    private static String sanitizeSummaryValue(String value) {
+        return value.replace('\r', ' ')
+                .replace('\n', ' ')
+                .replace("\"", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private static String bound(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength - 3) + "...";
     }
 }

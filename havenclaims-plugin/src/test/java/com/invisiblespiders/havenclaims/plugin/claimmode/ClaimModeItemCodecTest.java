@@ -32,6 +32,8 @@ class ClaimModeItemCodecTest {
 
     @Test
     void serializesAndRestoresBackupBytes() {
+        // Plain JVM Paper API tests do not have Bukkit registry access for real ItemStack construction,
+        // so this verifies our Base64 boundary around Paper's byte serializer/deserializer.
         byte[] itemBytes = new byte[] {1, 2, 3};
         ItemStack item = item(Material.DIAMOND_SWORD, 1, auditedMeta());
         ItemStack restored = item(Material.DIAMOND_SWORD, 1, auditedMeta());
@@ -67,6 +69,8 @@ class ClaimModeItemCodecTest {
         assertThat(summary).contains("amount=1");
         assertThat(summary).contains("damage=12");
         assertThat(summary).contains("Trusty");
+        assertThat(summary).contains("lore=[first line, quoted line, third line]");
+        assertThat(summary).doesNotContain("fourth line");
     }
 
     @Test
@@ -93,12 +97,12 @@ class ClaimModeItemCodecTest {
         ClaimModeRecoveryStore store = new ClaimModeRecoveryStore(tempDir);
         ClaimModeRecoveryEntry entry = new ClaimModeRecoveryEntry(
                 playerId,
-                "Alice",
+                "Alice \"Admin\"",
                 Instant.parse("2026-06-15T10:15:30Z"),
                 "hotbar-0",
-                "type=DIAMOND",
+                "type=DIAMOND\nname=\"Keeper\"",
                 "backup-data",
-                "restore failed"
+                "restore \"failed\"\nkept"
         );
         ClaimModeRecoveryEntry other = new ClaimModeRecoveryEntry(
                 otherPlayerId,
@@ -115,13 +119,36 @@ class ClaimModeItemCodecTest {
 
         assertThat(store.pendingFor(playerId)).containsExactly(entry);
         String log = Files.readString(tempDir.resolve("claimmode-recovery.log"), StandardCharsets.UTF_8);
-        assertThat(log).contains("2026-06-15T10:15:30Z");
-        assertThat(log).contains("player=Alice");
-        assertThat(log).contains("uuid=" + playerId);
-        assertThat(log).contains("slot=hotbar-0");
-        assertThat(log).contains("reason=\"restore failed\"");
-        assertThat(log).contains("summary=\"type=DIAMOND\"");
-        assertThat(log).contains("backup=backup-data");
+        assertThat(log).contains("\"event\":\"recovery-entry\"");
+        assertThat(log).contains("\"timestamp\":\"2026-06-15T10:15:30Z\"");
+        assertThat(log).contains("\"playerName\":\"Alice \\\"Admin\\\"\"");
+        assertThat(log).contains("\"playerId\":\"" + playerId + "\"");
+        assertThat(log).contains("\"originalSlot\":\"hotbar-0\"");
+        assertThat(log).contains("\"reason\":\"restore \\\"failed\\\"\\nkept\"");
+        assertThat(log).contains("\"summary\":\"type=DIAMOND\\nname=\\\"Keeper\\\"\"");
+        assertThat(log).contains("\"backup\":\"backup-data\"");
+    }
+
+    @Test
+    void recoveryStoreDoesNotTrackPendingEntryWhenAppendFails() throws Exception {
+        Path fileInsteadOfDirectory = tempDir.resolve("not-a-directory");
+        Files.writeString(fileInsteadOfDirectory, "occupied", StandardCharsets.UTF_8);
+        UUID playerId = UUID.randomUUID();
+        ClaimModeRecoveryStore store = new ClaimModeRecoveryStore(fileInsteadOfDirectory);
+        ClaimModeRecoveryEntry entry = new ClaimModeRecoveryEntry(
+                playerId,
+                "Alice",
+                Instant.parse("2026-06-15T10:15:30Z"),
+                "hotbar-0",
+                "type=DIAMOND",
+                "backup-data",
+                "restore failed"
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> store.add(entry))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(store.pendingFor(playerId)).isEmpty();
     }
 
     @Test
@@ -130,23 +157,27 @@ class ClaimModeItemCodecTest {
         UUID bobId = UUID.randomUUID();
         ClaimModeSessionHistory history = new ClaimModeSessionHistory(tempDir, 2);
 
-        history.append(aliceId, "Alice", instant(1), instant(2), ClaimModeService.ExitReason.MANUAL,
+        history.append(aliceId, "Alice \"Owner\"", instant(1), instant(2), ClaimModeService.ExitReason.MANUAL,
                 List.of(snapshot("hotbar-0", "alice-old")), List.of("restored old"));
         history.append(bobId, "Bob", instant(3), instant(4), ClaimModeService.ExitReason.LOGOUT,
-                List.of(snapshot("hotbar-1", "bob-kept")), List.of("restored bob"));
-        history.append(aliceId, "Alice", instant(5), instant(6), ClaimModeService.ExitReason.DEATH,
+                List.of(snapshot("hotbar-1", "bob \"kept\"\nwith newline")), List.of("restored \"bob\"\ncleanly"));
+        history.append(aliceId, "Alice \"Owner\"", instant(5), instant(6), ClaimModeService.ExitReason.DEATH,
                 List.of(snapshot("hotbar-2", "alice-kept-1")), List.of("restored alice 1"));
-        history.append(aliceId, "Alice", instant(7), instant(8), ClaimModeService.ExitReason.PLUGIN_DISABLE,
+        history.append(aliceId, "Alice \"Owner\"", instant(7), instant(8), ClaimModeService.ExitReason.PLUGIN_DISABLE,
                 List.of(snapshot("hotbar-3", "alice-kept-2")), List.of("restored alice 2"));
 
         String log = Files.readString(tempDir.resolve("logs").resolve("claimmode-history.log"), StandardCharsets.UTF_8);
 
         assertThat(log).doesNotContain("alice-old");
-        assertThat(log).contains("bob-kept");
+        assertThat(log).contains("\"event\":\"session-start\"");
+        assertThat(log).contains("\"event\":\"session-item\"");
+        assertThat(log).contains("\"event\":\"session-restore\"");
+        assertThat(log).contains("\"event\":\"session-end\"");
+        assertThat(log).contains("\"playerName\":\"Alice \\\"Owner\\\"\"");
+        assertThat(log).contains("bob \\\"kept\\\"\\nwith newline");
         assertThat(log).contains("alice-kept-1");
         assertThat(log).contains("alice-kept-2");
-        assertThat(log).contains("restore restored bob");
-        assertThat(log).contains("end-session");
+        assertThat(log).contains("\"result\":\"restored \\\"bob\\\"\\ncleanly\"");
     }
 
     private static ItemStack item(Material material, int amount, ItemMeta meta) {
@@ -161,7 +192,13 @@ class ClaimModeItemCodecTest {
         ItemMeta meta = mock(ItemMeta.class, withSettings().extraInterfaces(Damageable.class));
         when(meta.hasDisplayName()).thenReturn(true);
         when(meta.displayName()).thenReturn(Component.text("Trusty"));
-        when(meta.lore()).thenReturn(List.of(Component.text("audit me")));
+        when(meta.hasLore()).thenReturn(true);
+        when(meta.lore()).thenReturn(List.of(
+                Component.text("first line"),
+                Component.text("\"quoted\" line"),
+                Component.text("third\nline"),
+                Component.text("fourth line")
+        ));
         when(meta.getEnchants()).thenReturn(Map.of());
         when(((Damageable) meta).getDamage()).thenReturn(12);
         return meta;

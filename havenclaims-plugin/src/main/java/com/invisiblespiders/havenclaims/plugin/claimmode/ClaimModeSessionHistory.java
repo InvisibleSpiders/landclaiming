@@ -31,22 +31,34 @@ public final class ClaimModeSessionHistory {
                                 ClaimModeService.ExitReason reason, List<ClaimModeItemSnapshot> snapshots,
                                 List<String> restoreResults) {
         StringBuilder builder = new StringBuilder();
-        builder.append("session player=").append(playerName)
-                .append(" uuid=").append(playerId)
-                .append(" entered=").append(enteredAt)
-                .append(" exited=").append(exitedAt)
-                .append(" reason=").append(reason)
-                .append(System.lineSeparator());
+        builder.append(jsonLine(
+                field("event", "session-start"),
+                field("playerName", playerName),
+                field("playerId", playerId),
+                field("enteredAt", enteredAt),
+                field("exitedAt", exitedAt),
+                field("reason", reason)
+        )).append(System.lineSeparator());
         for (ClaimModeItemSnapshot snapshot : snapshots) {
-            builder.append("  item slot=").append(snapshot.slot())
-                    .append(" summary=\"").append(quote(snapshot.summary())).append("\"")
-                    .append(" backup=").append(snapshot.backup())
-                    .append(System.lineSeparator());
+            builder.append(jsonLine(
+                    field("event", "session-item"),
+                    field("playerId", playerId),
+                    field("slot", snapshot.slot()),
+                    field("summary", snapshot.summary()),
+                    field("backup", snapshot.backup())
+            )).append(System.lineSeparator());
         }
         for (String result : restoreResults) {
-            builder.append("  restore ").append(quote(result)).append(System.lineSeparator());
+            builder.append(jsonLine(
+                    field("event", "session-restore"),
+                    field("playerId", playerId),
+                    field("result", result)
+            )).append(System.lineSeparator());
         }
-        builder.append("end-session").append(System.lineSeparator());
+        builder.append(jsonLine(
+                field("event", "session-end"),
+                field("playerId", playerId)
+        )).append(System.lineSeparator());
         return builder.toString();
     }
 
@@ -78,12 +90,12 @@ public final class ClaimModeSessionHistory {
         List<List<String>> sessions = new ArrayList<>();
         List<String> current = new ArrayList<>();
         for (String line : Files.readAllLines(historyFile, StandardCharsets.UTF_8)) {
-            if (line.startsWith("session ") && !current.isEmpty()) {
+            if (isSessionStart(line) && !current.isEmpty()) {
                 sessions.add(current);
                 current = new ArrayList<>();
             }
             current.add(line);
-            if (line.equals("end-session")) {
+            if (isSessionEnd(line)) {
                 sessions.add(current);
                 current = new ArrayList<>();
             }
@@ -96,8 +108,8 @@ public final class ClaimModeSessionHistory {
 
     private static boolean isSessionForPlayer(List<String> session, UUID playerId) {
         return !session.isEmpty()
-                && session.get(0).startsWith("session ")
-                && session.get(0).contains("uuid=" + playerId);
+                && isSessionStart(session.get(0))
+                && session.get(0).contains("\"playerId\":\"" + playerId + "\"");
     }
 
     private static String flatten(List<List<String>> sessions) {
@@ -110,7 +122,43 @@ public final class ClaimModeSessionHistory {
         return builder.toString();
     }
 
-    private static String quote(String value) {
-        return value == null ? "" : value.replace('\r', ' ').replace('\n', ' ').replace('"', '\'');
+    private static boolean isSessionStart(String line) {
+        return line.contains("\"event\":\"session-start\"");
+    }
+
+    private static boolean isSessionEnd(String line) {
+        return line.contains("\"event\":\"session-end\"");
+    }
+
+    private static String jsonLine(String... fields) {
+        return "{" + String.join(",", fields) + "}";
+    }
+
+    private static String field(String name, Object value) {
+        return "\"" + name + "\":\"" + escape(String.valueOf(value)) + "\"";
+    }
+
+    private static String escape(String value) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+            switch (character) {
+                case '"' -> builder.append("\\\"");
+                case '\\' -> builder.append("\\\\");
+                case '\b' -> builder.append("\\b");
+                case '\f' -> builder.append("\\f");
+                case '\n' -> builder.append("\\n");
+                case '\r' -> builder.append("\\r");
+                case '\t' -> builder.append("\\t");
+                default -> {
+                    if (character < 0x20) {
+                        builder.append("\\u%04x".formatted((int) character));
+                    } else {
+                        builder.append(character);
+                    }
+                }
+            }
+        }
+        return builder.toString();
     }
 }

@@ -20,8 +20,8 @@ public final class ClaimModeRecoveryStore {
 
     public void add(ClaimModeRecoveryEntry entry) {
         ClaimModeRecoveryEntry recoveryEntry = Objects.requireNonNull(entry, "entry");
-        pendingEntries.add(recoveryEntry);
         append(recoveryEntry);
+        pendingEntries.add(recoveryEntry);
     }
 
     public List<ClaimModeRecoveryEntry> pendingFor(UUID playerId) {
@@ -35,14 +35,7 @@ public final class ClaimModeRecoveryStore {
             Files.createDirectories(recoveryFile.getParent());
             Files.writeString(
                     recoveryFile,
-                    entry.timestamp()
-                            + " player=" + entry.playerName()
-                            + " uuid=" + entry.playerId()
-                            + " slot=" + entry.originalSlot()
-                            + " reason=\"" + quote(entry.reason()) + "\""
-                            + " summary=\"" + quote(entry.summary()) + "\""
-                            + " backup=" + entry.backup()
-                            + System.lineSeparator(),
+                    recoveryJson(entry) + System.lineSeparator(),
                     StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND
@@ -52,7 +45,44 @@ public final class ClaimModeRecoveryStore {
         }
     }
 
-    private static String quote(String value) {
-        return value == null ? "" : value.replace('\r', ' ').replace('\n', ' ').replace('"', '\'');
+    private static String recoveryJson(ClaimModeRecoveryEntry entry) {
+        return "{"
+                + field("event", "recovery-entry") + ","
+                + field("timestamp", entry.timestamp()) + ","
+                + field("playerName", entry.playerName()) + ","
+                + field("playerId", entry.playerId()) + ","
+                + field("originalSlot", entry.originalSlot()) + ","
+                + field("reason", entry.reason()) + ","
+                + field("summary", entry.summary()) + ","
+                + field("backup", entry.backup())
+                + "}";
+    }
+
+    private static String field(String name, Object value) {
+        return "\"" + name + "\":\"" + escape(String.valueOf(value)) + "\"";
+    }
+
+    private static String escape(String value) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+            switch (character) {
+                case '"' -> builder.append("\\\"");
+                case '\\' -> builder.append("\\\\");
+                case '\b' -> builder.append("\\b");
+                case '\f' -> builder.append("\\f");
+                case '\n' -> builder.append("\\n");
+                case '\r' -> builder.append("\\r");
+                case '\t' -> builder.append("\\t");
+                default -> {
+                    if (character < 0x20) {
+                        builder.append("\\u%04x".formatted((int) character));
+                    } else {
+                        builder.append(character);
+                    }
+                }
+            }
+        }
+        return builder.toString();
     }
 }
