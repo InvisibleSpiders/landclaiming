@@ -10,7 +10,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.invisiblespiders.havenclaims.plugin.listener.ClaimToolListener;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,10 +24,13 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -52,6 +57,24 @@ import org.junit.jupiter.api.Test;
 class ClaimModeListenerTest {
     private static final NamespacedKey TOOL_KEY = new NamespacedKey("havenclaims", "claim_mode_tool");
     private static final Component FALLBACK = Component.text("claim mode fallback");
+
+    @Test
+    void claimModeInteractPreemptsLegacyClaimToolListener() throws Exception {
+        Method claimModeInteract = ClaimModeListener.class.getDeclaredMethod("onInteract", PlayerInteractEvent.class);
+        Method claimModeSwap = ClaimModeListener.class.getDeclaredMethod("onSwap", PlayerSwapHandItemsEvent.class);
+        Method legacyInteract = ClaimToolListener.class.getDeclaredMethod("onPlayerInteract", PlayerInteractEvent.class);
+        Method legacySwap = ClaimToolListener.class.getDeclaredMethod("onPlayerSwapHandItems", PlayerSwapHandItemsEvent.class);
+
+        EventHandler claimModeHandler = claimModeInteract.getAnnotation(EventHandler.class);
+        EventHandler claimModeSwapHandler = claimModeSwap.getAnnotation(EventHandler.class);
+        EventHandler legacyHandler = legacyInteract.getAnnotation(EventHandler.class);
+        EventHandler legacySwapHandler = legacySwap.getAnnotation(EventHandler.class);
+
+        assertThat(claimModeHandler.priority()).isEqualTo(EventPriority.LOWEST);
+        assertThat(claimModeSwapHandler.priority()).isEqualTo(EventPriority.LOWEST);
+        assertThat(legacyHandler.ignoreCancelled()).isTrue();
+        assertThat(legacySwapHandler.ignoreCancelled()).isTrue();
+    }
 
     @Test
     void blocksConfiguredCommandForActivePlayerAndUsesMessageServicePlaceholder() {
@@ -114,6 +137,46 @@ class ClaimModeListenerTest {
     }
 
     @Test
+    void blocksContainerRightClickForActivePlayerWithoutTool() {
+        Fixture fixture = fixture(true);
+        ClaimModeListener listener = listener(fixture.service());
+        Block chest = mock(Block.class);
+        when(chest.getState()).thenReturn(mock(Container.class));
+        PlayerInteractEvent event = new PlayerInteractEvent(
+                fixture.player(),
+                Action.RIGHT_CLICK_BLOCK,
+                null,
+                chest,
+                BlockFace.UP
+        );
+
+        listener.onInteract(event);
+
+        assertThat(event.isCancelled()).isTrue();
+        assertThat(event.useInteractedBlock()).isEqualTo(Event.Result.DENY);
+        assertThat(event.useItemInHand()).isEqualTo(Event.Result.DENY);
+    }
+
+    @Test
+    void leavesContainerRightClickForInactivePlayerAlone() {
+        Fixture fixture = fixture(false);
+        ClaimModeListener listener = listener(fixture.service());
+        Block chest = mock(Block.class);
+        when(chest.getState()).thenReturn(mock(Container.class));
+        PlayerInteractEvent event = new PlayerInteractEvent(
+                fixture.player(),
+                Action.RIGHT_CLICK_BLOCK,
+                null,
+                chest,
+                BlockFace.UP
+        );
+
+        listener.onInteract(event);
+
+        assertThat(event.isCancelled()).isFalse();
+    }
+
+    @Test
     void blocksHotbarNumberKeyAndDragInventoryInteractions() {
         Fixture fixture = fixture(true);
         ClaimModeListener listener = listener(fixture.service());
@@ -126,32 +189,100 @@ class ClaimModeListenerTest {
                 ClickType.LEFT,
                 InventoryAction.valueOf("HOTBAR_MOVE_AND_READD")
         );
-        InventoryDragEvent drag = dragEvent(fixture.player(), Map.of(36, item(Material.STONE)), Set.of(36));
+        InventoryDragEvent hotbarDrag = dragEvent(fixture.player(), Map.of(36, item(Material.STONE)), Set.of(36));
+        InventoryDragEvent offhandDrag = dragEvent(fixture.player(), Map.of(45, item(Material.STONE)));
 
         listener.onInventoryClick(hotbarClick);
         listener.onInventoryClick(numberKey);
         listener.onInventoryClick(hotbarAction);
-        listener.onInventoryDrag(drag);
+        listener.onInventoryDrag(hotbarDrag);
+        listener.onInventoryDrag(offhandDrag);
 
         assertThat(hotbarClick.isCancelled()).isTrue();
         assertThat(numberKey.isCancelled()).isTrue();
         assertThat(hotbarAction.isCancelled()).isTrue();
-        assertThat(drag.isCancelled()).isTrue();
-        assertThat(ClaimModeListener.touchesHotbar(0, 0, ClickType.LEFT, InventoryAction.PICKUP_ALL)).isTrue();
-        assertThat(ClaimModeListener.touchesHotbar(18, 18, ClickType.NUMBER_KEY, InventoryAction.HOTBAR_SWAP)).isTrue();
-        assertThat(ClaimModeListener.touchesHotbar(18, 18, ClickType.LEFT, InventoryAction.PICKUP_ALL)).isFalse();
-        assertThat(ClaimModeListener.touchesHotbar(40, 40, ClickType.LEFT, InventoryAction.PICKUP_ALL)).isTrue();
+        assertThat(hotbarDrag.isCancelled()).isTrue();
+        assertThat(offhandDrag.isCancelled()).isTrue();
     }
 
     @Test
-    void leavesOrdinaryTopInventoryRawSlotNumbersAlone() {
+    void blocksOffhandGuiSwap() {
         Fixture fixture = fixture(true);
         ClaimModeListener listener = listener(fixture.service());
-        InventoryDragEvent drag = dragEvent(fixture.player(), Map.of(40, item(Material.STONE)));
+        InventoryClickEvent swapOffhandClick = clickEvent(
+                fixture.player(),
+                20,
+                ClickType.SWAP_OFFHAND,
+                InventoryAction.PICKUP_ALL,
+                40
+        );
 
-        listener.onInventoryDrag(drag);
+        listener.onInventoryClick(swapOffhandClick);
 
-        assertThat(drag.isCancelled()).isFalse();
+        assertThat(swapOffhandClick.isCancelled()).isTrue();
+    }
+
+    @Test
+    void blocksTopInventoryClicksAndMovesForActivePlayers() {
+        Fixture fixture = fixture(true);
+        ClaimModeListener listener = listener(fixture.service());
+        InventoryClickEvent topClick = topInventoryClick(fixture.player(), 0, InventoryAction.PICKUP_ALL);
+        InventoryClickEvent bottomShiftMove = bottomInventoryClick(
+                fixture.player(),
+                20,
+                ClickType.SHIFT_LEFT,
+                InventoryAction.MOVE_TO_OTHER_INVENTORY
+        );
+        InventoryDragEvent topDrag = topInventoryDrag(fixture.player(), Map.of(0, item(Material.STONE)));
+
+        listener.onInventoryClick(topClick);
+        listener.onInventoryClick(bottomShiftMove);
+        listener.onInventoryDrag(topDrag);
+
+        verify(topClick).setCancelled(true);
+        verify(bottomShiftMove).setCancelled(true);
+        assertThat(topDrag.isCancelled()).isTrue();
+    }
+
+    @Test
+    void leavesTopInventoryClicksForInactivePlayersAlone() {
+        Fixture fixture = fixture(false);
+        ClaimModeListener listener = listener(fixture.service());
+        InventoryClickEvent topClick = topInventoryClick(fixture.player(), 0, InventoryAction.PICKUP_ALL);
+
+        listener.onInventoryClick(topClick);
+
+        verify(topClick, never()).setCancelled(true);
+    }
+
+    @Test
+    void doesNotMistakePlayerInventoryRawSlotsZeroThroughEightForHotbar() {
+        Fixture fixture = fixture(true);
+        ClaimModeListener listener = listener(fixture.service());
+        InventoryClickEvent playerInventoryRawSlot = playerInventoryClick(
+                fixture.player(),
+                5,
+                ClickType.LEFT,
+                InventoryAction.PICKUP_ALL
+        );
+        InventoryDragEvent playerInventoryDrag = dragEvent(fixture.player(), Map.of(5, item(Material.STONE)));
+
+        listener.onInventoryClick(playerInventoryRawSlot);
+        listener.onInventoryDrag(playerInventoryDrag);
+
+        verify(playerInventoryRawSlot, never()).setCancelled(true);
+        assertThat(playerInventoryDrag.isCancelled()).isFalse();
+    }
+
+    @Test
+    void cancelsTopInventoryRawSlotsZeroThroughEightBecauseTheyAreExternalInventory() {
+        Fixture fixture = fixture(true);
+        ClaimModeListener listener = listener(fixture.service());
+        InventoryClickEvent topRawSlot = topInventoryClick(fixture.player(), 5, InventoryAction.PICKUP_ALL);
+
+        listener.onInventoryClick(topRawSlot);
+
+        verify(topRawSlot).setCancelled(true);
     }
 
     @Test
@@ -303,14 +434,82 @@ class ClaimModeListenerTest {
             ClickType clickType,
             InventoryAction action
     ) {
+        return clickEvent(player, rawSlot, clickType, action, clickType == ClickType.NUMBER_KEY ? 0 : -1);
+    }
+
+    private static InventoryClickEvent clickEvent(
+            Player player,
+            int rawSlot,
+            ClickType clickType,
+            InventoryAction action,
+            int hotbarButton
+    ) {
         InventoryClickEvent event = new InventoryClickEvent(
                 view(player),
                 rawSlot >= 0 && rawSlot <= 8 ? InventoryType.SlotType.QUICKBAR : InventoryType.SlotType.CONTAINER,
                 rawSlot,
                 clickType,
                 action,
-                clickType == ClickType.NUMBER_KEY ? 0 : -1
+                hotbarButton
         );
+        return event;
+    }
+
+    private static InventoryClickEvent playerInventoryClick(
+            Player player,
+            int rawSlot,
+            ClickType clickType,
+            InventoryAction action
+    ) {
+        InventoryClickEvent event = mock(InventoryClickEvent.class);
+        InventoryView view = view(player);
+        Inventory bottom = view.getBottomInventory();
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getView()).thenReturn(view);
+        when(event.getClickedInventory()).thenReturn(bottom);
+        when(event.getSlot()).thenReturn(rawSlot);
+        when(event.getRawSlot()).thenReturn(rawSlot);
+        when(event.getClick()).thenReturn(clickType);
+        when(event.getAction()).thenReturn(action);
+        when(event.getHotbarButton()).thenReturn(-1);
+        when(event.getSlotType()).thenReturn(InventoryType.SlotType.CONTAINER);
+        return event;
+    }
+
+    private static InventoryClickEvent topInventoryClick(Player player, int rawSlot, InventoryAction action) {
+        InventoryClickEvent event = mock(InventoryClickEvent.class);
+        InventoryView view = topInventoryView(player);
+        Inventory top = view.getTopInventory();
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getView()).thenReturn(view);
+        when(event.getClickedInventory()).thenReturn(top);
+        when(event.getSlot()).thenReturn(rawSlot);
+        when(event.getRawSlot()).thenReturn(rawSlot);
+        when(event.getClick()).thenReturn(ClickType.LEFT);
+        when(event.getAction()).thenReturn(action);
+        when(event.getHotbarButton()).thenReturn(-1);
+        when(event.getSlotType()).thenReturn(InventoryType.SlotType.CONTAINER);
+        return event;
+    }
+
+    private static InventoryClickEvent bottomInventoryClick(
+            Player player,
+            int rawSlot,
+            ClickType clickType,
+            InventoryAction action
+    ) {
+        InventoryClickEvent event = mock(InventoryClickEvent.class);
+        InventoryView view = topInventoryView(player);
+        Inventory bottom = view.getBottomInventory();
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getView()).thenReturn(view);
+        when(event.getClickedInventory()).thenReturn(bottom);
+        when(event.getSlot()).thenReturn(rawSlot);
+        when(event.getRawSlot()).thenReturn(rawSlot);
+        when(event.getClick()).thenReturn(clickType);
+        when(event.getAction()).thenReturn(action);
+        when(event.getHotbarButton()).thenReturn(-1);
+        when(event.getSlotType()).thenReturn(InventoryType.SlotType.CONTAINER);
         return event;
     }
 
@@ -345,17 +544,26 @@ class ClaimModeListenerTest {
         );
     }
 
+    private static InventoryDragEvent topInventoryDrag(Player player, Map<Integer, ItemStack> newItems) {
+        return new InventoryDragEvent(
+                topInventoryView(player),
+                item(Material.AIR),
+                item(Material.AIR),
+                false,
+                newItems
+        );
+    }
+
     private static InventoryView view(Player player) {
         return view(player, Set.of());
     }
 
     private static InventoryView view(Player player, Set<Integer> quickbarRawSlots) {
         InventoryView view = mock(InventoryView.class);
-        Inventory top = mock(Inventory.class);
-        Inventory bottom = mock(Inventory.class);
+        Inventory inventory = mock(Inventory.class);
         when(view.getPlayer()).thenReturn(player);
-        when(view.getTopInventory()).thenReturn(top);
-        when(view.getBottomInventory()).thenReturn(bottom);
+        when(view.getTopInventory()).thenReturn(inventory);
+        when(view.getBottomInventory()).thenReturn(inventory);
         when(view.getSlotType(anyInt())).thenAnswer(invocation -> {
             int rawSlot = invocation.getArgument(0);
             return quickbarRawSlots.contains(rawSlot)
@@ -374,7 +582,23 @@ class ClaimModeListenerTest {
         });
         when(view.getInventory(anyInt())).thenAnswer(invocation -> {
             int rawSlot = invocation.getArgument(0);
-            return rawSlot >= 36 && rawSlot <= 45 ? bottom : top;
+            return inventory;
+        });
+        return view;
+    }
+
+    private static InventoryView topInventoryView(Player player) {
+        InventoryView view = mock(InventoryView.class);
+        Inventory top = mock(Inventory.class);
+        Inventory bottom = mock(Inventory.class);
+        when(view.getPlayer()).thenReturn(player);
+        when(view.getTopInventory()).thenReturn(top);
+        when(view.getBottomInventory()).thenReturn(bottom);
+        when(view.getSlotType(anyInt())).thenReturn(InventoryType.SlotType.CONTAINER);
+        when(view.convertSlot(anyInt())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(view.getInventory(anyInt())).thenAnswer(invocation -> {
+            int rawSlot = invocation.getArgument(0);
+            return rawSlot >= 0 && rawSlot <= 26 ? top : bottom;
         });
         return view;
     }

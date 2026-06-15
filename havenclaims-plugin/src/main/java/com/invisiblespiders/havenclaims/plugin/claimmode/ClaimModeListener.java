@@ -4,11 +4,16 @@ import com.invisiblespiders.havenclaims.plugin.message.MessageService;
 import java.util.Map;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -22,13 +27,12 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 
 public final class ClaimModeListener implements Listener {
-    private static final int PLAYER_HOTBAR_START_RAW_SLOT = 36;
-    private static final int PLAYER_HOTBAR_END_RAW_SLOT = 44;
     private static final int PLAYER_OFFHAND_SLOT = 40;
-    private static final int PLAYER_OFFHAND_RAW_SLOT = 45;
 
     private final ClaimModeService claimModeService;
     private final ClaimModeCommandGuard commandGuard;
@@ -78,7 +82,7 @@ public final class ClaimModeListener implements Listener {
         player.sendMessage(message("claim-mode.blocked-pickup", Map.of()));
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onSwap(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
         if (!isActive(player)) {
@@ -89,13 +93,14 @@ public final class ClaimModeListener implements Listener {
         player.sendMessage(message("claim-mode.blocked-swap", Map.of()));
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player) || !isActive(player)) {
             return;
         }
 
-        if (touchesGuardedClickSlot(event)
+        if (touchesNonPlayerTopInventory(event)
+                || touchesGuardedClickSlot(event)
                 || isClaimModeTool(event.getCurrentItem())
                 || isClaimModeTool(event.getCursor())) {
             event.setCancelled(true);
@@ -103,40 +108,49 @@ public final class ClaimModeListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player player) || !isActive(player)) {
             return;
         }
 
+        boolean touchesExternalInventory = event.getRawSlots().stream()
+                .anyMatch(slot -> touchesNonPlayerTopInventory(event.getView(), slot));
         boolean touchesGuardedSlot = event.getRawSlots().stream()
                 .anyMatch(slot -> touchesGuardedRawSlot(event, slot));
         boolean movesClaimModeTool = event.getNewItems().values().stream().anyMatch(this::isClaimModeTool)
                 || isClaimModeTool(event.getOldCursor())
                 || isClaimModeTool(event.getCursor());
-        if (touchesGuardedSlot || movesClaimModeTool) {
+        if (touchesExternalInventory || touchesGuardedSlot || movesClaimModeTool) {
             event.setCancelled(true);
             player.sendMessage(message("claim-mode.blocked-inventory", Map.of()));
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        if (!isActive(player) || !isClaimModeTool(event.getItem())) {
+        if (!isActive(player)) {
             return;
         }
 
-        event.setCancelled(true);
-        event.setUseInteractedBlock(Event.Result.DENY);
-        event.setUseItemInHand(Event.Result.DENY);
-        claimModeService.toolRegistry().resolve(event.getItem()).ifPresent(tool -> {
-            if (tool.enabled()) {
-                tool.handler().handle(player, event);
-                return;
-            }
-            player.sendMessage(message(tool.disabledMessageKey(), Map.of()));
-        });
+        ItemStack item = event.getItem();
+        if (isClaimModeTool(item)) {
+            cancelBaseInteraction(event);
+            claimModeService.toolRegistry().resolve(item).ifPresent(tool -> {
+                if (tool.enabled()) {
+                    tool.handler().handle(player, event);
+                    return;
+                }
+                player.sendMessage(message(tool.disabledMessageKey(), Map.of()));
+            });
+            return;
+        }
+
+        if (isContainerInteraction(event)) {
+            cancelBaseInteraction(event);
+            player.sendMessage(message("claim-mode.blocked-inventory", Map.of()));
+        }
     }
 
     @EventHandler
@@ -158,21 +172,12 @@ public final class ClaimModeListener implements Listener {
         claimModeService.exit(event.getPlayer(), ClaimModeService.ExitReason.LOGOUT);
     }
 
-    @SuppressWarnings("removal")
-    static boolean touchesHotbar(int slot, int rawSlot, ClickType clickType, InventoryAction action) {
-        return (slot >= 0 && slot <= 8)
-                || slot == PLAYER_OFFHAND_SLOT
-                || (rawSlot >= PLAYER_HOTBAR_START_RAW_SLOT && rawSlot <= PLAYER_HOTBAR_END_RAW_SLOT)
-                || rawSlot == PLAYER_OFFHAND_RAW_SLOT
-                || clickType == ClickType.NUMBER_KEY
-                || action == InventoryAction.HOTBAR_SWAP
-                || action == InventoryAction.HOTBAR_MOVE_AND_READD;
-    }
-
     private static boolean touchesGuardedClickSlot(InventoryClickEvent event) {
         return event.getSlotType() == InventoryType.SlotType.QUICKBAR
                 || isBottomOffhandSlot(event)
+                || event.getClick() == ClickType.SWAP_OFFHAND
                 || event.getClick() == ClickType.NUMBER_KEY
+                || event.getHotbarButton() == PLAYER_OFFHAND_SLOT
                 || isHotbarAction(event.getAction());
     }
 
@@ -185,6 +190,53 @@ public final class ClaimModeListener implements Listener {
         return event.getView().getSlotType(rawSlot) == InventoryType.SlotType.QUICKBAR
                 || (event.getView().convertSlot(rawSlot) == PLAYER_OFFHAND_SLOT
                 && Objects.equals(event.getView().getInventory(rawSlot), event.getView().getBottomInventory()));
+    }
+
+    private static boolean touchesNonPlayerTopInventory(InventoryClickEvent event) {
+        InventoryView view = event.getView();
+        if (!hasNonPlayerTopInventory(view)) {
+            return false;
+        }
+        return Objects.equals(event.getClickedInventory(), view.getTopInventory())
+                || event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
+                || touchesNonPlayerTopInventory(view, event.getRawSlot());
+    }
+
+    private static boolean touchesNonPlayerTopInventory(InventoryView view, int rawSlot) {
+        if (!hasNonPlayerTopInventory(view) || rawSlot < 0) {
+            return false;
+        }
+        return Objects.equals(view.getInventory(rawSlot), view.getTopInventory());
+    }
+
+    private static boolean hasNonPlayerTopInventory(InventoryView view) {
+        if (view == null) {
+            return false;
+        }
+        InventoryType type = view.getType();
+        if (type != null && "CRAFTING".equals(type.name())) {
+            return false;
+        }
+        Inventory top = view.getTopInventory();
+        Inventory bottom = view.getBottomInventory();
+        return top != null && bottom != null && !Objects.equals(top, bottom);
+    }
+
+    private static boolean isContainerInteraction(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return false;
+        }
+        Block block = event.getClickedBlock();
+        if (block == null) {
+            return false;
+        }
+        return block.getState() instanceof Container || block.getType() == Material.ENDER_CHEST;
+    }
+
+    private static void cancelBaseInteraction(PlayerInteractEvent event) {
+        event.setCancelled(true);
+        event.setUseInteractedBlock(Event.Result.DENY);
+        event.setUseItemInHand(Event.Result.DENY);
     }
 
     @SuppressWarnings("removal")

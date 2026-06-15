@@ -77,7 +77,7 @@ public class ClaimToolListener implements Listener {
         this.doubleCrouchClearEnabled = newDoubleCrouchClearEnabled;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND || !isSelectionAction(event.getAction())) {
             return;
@@ -135,7 +135,7 @@ public class ClaimToolListener implements Listener {
         );
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
         if (!player.isSneaking()) {
