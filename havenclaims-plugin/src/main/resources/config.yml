@@ -1,0 +1,93 @@
+# General claim settings.
+claiming:
+  # Maximum claim name length accepted by /claim create.
+  max-name-length: 32
+  # Minimum chunk gap between a player claim and another player's claim.
+  player-buffer-distance: 3
+  # Minimum chunk gap between player claims and admin-owned claims.
+  admin-buffer-distance: 3
+  # Allows claim groups to become non-rectangular by adding or removing chunks.
+  allow-irregular-claims: true
+  # Offers merge/separate choices when new chunks touch one of the player's existing claims.
+  allow-merge-with-own-claims: true
+
+limits:
+  # Used when a player has no database-backed claim limit override.
+  default-claim-limit: 10
+  over-limit:
+    # Allows economy payments for chunks above the player's claim limit.
+    # When disabled, over-limit claims are denied unless the player has havenclaims.bypass.claim-limit.
+    enabled: true
+    # Options: flat, exponential.
+    pricing-mode: exponential
+    flat-cost-per-chunk: 250.0
+    exponential-base-cost: 250.0
+    exponential-multiplier: 1.25
+
+ui:
+  # Prefer Paper Dialog API menus where the current server supports them.
+  prefer-dialogs: true
+  # Use inventory menus for dense or item-based flows.
+  use-inventory-fallbacks: true
+
+notifications:
+  claim-boundary:
+    # Shows a configurable message when players enter or exit claimed land.
+    enabled: true
+    # Options: action_bar, chat, both, none.
+    delivery: action_bar
+    enter:
+      enabled: true
+      # Optional override. Options: action_bar, chat, both, none.
+      delivery: action_bar
+    exit:
+      enabled: true
+      # Optional override. Options: action_bar, chat, both, none.
+      delivery: action_bar
+
+access-denial:
+  # Prevents players on a claim's denied list from entering that claim.
+  enabled: true
+  knockback:
+    # Applies a small push away from the denied border when access is blocked.
+    enabled: true
+    strength: 0.65
+
+advanced:
+  entity-control:
+    # Enables claim flags that automatically remove hostile or passive entities.
+    enabled: true
+    # How often existing entities inside claims are checked.
+    cleanup-interval-ticks: 200
+    # Avoid removing entities explicitly named by a player/admin name tag even when a removal flag is enabled.
+    # Plugin display/custom names alone do not count as name-tagged protection.
+    preserve-named-entities: true
+    # Avoid removing tamed entities even when a removal flag is enabled.
+    preserve-tamed-entities: true
+
+visuals:
+  border:
+    # Uses temporary glowing BlockDisplay entities for player-visible chunk outlines.
+    enabled: true
+    # How long temporary chunk borders remain visible. Set to 0 to keep them until cleared or replaced.
+    duration-ticks: 100
+    # Thickness of each display-entity line segment.
+    thickness: 0.08
+    # Display entity view range in blocks.
+    view-range: 96.0
+
+shortcuts:
+  sneak-swap-hand:
+    # Opens the context claim menu when the player sneaks and presses the swap-hand key.
+    enabled: true
+    require-claim-tool-in-hand: false
+    cancel-item-swap: true
+
+selection:
+  # Clears a pending selection when the player switches away from the claim tool.
+  clear-on-tool-switch: true
+  double-crouch-clear:
+    # Clears a pending selection when the player crouches twice within the configured window.
+    enabled: true
+    # 80 ticks is about 4 seconds at normal server speed.
+    window-ticks: 80

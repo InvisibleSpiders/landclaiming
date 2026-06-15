@@ -76,4 +76,4 @@ Unit tests will cover:
 - Protection checks find newly created claims through the live index.
 - SQL repository can save and load claims with chunks and flags.
 
-The final verification will run the full Gradle build and produce a new shaded `LandClaims` jar.
+The final verification will run the full Gradle build and produce a new shaded `HavenClaims` jar.

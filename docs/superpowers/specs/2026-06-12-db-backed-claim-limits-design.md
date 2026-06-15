@@ -2,17 +2,17 @@
 
 Date: 2026-06-12
 Status: Approved (pending spec review)
-Repos: LandClaims (primary), HavenVault (upgrade UI)
+Repos: HavenClaims (primary), HavenVault (upgrade UI)
 
 ## Problem
 
-Claim chunk limits are permission-node–based today. `LimitService.resolveLimit(Set<String> permissions)` scans the player's permission set for the highest `landclaims.limit.*` value. This makes per-player upgrades impossible without a permission plugin, prevents runtime adjustment, and cannot integrate with HavenVault's purchase system.
+Claim chunk limits are permission-node–based today. `LimitService.resolveLimit(Set<String> permissions)` scans the player's permission set for the highest `havenclaims.limit.*` value. This makes per-player upgrades impossible without a permission plugin, prevents runtime adjustment, and cannot integrate with HavenVault's purchase system.
 
 ## Goals
 
-1. Store per-player chunk limits in the database (HavenCore-integrated, same `HavenDataSource` as existing LandClaims tables).
+1. Store per-player chunk limits in the database (HavenCore-integrated, same `HavenDataSource` as existing HavenClaims tables).
 2. Replace permission-based limit resolution with DB lookup + `default-claim-limit` config fallback.
-3. Expose `LandClaimsLimitService` via Bukkit `ServicesManager` so other plugins (HavenVault) can read and modify limits.
+3. Expose `HavenClaimsLimitService` via Bukkit `ServicesManager` so other plugins (HavenVault) can read and modify limits.
 4. Add `/claim admin limit` commands for direct admin control.
 5. Add a chunk upgrade purchase flow in HavenVault with exponential pricing, true-sum bulk options, and configurable currency.
 
@@ -20,17 +20,17 @@ Claim chunk limits are permission-node–based today. `LimitService.resolveLimit
 
 - No claim storage system (separate spec).
 - No change to over-limit economy charging (that flow is unchanged; the limit value just comes from a different source).
-- No UI in LandClaims for player self-service upgrades (that lives in HavenVault).
+- No UI in HavenClaims for player self-service upgrades (that lives in HavenVault).
 
 ## Architecture
 
-LandClaims owns the data and the API contract. HavenVault owns the purchase UI, pricing logic, and upgrade effects. HavenVault soft-depends on LandClaims; LandClaims has no dependency on HavenVault.
+HavenClaims owns the data and the API contract. HavenVault owns the purchase UI, pricing logic, and upgrade effects. HavenVault soft-depends on HavenClaims; HavenClaims has no dependency on HavenVault.
 
 ---
 
-## 1. LandClaims — Data model (V4 migration)
+## 1. HavenClaims — Data model (V4 migration)
 
-New migration `V4__claim_player_limits.sql` under `db/migrations/landclaims/` (picked up by the existing HavenCore migration runner):
+New migration `V4__claim_player_limits.sql` under `db/migrations/havenclaims/` (picked up by the existing HavenCore migration runner):
 
 ```sql
 CREATE TABLE IF NOT EXISTS claim_player_limits (
@@ -43,9 +43,9 @@ One row per player with an explicit limit. No row = inherit `default-claim-limit
 
 ---
 
-## 2. LandClaims — Repository
+## 2. HavenClaims — Repository
 
-**`ClaimLimitRepository`** (`landclaims-plugin`, uses `HavenDataSource`-provided `DataSource`):
+**`ClaimLimitRepository`** (`havenclaims-plugin`, uses `HavenDataSource`-provided `DataSource`):
 
 | Method | SQL |
 |---|---|
@@ -58,12 +58,12 @@ One row per player with an explicit limit. No row = inherit `default-claim-limit
 
 ---
 
-## 3. LandClaims — API interface
+## 3. HavenClaims — API interface
 
-**`LandClaimsLimitService`** in `landclaims-api`:
+**`HavenClaimsLimitService`** in `havenclaims-api`:
 
 ```java
-public interface LandClaimsLimitService {
+public interface HavenClaimsLimitService {
     int getLimit(UUID playerId);
     void setLimit(UUID playerId, int limit);
     void addChunks(UUID playerId, int chunks);
@@ -73,25 +73,25 @@ public interface LandClaimsLimitService {
 
 - `getLimit` always returns a value: DB record if present, otherwise `default-claim-limit` from config.
 - All methods validate `chunks >= 1`; `removeChunks` floors result at 1.
-- Registered on plugin enable: `getServer().getServicesManager().register(LandClaimsLimitService.class, impl, this, ServicePriority.Normal)`.
+- Registered on plugin enable: `getServer().getServicesManager().register(HavenClaimsLimitService.class, impl, this, ServicePriority.Normal)`.
 
 ---
 
-## 4. LandClaims — LimitService rewrite
+## 4. HavenClaims — LimitService rewrite
 
 `LimitService` drops the `permissionLimits` map and `resolveLimit(Set<String>)` signature entirely.
 
-New signature: `resolveLimit(UUID playerId)` — delegates to `LandClaimsLimitService.getLimit(playerId)`.
+New signature: `resolveLimit(UUID playerId)` — delegates to `HavenClaimsLimitService.getLimit(playerId)`.
 
-`LandClaimsPlugin` no longer reads `permissions.yml` limit nodes or passes them to `LimitService`. The `limits.use-permission-limits` config key is removed. The `default-claim-limit` key remains as the universal fallback.
+`HavenClaimsPlugin` no longer reads `permissions.yml` limit nodes or passes them to `LimitService`. The `limits.use-permission-limits` config key is removed. The `default-claim-limit` key remains as the universal fallback.
 
-**Migration note for server operators:** Servers using permission groups for VIP limits (e.g. `landclaims.limit.vip = 25`) must use `/claim admin limit set` to apply those values per-player after upgrading. The old permission nodes are silently ignored after this change.
+**Migration note for server operators:** Servers using permission groups for VIP limits (e.g. `havenclaims.limit.vip = 25`) must use `/claim admin limit set` to apply those values per-player after upgrading. The old permission nodes are silently ignored after this change.
 
 ---
 
-## 5. LandClaims — Admin commands
+## 5. HavenClaims — Admin commands
 
-All under `/claim admin limit`, permission `landclaims.admin.limit` (OP default).
+All under `/claim admin limit`, permission `havenclaims.admin.limit` (OP default).
 
 | Command | Effect |
 |---|---|
@@ -127,7 +127,7 @@ claim-upgrades:
       discount: 0.15
 ```
 
-`claim-upgrades.enabled: false` (or LandClaims not installed) hides the claim section from the Dialog entirely.
+`claim-upgrades.enabled: false` (or HavenClaims not installed) hides the claim section from the Dialog entirely.
 
 ---
 
@@ -158,11 +158,11 @@ Sum = 3052.55 × 0.95 = 2899.92
 
 `ClaimChunkUpgradeService` handles the full purchase flow:
 
-1. **Availability check** — `Bukkit.getServicesManager().load(LandClaimsLimitService.class)`. If null, log once on enable; claim section hidden in Dialog.
+1. **Availability check** — `Bukkit.getServicesManager().load(HavenClaimsLimitService.class)`. If null, log once on enable; claim section hidden in Dialog.
 2. **Cost computation** — `computeCost(currentLimit, chunks, discount)` using the formula above.
 3. **Requirement validation** — check money/XP/items before charging.
 4. **Charge** — deduct via `HavenEconomyService`, drain XP, or consume items per `currency` config.
-5. **Apply** — call `landClaimsLimitService.addChunks(playerId, n)`.
+5. **Apply** — call `havenClaimsLimitService.addChunks(playerId, n)`.
 6. **Confirm** — send message with new limit.
 
 Charge and apply are not atomic across the two plugins. If `addChunks` throws after charging, the service logs the error and attempts a refund. If the refund also fails, it logs a warning for admin follow-up (same pattern as HavenVault's existing payment error handling).
@@ -171,21 +171,21 @@ Charge and apply are not atomic across the two plugins. If `addChunks` throws af
 
 **`plugin.yml`** in HavenVault:
 ```yaml
-softdepend: [LandClaims]
+softdepend: [HavenClaims]
 ```
 
 ---
 
 ## 9. HavenVault — Dialog UI
 
-Chunk upgrades render as a section in the existing `/vault upgrades` Paper Dialog. Section only appears when `claim-upgrades.enabled: true` and `LandClaimsLimitService` is available.
+Chunk upgrades render as a section in the existing `/vault upgrades` Paper Dialog. Section only appears when `claim-upgrades.enabled: true` and `HavenClaimsLimitService` is available.
 
 Each bulk option is one `ActionButton`:
 - Label: `"+5 Chunks — $2,899"` (cost computed fresh at Dialog open from player's current limit)
 - Tooltip: current limit, resulting limit, per-chunk cost breakdown
 - Click: purchase → Dialog refreshes with updated limit
 
-**Admin commands in HavenVault** (mirror of LandClaims side, calls `LandClaimsLimitService`):
+**Admin commands in HavenVault** (mirror of HavenClaims side, calls `HavenClaimsLimitService`):
 ```
 /vault admin claim limit set <player|uuid> <amount>
 /vault admin claim limit add <player|uuid> <amount>
@@ -196,21 +196,21 @@ Each bulk option is one `ActionButton`:
 
 ## 10. Testing
 
-**LandClaims:**
+**HavenClaims:**
 - `ClaimLimitRepositoryTest` — round-trip set/add/remove, floor-at-1 enforcement, fallback when no row
 - `LimitServiceTest` — resolves from DB when record exists; falls back to config default when not
 - `ClaimAdminLimitCommandTest` — set/add/remove/get with online player, offline UUID, invalid input
 
 **HavenVault:**
 - `ClaimChunkPricingTest` — pricing formula for single and bulk tiers, discount math
-- `ClaimChunkUpgradeServiceTest` — full purchase flow with mock `LandClaimsLimitService`; insufficient funds rejection; graceful no-op when LandClaims absent
+- `ClaimChunkUpgradeServiceTest` — full purchase flow with mock `HavenClaimsLimitService`; insufficient funds rejection; graceful no-op when HavenClaims absent
 - `ClaimChunkLimitEffectTest` — delegates to service, no double-charge
 
 ---
 
 ## Build order
 
-- **Phase A (LandClaims):** V4 migration → `ClaimLimitRepository` → `LandClaimsLimitService` API + impl → `LimitService` rewrite → admin commands. Fully standalone; no HavenVault changes needed.
+- **Phase A (HavenClaims):** V4 migration → `ClaimLimitRepository` → `HavenClaimsLimitService` API + impl → `LimitService` rewrite → admin commands. Fully standalone; no HavenVault changes needed.
 - **Phase B (HavenVault):** Config loading → `ClaimChunkUpgradeService` → `ClaimChunkLimitEffect` → Dialog integration. Depends on Phase A API being published.
 
 Phase B depends on Phase A.

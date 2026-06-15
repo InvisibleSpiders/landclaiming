@@ -2,13 +2,13 @@
 
 Date: 2026-06-14
 
-Repos: LandClaims, HavenVault
+Repos: HavenClaims, HavenVault
 
 ## Purpose
 
-LandClaims currently stores and protects claims as sets of chunks. That makes selection simple, but it also makes the player experience coarse: claims are always 16x16 columns, claim limits are expressed in chunks, and HavenVault upgrades can only sell more chunks.
+HavenClaims currently stores and protects claims as sets of chunks. That makes selection simple, but it also makes the player experience coarse: claims are always 16x16 columns, claim limits are expressed in chunks, and HavenVault upgrades can only sell more chunks.
 
-The next model should use GriefPrevention-style block claims: each claim is a full-height or configured-height 2D rectangle in X/Z space, with per-claim vertical protection bounds. HavenVault should continue to own purchase flows, pricing, requirements, and dialogs, while LandClaims owns claim geometry, protection checks, storage, migrations, and the API that applies claim changes.
+The next model should use GriefPrevention-style block claims: each claim is a full-height or configured-height 2D rectangle in X/Z space, with per-claim vertical protection bounds. HavenVault should continue to own purchase flows, pricing, requirements, and dialogs, while HavenClaims owns claim geometry, protection checks, storage, migrations, and the API that applies claim changes.
 
 ## Goals
 
@@ -29,7 +29,7 @@ The next model should use GriefPrevention-style block claims: each claim is a fu
 
 ## Claim Model
 
-LandClaims should store each claim as one or more rectangular regions. A region is full-width in X/Z and protected only inside its configured Y bounds.
+HavenClaims should store each claim as one or more rectangular regions. A region is full-width in X/Z and protected only inside its configured Y bounds.
 
 Recommended region fields:
 
@@ -94,10 +94,10 @@ Chunk limits migrate by multiplying by 256:
 - `10 chunks = 2,560 claim blocks`
 - `20 chunks = 5,120 claim blocks`
 
-LandClaims should expose a renamed allowance API for new consumers:
+HavenClaims should expose a renamed allowance API for new consumers:
 
 ```java
-interface LandClaimsAllowanceService {
+interface HavenClaimsAllowanceService {
     int getBlockLimit(UUID playerId);
     void setBlockLimit(UUID playerId, int blocks);
     void addBlocks(UUID playerId, int blocks);
@@ -105,14 +105,14 @@ interface LandClaimsAllowanceService {
 }
 ```
 
-The current `LandClaimsLimitService` can remain as a compatibility adapter during migration, but HavenVault should move to the block allowance API when claim-block upgrades are implemented.
+The current `HavenClaimsLimitService` can remain as a compatibility adapter during migration, but HavenVault should move to the block allowance API when claim-block upgrades are implemented.
 
 ## Per-Claim Depth Upgrades
 
-LandClaims should expose a claim upgrade service for HavenVault:
+HavenClaims should expose a claim upgrade service for HavenVault:
 
 ```java
-interface LandClaimsUpgradeService {
+interface HavenClaimsUpgradeService {
     List<ClaimUpgradeTarget> getUpgradeableClaims(UUID playerId);
     Optional<ClaimVerticalProtection> getVerticalProtection(UUID claimId);
     ClaimUpgradeResult expandClaimDepth(UUID playerId, UUID claimId, int blocksDown);
@@ -120,7 +120,7 @@ interface LandClaimsUpgradeService {
 }
 ```
 
-LandClaims validates ownership/manager rights, world bounds, existing claim state, and whether the requested depth is actually an upgrade. HavenVault handles price, requirements, payment, refund-on-failure, and dialogs.
+HavenClaims validates ownership/manager rights, world bounds, existing claim state, and whether the requested depth is actually an upgrade. HavenVault handles price, requirements, payment, refund-on-failure, and dialogs.
 
 Recommended DTOs:
 
@@ -141,17 +141,17 @@ HavenVault should split claim upgrades into two categories:
 1. **Claim Block Allowance**
    - Player-wide upgrades.
    - Replaces `+N chunks` with `+N claim blocks`.
-   - Uses `LandClaimsAllowanceService`.
+   - Uses `HavenClaimsAllowanceService`.
 
 2. **Selected Claim Depth**
    - Per-claim upgrades.
-   - Uses `LandClaimsUpgradeService`.
+   - Uses `HavenClaimsUpgradeService`.
    - Requires a selected claim ID.
 
 Suggested dialog paths:
 
 - `/vault upgrades` shows normal bank/vault upgrades and player-wide claim block allowance upgrades.
-- LandClaims claim menu shows `Upgrade Claim`.
+- HavenClaims claim menu shows `Upgrade Claim`.
 - `Upgrade Claim` opens HavenVault with `claim_id` context.
 - HavenVault selected-claim dialog shows the current depth and configured depth upgrade buttons.
 
@@ -161,7 +161,7 @@ Example buttons:
 - `Protect to Y0 - 1,250`
 - `Protect to world bottom - 3,000`
 
-HavenVault should continue to use its existing locked/available button styling. A depth button is locked when the player cannot afford it, when LandClaims is absent, when the claim ID is invalid, or when the claim is already at or beyond the target depth.
+HavenVault should continue to use its existing locked/available button styling. A depth button is locked when the player cannot afford it, when HavenClaims is absent, when the claim ID is invalid, or when the claim is already at or beyond the target depth.
 
 ## Config Shape
 
@@ -201,7 +201,7 @@ This separates player-wide limit economics from per-claim depth economics and av
 
 ## Migration
 
-LandClaims migration should convert existing chunk claims to rectangular regions.
+HavenClaims migration should convert existing chunk claims to rectangular regions.
 
 For each existing claim:
 
@@ -224,7 +224,7 @@ Storage should be block-region based. Runtime lookup should maintain an index ke
 world_id -> chunk_x/chunk_z -> claim region ids that overlap that chunk
 ```
 
-When checking a block location, LandClaims first gets candidate regions from the chunk index, then checks exact X/Z/Y bounds. This keeps common protection checks close to current chunk lookup performance while allowing block-precise boundaries.
+When checking a block location, HavenClaims first gets candidate regions from the chunk index, then checks exact X/Z/Y bounds. This keeps common protection checks close to current chunk lookup performance while allowing block-precise boundaries.
 
 ## Visuals and Selection
 
@@ -251,7 +251,7 @@ Short-term compatibility:
 - Mark chunk limit API as legacy once block allowance API exists.
 - HavenVault can support both APIs during a transition:
   - Prefer block allowance/depth services.
-  - Fall back to chunk limit service only on older LandClaims.
+  - Fall back to chunk limit service only on older HavenClaims.
 
 Long-term compatibility:
 
@@ -259,7 +259,7 @@ Long-term compatibility:
 
 ## Testing
 
-LandClaims tests:
+HavenClaims tests:
 
 - Block region overlap and containment.
 - Protection checks respect X/Z and Y bounds.
@@ -274,18 +274,18 @@ HavenVault tests:
 
 - Claim allowance pricing uses blocks, not chunks.
 - Claim depth purchase shows locked/available states consistently.
-- Purchase calls LandClaims upgrade service with the selected claim ID.
-- Payment is refunded if LandClaims upgrade application fails.
-- LandClaims absent hides or disables claim upgrade sections cleanly.
+- Purchase calls HavenClaims upgrade service with the selected claim ID.
+- Payment is refunded if HavenClaims upgrade application fails.
+- HavenClaims absent hides or disables claim upgrade sections cleanly.
 - Existing chunk upgrade config migrates or produces a clear admin warning.
 
 ## Rollout Plan
 
-1. LandClaims API and data model design PR.
-2. LandClaims block-region storage and migration PR.
-3. LandClaims protection, selection, visuals, and menus PR.
+1. HavenClaims API and data model design PR.
+2. HavenClaims block-region storage and migration PR.
+3. HavenClaims protection, selection, visuals, and menus PR.
 4. HavenVault claim-block allowance upgrade PR.
 5. HavenVault per-claim depth upgrade PR.
-6. LandClaims `Upgrade Claim` routing button PR.
+6. HavenClaims `Upgrade Claim` routing button PR.
 
 Each PR should be independently testable. The cross-plugin behavior should be verified on a server with both plugins installed before replacing the current chunk upgrade flow in production.

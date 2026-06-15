@@ -2,31 +2,31 @@
 
 Core permissions:
 
-- `landclaims.use`
-- `landclaims.claim`
-- `landclaims.gui`
-- `landclaims.tool.use`
-- `landclaims.tool.craft`
-- `landclaims.tool.recharge`
-- `landclaims.member.manage`
+- `havenclaims.use`
+- `havenclaims.claim`
+- `havenclaims.gui`
+- `havenclaims.tool.use`
+- `havenclaims.tool.craft`
+- `havenclaims.tool.recharge`
+- `havenclaims.member.manage`
 
 Admin permissions:
 
-- `landclaims.admin`
-- `landclaims.admin.claim.create`
-- `landclaims.admin.claim.edit`
-- `landclaims.admin.claim.delete`
-- `landclaims.admin.claim.list`
-- `landclaims.admin.claim.teleport`
-- `landclaims.admin.userclaims.view`
-- `landclaims.admin.userclaims.edit`
-- `landclaims.admin.userclaims.delete`
-- `landclaims.admin.userclaims.teleport`
-- `landclaims.admin.userclaims.transfer`
-- `landclaims.admin.limit`
+- `havenclaims.admin`
+- `havenclaims.admin.claim.create`
+- `havenclaims.admin.claim.edit`
+- `havenclaims.admin.claim.delete`
+- `havenclaims.admin.claim.list`
+- `havenclaims.admin.claim.teleport`
+- `havenclaims.admin.userclaims.view`
+- `havenclaims.admin.userclaims.edit`
+- `havenclaims.admin.userclaims.delete`
+- `havenclaims.admin.userclaims.teleport`
+- `havenclaims.admin.userclaims.transfer`
+- `havenclaims.admin.limit`
 
-Claim limits are stored per player in the LandClaims database and inherit `limits.default-claim-limit` when no override exists.
-Use `/claim admin limit` commands or the `LandClaimsLimitService` API to adjust them.
+Claim limits are stored per player in the HavenClaims database and inherit `limits.default-claim-limit` when no override exists.
+Use `/claim admin limit` commands or the `HavenClaimsLimitService` API to adjust them.
 
 Flag edit groups are configured in `permissions.yml`.
-Group nodes such as `landclaims.flag.edit.basic` grant child permissions such as `landclaims.flag.build`.
+Group nodes such as `havenclaims.flag.edit.basic` grant child permissions such as `havenclaims.flag.build`.

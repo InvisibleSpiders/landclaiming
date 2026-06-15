@@ -4,11 +4,11 @@
 
 **Goal:** Add a chunk-limit upgrade purchase flow to HavenVault: players buy extra claim chunks via `/upgrades` (exponential pricing, bulk discounts, configurable currency); admins adjust limits with `/hvault admin claim limit`.
 
-**Architecture:** A new `claim` package holds `ClaimUpgradeConfig`, `ClaimChunkUpgradeService`, `ClaimChunkLimitEffect`, and `PurchaseResult`. `UpgradesDialog` gains a claim section. `HavenVaultPlugin` soft-loads `LandClaimsLimitService` on enable; all claim behaviour is silent no-op when LandClaims is absent.
+**Architecture:** A new `claim` package holds `ClaimUpgradeConfig`, `ClaimChunkUpgradeService`, `ClaimChunkLimitEffect`, and `PurchaseResult`. `UpgradesDialog` gains a claim section. `HavenVaultPlugin` soft-loads `HavenClaimsLimitService` on enable; all claim behaviour is silent no-op when HavenClaims is absent.
 
-**Tech Stack:** Java 25, Paper API 26.1.2, HavenCore `HavenEconomyService`, LandClaims API `LandClaimsLimitService` (`com.nick:landclaims-api:1.7.0-SNAPSHOT`, compileOnly soft-dep). JUnit 5 + Mockito.
+**Tech Stack:** Java 25, Paper API 26.1.2, HavenCore `HavenEconomyService`, HavenClaims API `HavenClaimsLimitService` (`com.nick:havenclaims-api:1.7.0-SNAPSHOT`, compileOnly soft-dep). JUnit 5 + Mockito.
 
-**Prerequisite:** Phase A (LandClaims) must be complete. Before starting, run `./gradlew publishToMavenLocal` in `C:\Users\ncobu\landclaiming`. Then work in `C:\Users\ncobu\.codex\worktrees\9fd2\Haven\HavenVault-review` on branch `feature/claim-chunk-upgrades` branched from `main`.
+**Prerequisite:** Phase A (HavenClaims) must be complete. Before starting, run `./gradlew publishToMavenLocal` in `C:\Users\ncobu\landclaiming`. Then work in `C:\Users\ncobu\.codex\worktrees\9fd2\Haven\HavenVault-review` on branch `feature/claim-chunk-upgrades` branched from `main`.
 
 ---
 
@@ -17,7 +17,7 @@
 **Create (`havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/`):**
 - `ClaimUpgradeConfig.java` — YAML config record, BulkOption nested record
 - `PurchaseResult.java` — purchase outcome record
-- `ClaimChunkLimitEffect.java` — `UpgradeEffect` impl calling `LandClaimsLimitService.addChunks`
+- `ClaimChunkLimitEffect.java` — `UpgradeEffect` impl calling `HavenClaimsLimitService.addChunks`
 - `ClaimChunkUpgradeService.java` — static pricing formula, purchase flow, availability guard
 
 **Create (`havenvault-plugin/src/test/java/dev/invisiblespiders/havenvault/plugin/claim/`):**
@@ -137,18 +137,18 @@ cd C:\Users\ncobu\.codex\worktrees\9fd2\Haven\HavenVault-review
 
 Expected: compilation error — `ClaimUpgradeConfig` not found.
 
-- [ ] **Step 3: Add LandClaims API dependency to `havenvault-plugin/build.gradle.kts`**
+- [ ] **Step 3: Add HavenClaims API dependency to `havenvault-plugin/build.gradle.kts`**
 
 After the existing `compileOnly("dev.invisiblespiders.haven:haven-api:1.0.2")` line, add:
 
 ```kotlin
-    compileOnly("com.nick:landclaims-api:1.7.0-SNAPSHOT")
+    compileOnly("com.nick:havenclaims-api:1.7.0-SNAPSHOT")
 ```
 
 After the existing `testImplementation("dev.invisiblespiders.haven:haven-api:1.0.2")` line, add:
 
 ```kotlin
-    testImplementation("com.nick:landclaims-api:1.7.0-SNAPSHOT")
+    testImplementation("com.nick:havenclaims-api:1.7.0-SNAPSHOT")
 ```
 
 - [ ] **Step 4: Add `claim-upgrades:` section to `havenvault-plugin/src/main/resources/config.yml`**
@@ -159,7 +159,7 @@ Append to end of file (after the `date:` section):
 
 claim-upgrades:
   enabled: true
-  default-limit: 10            # keep in sync with LandClaims default-claim-limit
+  default-limit: 10            # keep in sync with HavenClaims default-claim-limit
   base-cost: 500.0
   cost-multiplier: 1.1         # each chunk above default costs 10% more than the previous
   currency: money              # money | xp | item
@@ -277,7 +277,7 @@ package dev.invisiblespiders.havenvault.plugin.claim;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.nick.landclaims.api.service.LandClaimsLimitService;
+import com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -285,7 +285,7 @@ class ClaimChunkLimitEffectTest {
 
     @Test
     void delegatesAddChunksToLimitService() {
-        LandClaimsLimitService limitService = mock(LandClaimsLimitService.class);
+        HavenClaimsLimitService limitService = mock(HavenClaimsLimitService.class);
         UUID playerId = UUID.randomUUID();
         ClaimChunkLimitEffect effect = new ClaimChunkLimitEffect(limitService, 5);
 
@@ -297,7 +297,7 @@ class ClaimChunkLimitEffectTest {
 
     @Test
     void rejectsZeroChunks() {
-        LandClaimsLimitService limitService = mock(LandClaimsLimitService.class);
+        HavenClaimsLimitService limitService = mock(HavenClaimsLimitService.class);
         assertThrows(IllegalArgumentException.class,
             () -> new ClaimChunkLimitEffect(limitService, 0));
     }
@@ -342,7 +342,7 @@ public record PurchaseResult(boolean success, int newLimit, double cost, String 
 // havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimChunkLimitEffect.java
 package dev.invisiblespiders.havenvault.plugin.claim;
 
-import com.nick.landclaims.api.service.LandClaimsLimitService;
+import com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService;
 import dev.invisiblespiders.havenvault.api.service.HavenVaultBankService;
 import dev.invisiblespiders.havenvault.api.service.HavenVaultStorageService;
 import dev.invisiblespiders.havenvault.plugin.bank.upgrade.UpgradeEffect;
@@ -351,10 +351,10 @@ import java.util.UUID;
 
 public final class ClaimChunkLimitEffect implements UpgradeEffect {
 
-    private final LandClaimsLimitService limitService;
+    private final HavenClaimsLimitService limitService;
     private final int chunks;
 
-    public ClaimChunkLimitEffect(LandClaimsLimitService limitService, int chunks) {
+    public ClaimChunkLimitEffect(HavenClaimsLimitService limitService, int chunks) {
         this.limitService = Objects.requireNonNull(limitService, "limitService");
         if (chunks < 1) throw new IllegalArgumentException("chunks must be >= 1");
         this.chunks = chunks;
@@ -448,7 +448,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.nick.landclaims.api.service.LandClaimsLimitService;
+import com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
 import java.util.List;
 import java.util.UUID;
@@ -459,27 +459,27 @@ import org.junit.jupiter.api.Test;
 
 class ClaimChunkUpgradeServiceTest {
 
-    private final LandClaimsLimitService limitService = mock(LandClaimsLimitService.class);
+    private final HavenClaimsLimitService limitService = mock(HavenClaimsLimitService.class);
     private final HavenEconomyService economy = mock(HavenEconomyService.class);
     private final Player player = mock(Player.class);
     private final UUID playerId = UUID.randomUUID();
 
-    private ClaimChunkUpgradeService service(boolean withLandClaims) {
+    private ClaimChunkUpgradeService service(boolean withHavenClaims) {
         ClaimUpgradeConfig config = new ClaimUpgradeConfig(
             true, 500.0, 1.1, 10, "money", Material.DIAMOND, 1,
             List.of(new ClaimUpgradeConfig.BulkOption(1, 0.0))
         );
         return new ClaimChunkUpgradeService(
-            config, withLandClaims ? limitService : null, Logger.getLogger("test"));
+            config, withHavenClaims ? limitService : null, Logger.getLogger("test"));
     }
 
     @Test
-    void isAvailableFalseWhenLandClaimsAbsent() {
+    void isAvailableFalseWhenHavenClaimsAbsent() {
         assertFalse(service(false).isAvailable());
     }
 
     @Test
-    void isAvailableTrueWhenLandClaimsPresent() {
+    void isAvailableTrueWhenHavenClaimsPresent() {
         assertTrue(service(true).isAvailable());
     }
 
@@ -558,7 +558,7 @@ Pricing formula: `cost(L, n) = Σ_{i=0}^{n-1} [baseCost × multiplier^(L-D+i)] �
 // havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimChunkUpgradeService.java
 package dev.invisiblespiders.havenvault.plugin.claim;
 
-import com.nick.landclaims.api.service.LandClaimsLimitService;
+import com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -572,14 +572,14 @@ import org.bukkit.inventory.ItemStack;
 public final class ClaimChunkUpgradeService {
 
     private final ClaimUpgradeConfig config;
-    private final LandClaimsLimitService limitService;
+    private final HavenClaimsLimitService limitService;
     private final Logger log;
 
     public ClaimChunkUpgradeService(ClaimUpgradeConfig config,
-                                    LandClaimsLimitService limitService,
+                                    HavenClaimsLimitService limitService,
                                     Logger log) {
         this.config = Objects.requireNonNull(config, "config");
-        this.limitService = limitService; // nullable — null means LandClaims absent
+        this.limitService = limitService; // nullable — null means HavenClaims absent
         this.log = Objects.requireNonNull(log, "log");
     }
 
@@ -1007,7 +1007,7 @@ At the top of `show()`, after the existing `List<ActionButton> buttons = new Arr
 
 First add these imports to `UpgradesDialog.java`:
 ```java
-import com.nick.landclaims.api.service.LandClaimsLimitService;
+import com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService;
 import dev.invisiblespiders.havenvault.plugin.claim.ClaimChunkUpgradeService;
 import dev.invisiblespiders.havenvault.plugin.claim.ClaimUpgradeConfig;
 import dev.invisiblespiders.havenvault.plugin.claim.PurchaseResult;
@@ -1019,9 +1019,9 @@ After the existing `for (UpgradeDefinition def : upgrades)` loop (which fills `b
 if (claimUpgradeService != null && claimUpgradeService.isAvailable()) {
     ClaimUpgradeConfig claimCfg = claimUpgradeService.config();
     int currentLimit = claimUpgradeService.isAvailable()
-        ? ((com.nick.landclaims.api.service.LandClaimsLimitService)
+        ? ((com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService)
            org.bukkit.Bukkit.getServicesManager()
-               .load(com.nick.landclaims.api.service.LandClaimsLimitService.class))
+               .load(com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService.class))
            .getLimit(player.getUniqueId())
         : claimCfg.defaultLimit();
 ```
@@ -1133,7 +1133,7 @@ if (claimUpgradeService != null && claimUpgradeService.isAvailable()
 
 Add imports at top of file:
 ```java
-import com.nick.landclaims.api.service.LandClaimsLimitService;
+import com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService;
 import dev.invisiblespiders.havenvault.plugin.claim.ClaimChunkUpgradeService;
 import dev.invisiblespiders.havenvault.plugin.claim.ClaimUpgradeConfig;
 ```
@@ -1141,19 +1141,19 @@ import dev.invisiblespiders.havenvault.plugin.claim.ClaimUpgradeConfig;
 In `onEnable()`, after `HavenEconomyService economyService = resolveEconomy();`, add:
 
 ```java
-LandClaimsLimitService landClaimsLimitService = resolveLandClaims();
+HavenClaimsLimitService havenClaimsLimitService = resolveHavenClaims();
 ClaimUpgradeConfig claimUpgradeConfig = ClaimUpgradeConfig.from(getConfig());
 ClaimChunkUpgradeService claimUpgradeService =
-    new ClaimChunkUpgradeService(claimUpgradeConfig, landClaimsLimitService, getLogger());
+    new ClaimChunkUpgradeService(claimUpgradeConfig, havenClaimsLimitService, getLogger());
 ```
 
 Add the resolver method at the bottom of the class (alongside `resolveEconomy()`):
 ```java
-private LandClaimsLimitService resolveLandClaims() {
-    LandClaimsLimitService svc =
-        getServer().getServicesManager().load(LandClaimsLimitService.class);
+private HavenClaimsLimitService resolveHavenClaims() {
+    HavenClaimsLimitService svc =
+        getServer().getServicesManager().load(HavenClaimsLimitService.class);
     if (svc == null) {
-        getLogger().info("LandClaims not installed — claim chunk upgrades disabled.");
+        getLogger().info("HavenClaims not installed — claim chunk upgrades disabled.");
     }
     return svc;
 }
@@ -1190,19 +1190,19 @@ VaultCommand vaultCommand = new VaultCommand(
 // NEW
 VaultCommand vaultCommand = new VaultCommand(
     this, backupManager, storageService, bankService, armoryService,
-    upgradeRegistryRef::get, this::resolvePlayer, landClaimsLimitService);
+    upgradeRegistryRef::get, this::resolvePlayer, havenClaimsLimitService);
 ```
 
 - [ ] **Step 3: Update `VaultCommand.java`**
 
 Add imports:
 ```java
-import com.nick.landclaims.api.service.LandClaimsLimitService;
+import com.invisiblespiders.havenclaims.api.service.HavenClaimsLimitService;
 ```
 
 Add field after `playerResolver`:
 ```java
-private final LandClaimsLimitService landClaimsLimitService; // nullable
+private final HavenClaimsLimitService havenClaimsLimitService; // nullable
 ```
 
 Update constructor:
@@ -1227,11 +1227,11 @@ public VaultCommand(
     HavenVaultArmoryService armoryService,
     Supplier<UpgradeRegistry> upgradeRegistry,
     Function<String, Optional<UUID>> playerResolver,
-    LandClaimsLimitService landClaimsLimitService
+    HavenClaimsLimitService havenClaimsLimitService
 )
 ```
 
-Add `this.landClaimsLimitService = landClaimsLimitService;` in constructor body.
+Add `this.havenClaimsLimitService = havenClaimsLimitService;` in constructor body.
 
 In `handleAdmin()`, add `claim` case and update usage message:
 ```java
@@ -1270,8 +1270,8 @@ private void handleAdminClaim(CommandSender sender, String[] args) {
         sender.sendMessage("You do not have permission to administer claim limits.");
         return;
     }
-    if (landClaimsLimitService == null) {
-        sender.sendMessage("LandClaims is not installed.");
+    if (havenClaimsLimitService == null) {
+        sender.sendMessage("HavenClaims is not installed.");
         return;
     }
     if (args.length < 3 || !args[2].equalsIgnoreCase("limit")) {
@@ -1306,18 +1306,18 @@ private void handleAdminClaimLimit(CommandSender sender, String[] args) {
     }
     switch (subcommand) {
         case "set" -> {
-            landClaimsLimitService.setLimit(playerId.get(), amount);
+            havenClaimsLimitService.setLimit(playerId.get(), amount);
             sender.sendMessage("Set " + target + " claim chunk limit to " + amount + ".");
         }
         case "add" -> {
-            landClaimsLimitService.addChunks(playerId.get(), amount);
-            int newLimit = landClaimsLimitService.getLimit(playerId.get());
+            havenClaimsLimitService.addChunks(playerId.get(), amount);
+            int newLimit = havenClaimsLimitService.getLimit(playerId.get());
             sender.sendMessage("Added " + amount + " chunk(s) to " + target
                 + ". New limit: " + newLimit + ".");
         }
         case "remove" -> {
-            landClaimsLimitService.removeChunks(playerId.get(), amount);
-            int newLimit = landClaimsLimitService.getLimit(playerId.get());
+            havenClaimsLimitService.removeChunks(playerId.get(), amount);
+            int newLimit = havenClaimsLimitService.getLimit(playerId.get());
             sender.sendMessage("Removed " + amount + " chunk(s) from " + target
                 + ". New limit: " + newLimit + ".");
         }
@@ -1337,16 +1337,16 @@ private Optional<UUID> resolveId(String arg) {
 
 - [ ] **Step 4: Update `plugin.yml`**
 
-Add `softdepend: [LandClaims]` after the existing `depend:` block:
+Add `softdepend: [HavenClaims]` after the existing `depend:` block:
 ```yaml
 softdepend:
-  - LandClaims
+  - HavenClaims
 ```
 
 Add `havenvault.admin.claim` permission inside the `permissions:` block (after `havenvault.admin.backup`):
 ```yaml
   havenvault.admin.claim:
-    description: Allows administration of LandClaims chunk limits via HavenVault.
+    description: Allows administration of HavenClaims chunk limits via HavenVault.
     default: op
 ```
 
@@ -1398,7 +1398,7 @@ git commit -m "feat: add claim chunk upgrade dialog section and admin commands"
 | §8 plugin.yml softdepend | B5 |
 | §9 Dialog UI claim section | B5 |
 | §9 Admin commands /vault admin claim limit | B5 |
-| Availability check (null LandClaims) | B3 isAvailable() + B5 HavenVaultPlugin |
+| Availability check (null HavenClaims) | B3 isAvailable() + B5 HavenVaultPlugin |
 | Currency: money/xp/item | B3 canAfford/deduct/refund |
 | Bulk options with discount | B1 BulkOption + B3 computeCost |
 
@@ -1411,4 +1411,4 @@ No "TBD", "TODO", or "implement later" found. All code blocks are complete.
 - `ClaimUpgradeConfig.BulkOption` used consistently across B1, B3, B5.
 - `ClaimChunkUpgradeService.computeCost()` is static; `computeCostForPlayer()` delegates to it — both used in B3 tests and B5 dialog.
 - `ClaimChunkUpgradeService.getCurrentLimit(UUID)` — added in B5 Step 1 and the method must be added to the class in B5 (the class is created in B3; the new method must be added there when Step 1 of B5 runs).
-- `LandClaimsLimitService` methods used: `getLimit(UUID)`, `setLimit(UUID, int)`, `addChunks(UUID, int)`, `removeChunks(UUID, int)` — all defined in the Phase A API interface.
+- `HavenClaimsLimitService` methods used: `getLimit(UUID)`, `setLimit(UUID, int)`, `addChunks(UUID, int)`, `removeChunks(UUID, int)` — all defined in the Phase A API interface.

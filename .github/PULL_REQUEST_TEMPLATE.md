@@ -6,7 +6,7 @@
 
 - [ ] `./gradlew.bat build --console=plain`
 
-## LandClaims Update Checklist
+## HavenClaims Update Checklist
 
 - [ ] Commands changed: update `README.md` command table and command help messages.
 - [ ] Permissions changed: update `plugin.yml`, `permissions.yml`, and `README.md`.

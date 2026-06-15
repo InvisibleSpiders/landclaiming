@@ -1,0 +1,68 @@
+name: HavenClaims
+version: '${version}'
+main: com.invisiblespiders.havenclaims.plugin.HavenClaimsPlugin
+api-version: '26.1.2'
+author: InvisibleSpiders
+description: Chunk-based land claiming with configurable protections.
+depend:
+  - HavenCore
+softdepend:
+  - VaultUnlocked
+commands:
+  claim:
+    description: Opens HavenClaims commands and menus.
+    usage: /claim
+    aliases: [claims, lc]
+permissions:
+  havenclaims.use:
+    description: Allows basic HavenClaims usage.
+    default: true
+  havenclaims.claim:
+    description: Allows creating player claims.
+    default: true
+  havenclaims.gui:
+    description: Allows opening claim menus.
+    default: true
+  havenclaims.tool.use:
+    description: Allows using the claim tool.
+    default: true
+  havenclaims.tool.craft:
+    description: Allows crafting the claim tool.
+    default: true
+  havenclaims.tool.recharge:
+    description: Allows recharging the claim tool.
+    default: true
+  havenclaims.member.manage:
+    description: Allows managing claim members.
+    default: true
+  havenclaims.deny.manage:
+    description: Allows managing claim denied-player lists.
+    default: true
+  havenclaims.bypass.claim-limit:
+    description: Bypasses claim allowance limits.
+    default: op
+  havenclaims.bypass.claim-buffer:
+    description: Bypasses claim buffer distance checks.
+    default: op
+  havenclaims.bypass.protection:
+    description: Bypasses claim protection checks.
+    default: op
+  havenclaims.bypass.entry-deny:
+    description: Bypasses claim denied-entry checks.
+    default: op
+  havenclaims.admin:
+    description: Grants all HavenClaims admin permissions.
+    default: op
+    children:
+      havenclaims.admin.claim.create: true
+      havenclaims.admin.claim.edit: true
+      havenclaims.admin.claim.delete: true
+      havenclaims.admin.claim.list: true
+      havenclaims.admin.claim.teleport: true
+      havenclaims.admin.userclaims.view: true
+      havenclaims.admin.userclaims.edit: true
+      havenclaims.admin.userclaims.delete: true
+      havenclaims.admin.userclaims.teleport: true
+      havenclaims.admin.userclaims.transfer: true
+      havenclaims.admin.limit: true
+      havenclaims.admin.reload: true

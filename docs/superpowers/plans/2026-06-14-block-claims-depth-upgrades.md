@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move LandClaims from chunk-only claims to block-area 2D claims with configurable vertical protection and HavenVault per-claim depth upgrades.
+**Goal:** Move HavenClaims from chunk-only claims to block-area 2D claims with configurable vertical protection and HavenVault per-claim depth upgrades.
 
-**Architecture:** LandClaims owns claim geometry, protection checks, storage, migrations, and ServicesManager APIs. HavenVault owns pricing, requirements, payment, refund handling, and Dialog flows. Runtime lookups use a chunk-spatial index over exact block regions so protection checks stay fast while borders and limits become block-precise.
+**Architecture:** HavenClaims owns claim geometry, protection checks, storage, migrations, and ServicesManager APIs. HavenVault owns pricing, requirements, payment, refund handling, and Dialog flows. Runtime lookups use a chunk-spatial index over exact block regions so protection checks stay fast while borders and limits become block-precise.
 
 **Tech Stack:** Java 25, Paper API 26.1.2, Gradle Kotlin DSL, JUnit 5, AssertJ, Mockito, HavenCore `HavenDataSource`, Bukkit `ServicesManager`, Paper Dialog API.
 
@@ -14,70 +14,70 @@
 
 The approved design spans two plugins and several independent surfaces. Execute it as separate PRs in this order:
 
-1. LandClaims API and model foundation.
-2. LandClaims storage migration and repository support.
-3. LandClaims protection, selection, visuals, and menus.
+1. HavenClaims API and model foundation.
+2. HavenClaims storage migration and repository support.
+3. HavenClaims protection, selection, visuals, and menus.
 4. HavenVault claim-block allowance upgrades.
 5. HavenVault selected-claim depth upgrades.
-6. Cross-plugin routing from LandClaims claim menu to HavenVault.
+6. Cross-plugin routing from HavenClaims claim menu to HavenVault.
 
 Each task below is a mergeable unit with its own tests and commit.
 
 ## File Structure
 
-LandClaims API:
+HavenClaims API:
 
-- Create `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimRegionView.java`: public immutable block-region view.
-- Create `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimVerticalProtection.java`: public vertical protection DTO.
-- Create `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimUpgradeTarget.java`: public HavenVault target DTO.
-- Create `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimUpgradeResult.java`: public upgrade result DTO.
-- Create `landclaims-api/src/main/java/com/nick/landclaims/api/limit/LandClaimsAllowanceService.java`: block allowance service.
-- Create `landclaims-api/src/main/java/com/nick/landclaims/api/upgrade/LandClaimsUpgradeService.java`: per-claim upgrade service.
-- Modify `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimView.java`: add `regions()` while keeping `chunks()` for compatibility.
+- Create `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimRegionView.java`: public immutable block-region view.
+- Create `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimVerticalProtection.java`: public vertical protection DTO.
+- Create `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimUpgradeTarget.java`: public HavenVault target DTO.
+- Create `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimUpgradeResult.java`: public upgrade result DTO.
+- Create `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/limit/HavenClaimsAllowanceService.java`: block allowance service.
+- Create `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/upgrade/HavenClaimsUpgradeService.java`: per-claim upgrade service.
+- Modify `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimView.java`: add `regions()` while keeping `chunks()` for compatibility.
 
-LandClaims plugin:
+HavenClaims plugin:
 
-- Create `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimRegion.java`: internal region record and geometry helpers.
-- Create `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/VerticalProtectionConfig.java`: config parser and world bounds resolver.
-- Modify `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/Claim.java`: store regions and keep legacy chunks derived during compatibility.
-- Modify `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimIndex.java`: index regions by overlapping chunks.
-- Modify `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimService.java`: build block rectangles and buffer checks.
-- Modify `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/storage/sql/SqlClaimRepository.java`: save/load `claim_regions`.
-- Create `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/AllowanceService.java`: block allowance implementation.
-- Modify `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/LimitService.java`: compatibility adapter over block allowance.
-- Create `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/upgrade/ClaimUpgradeService.java`: LandClaimsUpgradeService implementation.
-- Modify `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/LandClaimsPlugin.java`: register allowance and upgrade APIs.
-- Modify `landclaims-plugin/src/main/resources/db/migrations/landclaims/migrations.index`: append V5 migration.
-- Create `landclaims-plugin/src/main/resources/db/migrations/landclaims/V5__block_claim_regions.sql`: block-region schema and migration from chunks.
+- Create `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimRegion.java`: internal region record and geometry helpers.
+- Create `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/VerticalProtectionConfig.java`: config parser and world bounds resolver.
+- Modify `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/Claim.java`: store regions and keep legacy chunks derived during compatibility.
+- Modify `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimIndex.java`: index regions by overlapping chunks.
+- Modify `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimService.java`: build block rectangles and buffer checks.
+- Modify `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/storage/sql/SqlClaimRepository.java`: save/load `claim_regions`.
+- Create `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/AllowanceService.java`: block allowance implementation.
+- Modify `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/LimitService.java`: compatibility adapter over block allowance.
+- Create `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/upgrade/ClaimUpgradeService.java`: HavenClaimsUpgradeService implementation.
+- Modify `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/HavenClaimsPlugin.java`: register allowance and upgrade APIs.
+- Modify `havenclaims-plugin/src/main/resources/db/migrations/havenclaims/migrations.index`: append V5 migration.
+- Create `havenclaims-plugin/src/main/resources/db/migrations/havenclaims/V5__block_claim_regions.sql`: block-region schema and migration from chunks.
 - Modify selection, protection, visual, command, and UI classes after the storage/model foundation lands.
 
 HavenVault:
 
 - Modify `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimLimitService.java`: replace chunk vocabulary with block allowance abstraction.
-- Create `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimAllowanceService.java`: reflection wrapper over LandClaimsAllowanceService.
+- Create `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimAllowanceService.java`: reflection wrapper over HavenClaimsAllowanceService.
 - Create `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimDepthUpgradeService.java`: selected-claim purchase orchestration.
 - Modify `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimUpgradeConfig.java`: add `allowance` and `depth` sections.
 - Modify `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/dialog/UpgradesDialog.java`: render allowance and selected-claim depth sections.
-- Modify `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/HavenVaultPlugin.java`: resolve new LandClaims services.
+- Modify `havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/HavenVaultPlugin.java`: resolve new HavenClaims services.
 
 ---
 
-### Task 1: LandClaims Public API Foundation
+### Task 1: HavenClaims Public API Foundation
 
 **Files:**
-- Create: `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimRegionView.java`
-- Create: `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimVerticalProtection.java`
-- Create: `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimUpgradeTarget.java`
-- Create: `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimUpgradeResult.java`
-- Create: `landclaims-api/src/main/java/com/nick/landclaims/api/limit/LandClaimsAllowanceService.java`
-- Create: `landclaims-api/src/main/java/com/nick/landclaims/api/upgrade/LandClaimsUpgradeService.java`
-- Modify: `landclaims-api/src/main/java/com/nick/landclaims/api/claim/ClaimView.java`
-- Test: `landclaims-api/src/test/java/com/nick/landclaims/api/claim/ClaimRegionViewTest.java`
+- Create: `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimRegionView.java`
+- Create: `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimVerticalProtection.java`
+- Create: `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimUpgradeTarget.java`
+- Create: `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimUpgradeResult.java`
+- Create: `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/limit/HavenClaimsAllowanceService.java`
+- Create: `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/upgrade/HavenClaimsUpgradeService.java`
+- Modify: `havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim/ClaimView.java`
+- Test: `havenclaims-api/src/test/java/com/invisiblespiders/havenclaims/api/claim/ClaimRegionViewTest.java`
 
 - [ ] **Step 1: Write the failing API DTO test**
 
 ```java
-package com.nick.landclaims.api.claim;
+package com.invisiblespiders.havenclaims.api.claim;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -110,7 +110,7 @@ class ClaimRegionViewTest {
 
 - [ ] **Step 2: Run the test and verify it fails**
 
-Run: `.\gradlew.bat :landclaims-api:test --tests "com.nick.landclaims.api.claim.ClaimRegionViewTest"`
+Run: `.\gradlew.bat :havenclaims-api:test --tests "com.invisiblespiders.havenclaims.api.claim.ClaimRegionViewTest"`
 
 Expected: FAIL because `ClaimRegionView` does not exist.
 
@@ -119,7 +119,7 @@ Expected: FAIL because `ClaimRegionView` does not exist.
 `ClaimRegionView.java`:
 
 ```java
-package com.nick.landclaims.api.claim;
+package com.invisiblespiders.havenclaims.api.claim;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -151,7 +151,7 @@ public record ClaimRegionView(
 `ClaimVerticalProtection.java`:
 
 ```java
-package com.nick.landclaims.api.claim;
+package com.invisiblespiders.havenclaims.api.claim;
 
 import java.util.UUID;
 
@@ -167,7 +167,7 @@ public record ClaimVerticalProtection(
 `ClaimUpgradeTarget.java`:
 
 ```java
-package com.nick.landclaims.api.claim;
+package com.invisiblespiders.havenclaims.api.claim;
 
 import java.util.UUID;
 
@@ -184,7 +184,7 @@ public record ClaimUpgradeTarget(
 `ClaimUpgradeResult.java`:
 
 ```java
-package com.nick.landclaims.api.claim;
+package com.invisiblespiders.havenclaims.api.claim;
 
 public record ClaimUpgradeResult(boolean success, String message, ClaimVerticalProtection protection) {
     public static ClaimUpgradeResult success(ClaimVerticalProtection protection) {
@@ -197,14 +197,14 @@ public record ClaimUpgradeResult(boolean success, String message, ClaimVerticalP
 }
 ```
 
-`LandClaimsAllowanceService.java`:
+`HavenClaimsAllowanceService.java`:
 
 ```java
-package com.nick.landclaims.api.limit;
+package com.invisiblespiders.havenclaims.api.limit;
 
 import java.util.UUID;
 
-public interface LandClaimsAllowanceService {
+public interface HavenClaimsAllowanceService {
     int getBlockLimit(UUID playerId);
     void setBlockLimit(UUID playerId, int blocks);
     void addBlocks(UUID playerId, int blocks);
@@ -212,19 +212,19 @@ public interface LandClaimsAllowanceService {
 }
 ```
 
-`LandClaimsUpgradeService.java`:
+`HavenClaimsUpgradeService.java`:
 
 ```java
-package com.nick.landclaims.api.upgrade;
+package com.invisiblespiders.havenclaims.api.upgrade;
 
-import com.nick.landclaims.api.claim.ClaimUpgradeResult;
-import com.nick.landclaims.api.claim.ClaimUpgradeTarget;
-import com.nick.landclaims.api.claim.ClaimVerticalProtection;
+import com.invisiblespiders.havenclaims.api.claim.ClaimUpgradeResult;
+import com.invisiblespiders.havenclaims.api.claim.ClaimUpgradeTarget;
+import com.invisiblespiders.havenclaims.api.claim.ClaimVerticalProtection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface LandClaimsUpgradeService {
+public interface HavenClaimsUpgradeService {
     List<ClaimUpgradeTarget> getUpgradeableClaims(UUID playerId);
     Optional<ClaimVerticalProtection> getVerticalProtection(UUID claimId);
     ClaimUpgradeResult expandClaimDepth(UUID playerId, UUID claimId, int blocksDown);
@@ -240,33 +240,33 @@ Set<ClaimRegionView> regions();
 
 - [ ] **Step 4: Run API tests**
 
-Run: `.\gradlew.bat :landclaims-api:test`
+Run: `.\gradlew.bat :havenclaims-api:test`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add landclaims-api/src/main/java/com/nick/landclaims/api/claim \
-        landclaims-api/src/main/java/com/nick/landclaims/api/limit \
-        landclaims-api/src/main/java/com/nick/landclaims/api/upgrade \
-        landclaims-api/src/test/java/com/nick/landclaims/api/claim/ClaimRegionViewTest.java
+git add havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/claim \
+        havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/limit \
+        havenclaims-api/src/main/java/com/invisiblespiders/havenclaims/api/upgrade \
+        havenclaims-api/src/test/java/com/invisiblespiders/havenclaims/api/claim/ClaimRegionViewTest.java
 git commit -m "Add block claim public APIs"
 ```
 
 ### Task 2: Internal Claim Region Model and Vertical Config
 
 **Files:**
-- Create: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimRegion.java`
-- Create: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/VerticalProtectionConfig.java`
-- Modify: `landclaims-plugin/src/main/resources/config.yml`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/claim/ClaimRegionTest.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/claim/VerticalProtectionConfigTest.java`
+- Create: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimRegion.java`
+- Create: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/VerticalProtectionConfig.java`
+- Modify: `havenclaims-plugin/src/main/resources/config.yml`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimRegionTest.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/claim/VerticalProtectionConfigTest.java`
 
 - [ ] **Step 1: Write failing model tests**
 
 ```java
-package com.nick.landclaims.plugin.claim;
+package com.invisiblespiders.havenclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -301,7 +301,7 @@ class ClaimRegionTest {
 ```
 
 ```java
-package com.nick.landclaims.plugin.claim;
+package com.invisiblespiders.havenclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -328,16 +328,16 @@ class VerticalProtectionConfigTest {
 
 - [ ] **Step 2: Run tests and verify they fail**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.claim.ClaimRegionTest" --tests "com.nick.landclaims.plugin.claim.VerticalProtectionConfigTest"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.claim.ClaimRegionTest" --tests "com.invisiblespiders.havenclaims.plugin.claim.VerticalProtectionConfigTest"`
 
 Expected: FAIL because `ClaimRegion` and `VerticalProtectionConfig` do not exist.
 
 - [ ] **Step 3: Add `ClaimRegion`**
 
 ```java
-package com.nick.landclaims.plugin.claim;
+package com.invisiblespiders.havenclaims.plugin.claim;
 
-import com.nick.landclaims.api.claim.ClaimRegionView;
+import com.invisiblespiders.havenclaims.api.claim.ClaimRegionView;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -395,7 +395,7 @@ public record ClaimRegion(
 - [ ] **Step 4: Add vertical config parser**
 
 ```java
-package com.nick.landclaims.plugin.claim;
+package com.invisiblespiders.havenclaims.plugin.claim;
 
 import java.util.Map;
 import java.util.Objects;
@@ -468,30 +468,30 @@ claims:
 
 - [ ] **Step 5: Run tests**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.claim.ClaimRegionTest" --tests "com.nick.landclaims.plugin.claim.VerticalProtectionConfigTest"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.claim.ClaimRegionTest" --tests "com.invisiblespiders.havenclaims.plugin.claim.VerticalProtectionConfigTest"`
 
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimRegion.java \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/VerticalProtectionConfig.java \
-        landclaims-plugin/src/main/resources/config.yml \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/claim/ClaimRegionTest.java \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/claim/VerticalProtectionConfigTest.java
+git add havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimRegion.java \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/VerticalProtectionConfig.java \
+        havenclaims-plugin/src/main/resources/config.yml \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimRegionTest.java \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/claim/VerticalProtectionConfigTest.java
 git commit -m "Add block claim region model"
 ```
 
 ### Task 3: SQL Migration and Repository Region Support
 
 **Files:**
-- Create: `landclaims-plugin/src/main/resources/db/migrations/landclaims/V5__block_claim_regions.sql`
-- Modify: `landclaims-plugin/src/main/resources/db/migrations/landclaims/migrations.index`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/Claim.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/storage/sql/SqlClaimRepository.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/storage/sql/SqlClaimRepositoryTest.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/storage/sql/LandClaimsMigrationResourceTest.java`
+- Create: `havenclaims-plugin/src/main/resources/db/migrations/havenclaims/V5__block_claim_regions.sql`
+- Modify: `havenclaims-plugin/src/main/resources/db/migrations/havenclaims/migrations.index`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/Claim.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/storage/sql/SqlClaimRepository.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/storage/sql/SqlClaimRepositoryTest.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/storage/sql/HavenClaimsMigrationResourceTest.java`
 
 - [ ] **Step 1: Write failing repository test**
 
@@ -501,7 +501,7 @@ Add to `SqlClaimRepositoryTest`:
 @Test
 void savesAndLoadsBlockRegions(@TempDir Path tempDirectory) throws Exception {
     SQLiteDataSource dataSource = new SQLiteDataSource();
-    dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+    dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("havenclaims.db"));
     applyMigrations(dataSource);
     SqlClaimRepository repository = new SqlClaimRepository(dataSource);
     UUID worldId = UUID.randomUUID();
@@ -526,7 +526,7 @@ void savesAndLoadsBlockRegions(@TempDir Path tempDirectory) throws Exception {
 
 - [ ] **Step 2: Run test and verify it fails**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.storage.sql.SqlClaimRepositoryTest.savesAndLoadsBlockRegions"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.storage.sql.SqlClaimRepositoryTest.savesAndLoadsBlockRegions"`
 
 Expected: FAIL because `Claim` has no region constructor and repository does not save `claim_regions`.
 
@@ -618,36 +618,36 @@ When loading, prefer `claim_regions` if rows exist. If no regions exist for a cl
 
 - [ ] **Step 6: Run repository and migration tests**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.storage.sql.SqlClaimRepositoryTest" --tests "com.nick.landclaims.plugin.storage.sql.LandClaimsMigrationResourceTest"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.storage.sql.SqlClaimRepositoryTest" --tests "com.invisiblespiders.havenclaims.plugin.storage.sql.HavenClaimsMigrationResourceTest"`
 
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add landclaims-plugin/src/main/resources/db/migrations/landclaims/V5__block_claim_regions.sql \
-        landclaims-plugin/src/main/resources/db/migrations/landclaims/migrations.index \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/Claim.java \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/storage/sql/SqlClaimRepository.java \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/storage/sql
+git add havenclaims-plugin/src/main/resources/db/migrations/havenclaims/V5__block_claim_regions.sql \
+        havenclaims-plugin/src/main/resources/db/migrations/havenclaims/migrations.index \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/Claim.java \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/storage/sql/SqlClaimRepository.java \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/storage/sql
 git commit -m "Persist block claim regions"
 ```
 
 ### Task 4: Block Allowance Service and Limit Compatibility
 
 **Files:**
-- Create: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/AllowanceService.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/ClaimLimitRepository.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/SqlClaimLimitRepository.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/LimitService.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/LandClaimsPlugin.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/limit/AllowanceServiceTest.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/limit/LimitServiceTest.java`
+- Create: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/AllowanceService.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/ClaimLimitRepository.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/SqlClaimLimitRepository.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/LimitService.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/HavenClaimsPlugin.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/limit/AllowanceServiceTest.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/limit/LimitServiceTest.java`
 
 - [ ] **Step 1: Write failing allowance test**
 
 ```java
-package com.nick.landclaims.plugin.limit;
+package com.invisiblespiders.havenclaims.plugin.limit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -674,7 +674,7 @@ class AllowanceServiceTest {
 
 - [ ] **Step 2: Run test and verify it fails**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.limit.AllowanceServiceTest"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.limit.AllowanceServiceTest"`
 
 Expected: FAIL because `AllowanceService` and `getBlockLimit` do not exist.
 
@@ -693,13 +693,13 @@ Implement them in `SqlClaimLimitRepository` against `claim_player_limits.block_l
 - [ ] **Step 4: Add `AllowanceService`**
 
 ```java
-package com.nick.landclaims.plugin.limit;
+package com.invisiblespiders.havenclaims.plugin.limit;
 
-import com.nick.landclaims.api.limit.LandClaimsAllowanceService;
+import com.invisiblespiders.havenclaims.api.limit.HavenClaimsAllowanceService;
 import java.util.Objects;
 import java.util.UUID;
 
-public final class AllowanceService implements LandClaimsAllowanceService {
+public final class AllowanceService implements HavenClaimsAllowanceService {
     private int defaultBlockLimit;
     private final ClaimLimitRepository repository;
 
@@ -739,7 +739,7 @@ public final class AllowanceService implements LandClaimsAllowanceService {
 
 - [ ] **Step 5: Adapt `LimitService`**
 
-Keep `LandClaimsLimitService` working by translating chunks to blocks:
+Keep `HavenClaimsLimitService` working by translating chunks to blocks:
 
 ```java
 private static final int BLOCKS_PER_CHUNK = 256;
@@ -755,32 +755,32 @@ public void addChunks(UUID playerId, int chunks) {
 
 - [ ] **Step 6: Register API**
 
-In `LandClaimsPlugin`, create one `AllowanceService`, register `LandClaimsAllowanceService.class`, then construct `LimitService` as the compatibility wrapper.
+In `HavenClaimsPlugin`, create one `AllowanceService`, register `HavenClaimsAllowanceService.class`, then construct `LimitService` as the compatibility wrapper.
 
 - [ ] **Step 7: Run limit tests**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.limit.*"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.limit.*"`
 
 Expected: PASS.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/LandClaimsPlugin.java \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/limit
+git add havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/HavenClaimsPlugin.java \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/limit
 git commit -m "Add block allowance service"
 ```
 
 ### Task 5: Region Index and Protection Checks
 
 **Files:**
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimIndex.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/protection/ProtectionService.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/listener/ProtectionListener.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/claim/ClaimIndexTest.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/protection/ProtectionServiceTest.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/listener/ProtectionListenerTest.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimIndex.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/protection/ProtectionService.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/listener/ProtectionListener.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimIndexTest.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/protection/ProtectionServiceTest.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/listener/ProtectionListenerTest.java`
 
 - [ ] **Step 1: Write failing index test**
 
@@ -800,7 +800,7 @@ void findAtUsesExactBlockAndVerticalBounds() {
 
 - [ ] **Step 2: Run index test and verify it fails**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.claim.ClaimIndexTest.findAtUsesExactBlockAndVerticalBounds"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.claim.ClaimIndexTest.findAtUsesExactBlockAndVerticalBounds"`
 
 Expected: FAIL because `ClaimIndex.findAt(UUID, int, int, int)` does not exist.
 
@@ -826,32 +826,32 @@ Where listeners currently convert a `Location` to `ClaimChunk`, call the new blo
 
 - [ ] **Step 5: Run protection tests**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.claim.ClaimIndexTest" --tests "com.nick.landclaims.plugin.protection.ProtectionServiceTest" --tests "com.nick.landclaims.plugin.listener.ProtectionListenerTest"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.claim.ClaimIndexTest" --tests "com.invisiblespiders.havenclaims.plugin.protection.ProtectionServiceTest" --tests "com.invisiblespiders.havenclaims.plugin.listener.ProtectionListenerTest"`
 
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimIndex.java \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/protection/ProtectionService.java \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/listener/ProtectionListener.java \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/claim/ClaimIndexTest.java \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/protection/ProtectionServiceTest.java \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/listener/ProtectionListenerTest.java
+git add havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimIndex.java \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/protection/ProtectionService.java \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/listener/ProtectionListener.java \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimIndexTest.java \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/protection/ProtectionServiceTest.java \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/listener/ProtectionListenerTest.java
 git commit -m "Use block regions for protection lookups"
 ```
 
 ### Task 6: Claim Creation, Cost, Selection, and Border Visuals
 
 **Files:**
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/selection/SelectionService.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim/ClaimCreationService.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/ClaimCostService.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit/ClaimCostQuote.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/command/ClaimsCommand.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/visual/ChunkBorderPlanner.java`
-- Create: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/visual/BlockRegionBorderPlanner.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/selection/SelectionService.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim/ClaimCreationService.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/ClaimCostService.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit/ClaimCostQuote.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/command/ClaimsCommand.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/visual/ChunkBorderPlanner.java`
+- Create: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/visual/BlockRegionBorderPlanner.java`
 - Test: selection, creation, cost, command, and visual test classes.
 
 - [ ] **Step 1: Write failing cost test**
@@ -875,7 +875,7 @@ The assertion proves area is 200 blocks, not overlapping chunk count.
 
 - [ ] **Step 2: Run test and verify it fails**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.limit.ClaimCostServiceTest.quoteUsesClaimBlockAreaInsteadOfChunkCount"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.limit.ClaimCostServiceTest.quoteUsesClaimBlockAreaInsteadOfChunkCount"`
 
 Expected: FAIL because `quotePlayerClaim` does not accept regions and current quote uses chunk count.
 
@@ -900,7 +900,7 @@ Change player-facing text from chunks to claim blocks where area allowance is sh
 Run:
 
 ```bash
-.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.selection.*" --tests "com.nick.landclaims.plugin.claim.ClaimCreationServiceTest" --tests "com.nick.landclaims.plugin.limit.ClaimCostServiceTest" --tests "com.nick.landclaims.plugin.command.ClaimsCommandPermissionTest" --tests "com.nick.landclaims.plugin.visual.*"
+.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.selection.*" --tests "com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationServiceTest" --tests "com.invisiblespiders.havenclaims.plugin.limit.ClaimCostServiceTest" --tests "com.invisiblespiders.havenclaims.plugin.command.ClaimsCommandPermissionTest" --tests "com.invisiblespiders.havenclaims.plugin.visual.*"
 ```
 
 Expected: PASS.
@@ -908,25 +908,25 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add landclaims-plugin/src/main/java/com/nick/landclaims/plugin/selection \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/claim \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/limit \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/command \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/visual \
-        landclaims-plugin/src/main/resources/messages.yml \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin
+git add havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/selection \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/claim \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/limit \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/command \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/visual \
+        havenclaims-plugin/src/main/resources/messages.yml \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin
 git commit -m "Create and preview block area claims"
 ```
 
-### Task 7: LandClaims Per-Claim Upgrade Service and Menu Routing
+### Task 7: HavenClaims Per-Claim Upgrade Service and Menu Routing
 
 **Files:**
-- Create: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/upgrade/ClaimUpgradeService.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/LandClaimsPlugin.java`
-- Modify: `landclaims-plugin/src/main/java/com/nick/landclaims/plugin/ui/ClaimMenuService.java`
-- Modify: `landclaims-plugin/src/main/resources/messages.yml`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/upgrade/ClaimUpgradeServiceTest.java`
-- Test: `landclaims-plugin/src/test/java/com/nick/landclaims/plugin/ui/ClaimMenuServiceTest.java`
+- Create: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/upgrade/ClaimUpgradeService.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/HavenClaimsPlugin.java`
+- Modify: `havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/ui/ClaimMenuService.java`
+- Modify: `havenclaims-plugin/src/main/resources/messages.yml`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/upgrade/ClaimUpgradeServiceTest.java`
+- Test: `havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/ui/ClaimMenuServiceTest.java`
 
 - [ ] **Step 1: Write failing upgrade service test**
 
@@ -950,13 +950,13 @@ void expandClaimDepthLowersProtectedMinYForOwner() {
 
 - [ ] **Step 2: Run test and verify it fails**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.upgrade.ClaimUpgradeServiceTest"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.upgrade.ClaimUpgradeServiceTest"`
 
 Expected: FAIL because `ClaimUpgradeService` does not exist.
 
 - [ ] **Step 3: Implement service**
 
-Implement `LandClaimsUpgradeService`. Validate:
+Implement `HavenClaimsUpgradeService`. Validate:
 
 - Player owns the claim.
 - Claim has at least one region.
@@ -966,11 +966,11 @@ Implement `LandClaimsUpgradeService`. Validate:
 
 - [ ] **Step 4: Register service**
 
-In `LandClaimsPlugin.onEnable`, register:
+In `HavenClaimsPlugin.onEnable`, register:
 
 ```java
 getServer().getServicesManager().register(
-        LandClaimsUpgradeService.class, claimUpgradeService, this, ServicePriority.Normal);
+        HavenClaimsUpgradeService.class, claimUpgradeService, this, ServicePriority.Normal);
 ```
 
 Unregister it in `onDisable`.
@@ -987,19 +987,19 @@ This command target is implemented in HavenVault Task 9.
 
 - [ ] **Step 6: Run tests**
 
-Run: `.\gradlew.bat :landclaims-plugin:test --tests "com.nick.landclaims.plugin.upgrade.ClaimUpgradeServiceTest" --tests "com.nick.landclaims.plugin.ui.ClaimMenuServiceTest"`
+Run: `.\gradlew.bat :havenclaims-plugin:test --tests "com.invisiblespiders.havenclaims.plugin.upgrade.ClaimUpgradeServiceTest" --tests "com.invisiblespiders.havenclaims.plugin.ui.ClaimMenuServiceTest"`
 
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add landclaims-plugin/src/main/java/com/nick/landclaims/plugin/upgrade \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/LandClaimsPlugin.java \
-        landclaims-plugin/src/main/java/com/nick/landclaims/plugin/ui/ClaimMenuService.java \
-        landclaims-plugin/src/main/resources/messages.yml \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/upgrade \
-        landclaims-plugin/src/test/java/com/nick/landclaims/plugin/ui/ClaimMenuServiceTest.java
+git add havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/upgrade \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/HavenClaimsPlugin.java \
+        havenclaims-plugin/src/main/java/com/invisiblespiders/havenclaims/plugin/ui/ClaimMenuService.java \
+        havenclaims-plugin/src/main/resources/messages.yml \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/upgrade \
+        havenclaims-plugin/src/test/java/com/invisiblespiders/havenclaims/plugin/ui/ClaimMenuServiceTest.java
 git commit -m "Expose claim depth upgrade API"
 ```
 
@@ -1008,7 +1008,7 @@ git commit -m "Expose claim depth upgrade API"
 **Files:**
 - Modify: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimUpgradeConfig.java`
 - Create: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimAllowanceService.java`
-- Create: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/BukkitLandClaimsAllowanceService.java`
+- Create: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/BukkitHavenClaimsAllowanceService.java`
 - Modify: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimChunkUpgradeService.java`
 - Modify: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/dialog/UpgradesDialog.java`
 - Test: `HavenVault-review/havenvault-plugin/src/test/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimUpgradeConfigTest.java`
@@ -1065,7 +1065,7 @@ public interface ClaimAllowanceService {
 }
 ```
 
-`BukkitLandClaimsAllowanceService` should reflectively resolve `com.nick.landclaims.api.limit.LandClaimsAllowanceService`.
+`BukkitHavenClaimsAllowanceService` should reflectively resolve `com.invisiblespiders.havenclaims.api.limit.HavenClaimsAllowanceService`.
 
 - [ ] **Step 5: Replace chunk purchase service wording**
 
@@ -1091,7 +1091,7 @@ git commit -m "Use claim block allowance upgrades"
 
 **Files:**
 - Create: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimDepthService.java`
-- Create: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/BukkitLandClaimsDepthService.java`
+- Create: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/BukkitHavenClaimsDepthService.java`
 - Create: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/claim/ClaimDepthUpgradeService.java`
 - Modify: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/command/UpgradesCommand.java`
 - Modify: `HavenVault-review/havenvault-plugin/src/main/java/dev/invisiblespiders/havenvault/plugin/dialog/UpgradesDialog.java`
@@ -1102,7 +1102,7 @@ git commit -m "Use claim block allowance upgrades"
 
 ```java
 @Test
-void refundsPaymentWhenLandClaimsDepthApplyFails() {
+void refundsPaymentWhenHavenClaimsDepthApplyFails() {
     ClaimDepthService depthService = mock(ClaimDepthService.class);
     HavenEconomyService economy = mock(HavenEconomyService.class);
     Player player = mock(Player.class);
@@ -1130,7 +1130,7 @@ Expected: FAIL because depth service classes do not exist.
 
 - [ ] **Step 3: Add depth service wrapper**
 
-Reflectively resolve `com.nick.landclaims.api.upgrade.LandClaimsUpgradeService` and methods:
+Reflectively resolve `com.invisiblespiders.havenclaims.api.upgrade.HavenClaimsUpgradeService` and methods:
 
 ```java
 getVerticalProtection(UUID claimId)
@@ -1145,8 +1145,8 @@ setClaimDepth(UUID playerId, UUID claimId, int protectedMinY)
 1. Validate service availability.
 2. Validate the option is still applicable to the claim.
 3. Withdraw payment.
-4. Call LandClaims.
-5. Refund payment if LandClaims fails.
+4. Call HavenClaims.
+5. Refund payment if HavenClaims fails.
 6. Return a player-visible `PurchaseResult`.
 
 - [ ] **Step 5: Add command route**
@@ -1189,7 +1189,7 @@ git commit -m "Add selected claim depth upgrades"
 - Modify: `HavenVault-review/README.md`
 - Test: existing full test suites in both repos.
 
-- [ ] **Step 1: Update LandClaims docs**
+- [ ] **Step 1: Update HavenClaims docs**
 
 Document:
 
@@ -1206,9 +1206,9 @@ Document:
 - `claim-upgrades.allowance`.
 - `claim-upgrades.depth`.
 - `/vault upgrades claim <claim-id>`.
-- LandClaims service availability requirements.
+- HavenClaims service availability requirements.
 
-- [ ] **Step 3: Run LandClaims full verification**
+- [ ] **Step 3: Run HavenClaims full verification**
 
 Run: `.\gradlew.bat test`
 
@@ -1222,7 +1222,7 @@ Expected: BUILD SUCCESSFUL.
 
 - [ ] **Step 5: Build both plugin jars**
 
-Run from LandClaims: `.\gradlew.bat clean :landclaims-plugin:shadowJar`
+Run from HavenClaims: `.\gradlew.bat clean :havenclaims-plugin:shadowJar`
 
 Expected: BUILD SUCCESSFUL.
 
@@ -1232,7 +1232,7 @@ Expected: BUILD SUCCESSFUL.
 
 - [ ] **Step 6: Manual server smoke test**
 
-On a local Paper server with HavenCore, LandClaims, and HavenVault installed:
+On a local Paper server with HavenCore, HavenClaims, and HavenVault installed:
 
 1. Create a claim from two block corners.
 2. Confirm the protected area matches the selected block rectangle.
@@ -1267,4 +1267,4 @@ Spec coverage:
 Execution note:
 
 - Start implementation with Task 1 on a fresh branch from updated `master`.
-- Do not begin HavenVault implementation until the LandClaims API PR containing Tasks 1 and 7 is merged or published to a dependency coordinate that HavenVault can compile against.
+- Do not begin HavenVault implementation until the HavenClaims API PR containing Tasks 1 and 7 is merged or published to a dependency coordinate that HavenVault can compile against.

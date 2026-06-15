@@ -1,6 +1,6 @@
 # Development Checklist
 
-Use this checklist for each LandClaims feature PR so user-facing changes stay discoverable.
+Use this checklist for each HavenClaims feature PR so user-facing changes stay discoverable.
 
 ## Required Updates
 

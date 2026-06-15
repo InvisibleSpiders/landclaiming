@@ -48,8 +48,8 @@ jobs:
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LandClaims
-          path: landclaims-plugin/build/libs/LandClaims-*.jar
+          name: HavenClaims
+          path: havenclaims-plugin/build/libs/HavenClaims-*.jar
 
   release:
     needs: build
@@ -85,4 +85,4 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: landclaims-plugin/build/libs/LandClaims-*.jar
+          files: havenclaims-plugin/build/libs/HavenClaims-*.jar
