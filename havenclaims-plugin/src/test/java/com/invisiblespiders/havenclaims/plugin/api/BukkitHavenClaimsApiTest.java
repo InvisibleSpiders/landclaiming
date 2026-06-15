@@ -51,6 +51,41 @@ class BukkitHavenClaimsApiTest {
     }
 
     @Test
+    void deniesVisitorEntryInUnclaimedChunksForPublicShopValidation() {
+        BukkitHavenClaimsApi api = api(new FakeClaimRepository(List.of()), new ClaimIndex());
+
+        boolean allowed = api.canVisitorsEnter(location(UUID.randomUUID(), 0, 0));
+
+        assertThat(allowed).isFalse();
+    }
+
+    @Test
+    void allowsVisitorEntryWhenTeleportEnterFlagAllowsVisitors() {
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("teleportlocations.enter", FlagState.OFF));
+        ClaimIndex claimIndex = new ClaimIndex();
+        claimIndex.add(claim);
+        BukkitHavenClaimsApi api = api(new FakeClaimRepository(List.of(claim)), claimIndex);
+
+        boolean allowed = api.canVisitorsEnter(location(worldId, 0, 0));
+
+        assertThat(allowed).isTrue();
+    }
+
+    @Test
+    void deniesVisitorEntryWhenTeleportEnterFlagBlocksVisitors() {
+        UUID worldId = UUID.randomUUID();
+        Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("teleportlocations.enter", FlagState.VISITORS));
+        ClaimIndex claimIndex = new ClaimIndex();
+        claimIndex.add(claim);
+        BukkitHavenClaimsApi api = api(new FakeClaimRepository(List.of(claim)), claimIndex);
+
+        boolean allowed = api.canVisitorsEnter(location(worldId, 0, 0));
+
+        assertThat(allowed).isFalse();
+    }
+
+    @Test
     void deniesInteractionWhenClaimFlagDeniesStranger() {
         UUID worldId = UUID.randomUUID();
         Claim claim = claim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), Map.of("item_drop", FlagState.ALL));
