@@ -236,6 +236,22 @@ claim:
       claim-tooltip: "<gray><command></gray>"
       action-button: "<yellow><label></yellow>"
       action-tooltip: "<gray><command></gray>"
+claim-mode:
+  entered: "<green>Claim mode enabled. Your hotbar and offhand are stored safely."
+  exited: "<yellow>Claim mode disabled. Your stored items were restored."
+  already-active: "<yellow>You are already in claim mode."
+  not-active: "<yellow>You are not in claim mode."
+  disabled: "<red>Claim mode is disabled."
+  blocked-command: "<red>Exit claim mode before using <yellow>/<command></yellow>."
+  blocked-inventory: "<red>Exit claim mode before moving hotbar items."
+  blocked-drop: "<red>Exit claim mode before dropping items."
+  blocked-pickup: "<red>Exit claim mode before picking up items."
+  blocked-swap: "<red>Exit claim mode before swapping hands."
+  subclaim-coming-soon: "<yellow>Subclaims are coming soon."
+  restore-partial: "<yellow>Some stored items were moved to your inventory because their original slots were unavailable."
+  restore-recovery: "<red>Some stored items could not be restored and were moved to claim mode recovery. Contact staff."
+  restore-failed: "<red>Claim mode restore failed. Contact staff immediately."
+  menu-help: "<gold>Claim Mode:</gold> <gray>Use the claim tool to select land, slot 8 to exit."
 tool:
   name: "<gold>Claiming Hoe</gold>"
   lore:

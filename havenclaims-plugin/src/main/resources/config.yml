@@ -30,6 +30,26 @@ ui:
   # Use inventory menus for dense or item-based flows.
   use-inventory-fallbacks: true
 
+claim-mode:
+  enabled: true
+  history-per-player: 5
+  allowed-commands:
+    - claimmode
+    - cm
+    - claim
+  blocked-commands:
+    - storage
+    - vault
+    - shop
+    - auction
+    - ah
+    - trade
+    - pay
+    - sell
+    - buy
+    - kit
+    - mail
+
 notifications:
   claim-boundary:
     # Shows a configurable message when players enter or exit claimed land.
