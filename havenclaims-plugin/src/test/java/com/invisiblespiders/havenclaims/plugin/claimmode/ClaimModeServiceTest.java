@@ -318,6 +318,31 @@ class ClaimModeServiceTest {
     }
 
     @Test
+    void restoreAllContinuesWhenOnePlayersExitThrowsDuringRestore() {
+        PlayerFixture first = playerFixture("Alice");
+        PlayerFixture second = playerFixture("Bob");
+        ItemStack firstBackup = item(Material.DIAMOND, 1, bytes(80));
+        ItemStack secondBackup = item(Material.EMERALD, 1, bytes(81));
+        ItemStack secondRestored = item(Material.EMERALD, 1, bytes(82));
+        first.setStoredItem(0, firstBackup);
+        second.setStoredItem(0, secondBackup);
+        ClaimModeService service = service(true);
+
+        service.enter(first.player());
+        service.enter(second.player());
+        try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(80)))
+                    .thenThrow(new IllegalStateException("restore exploded"));
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(81))).thenReturn(secondRestored);
+
+            service.restoreAll(List.of(first.player(), second.player()), ClaimModeService.ExitReason.PLUGIN_DISABLE);
+        }
+
+        assertThat(service.isInClaimMode(second.playerId())).isFalse();
+        assertThat(second.slot(0)).isSameAs(secondRestored);
+    }
+
+    @Test
     void restoreAllExitsOnlyActivePlayers() {
         PlayerFixture active = playerFixture("Alice");
         PlayerFixture inactive = playerFixture("Bob");

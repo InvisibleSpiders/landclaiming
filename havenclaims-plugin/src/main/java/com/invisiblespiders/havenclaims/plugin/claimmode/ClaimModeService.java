@@ -106,7 +106,11 @@ public final class ClaimModeService {
         Objects.requireNonNull(reason, "reason");
         for (Player player : players) {
             if (player != null && isInClaimMode(player.getUniqueId())) {
-                exit(player, reason);
+                try {
+                    exit(player, reason);
+                } catch (RuntimeException exception) {
+                    // Bulk restore must remain best-effort so one damaged session cannot strand others.
+                }
             }
         }
     }
