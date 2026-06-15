@@ -308,6 +308,41 @@ class ClaimModeServiceTest {
     }
 
     @Test
+    void retryAfterMidExitFailureDoesNotRestoreCompletedSnapshotsAgain() {
+        PlayerFixture fixture = playerFixture();
+        ItemStack firstBackup = item(Material.DIAMOND, 3, bytes(100));
+        ItemStack secondBackup = item(Material.EMERALD, 2, bytes(101));
+        ItemStack firstRestored = item(Material.DIAMOND, 3, bytes(102));
+        ItemStack secondRestored = item(Material.EMERALD, 2, bytes(103));
+        fixture.setStoredItem(0, firstBackup);
+        fixture.setStoredItem(1, secondBackup);
+        ClaimModeService service = service(true);
+
+        service.enter(fixture.player());
+        try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(100))).thenReturn(firstRestored);
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(101)))
+                    .thenThrow(new IllegalStateException("restore exploded"))
+                    .thenReturn(secondRestored);
+
+            assertThatThrownBy(() -> service.exit(fixture.player(), ClaimModeService.ExitReason.MANUAL))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("restore exploded");
+            assertThat(service.isInClaimMode(fixture.playerId())).isTrue();
+
+            ClaimModeService.ExitResult retryResult = service.exit(fixture.player(), ClaimModeService.ExitReason.MANUAL);
+
+            assertThat(retryResult).isEqualTo(ClaimModeService.ExitResult.RESTORED);
+            assertThat(service.isInClaimMode(fixture.playerId())).isFalse();
+            assertThat(fixture.slot(0)).isSameAs(firstRestored);
+            assertThat(fixture.slot(1)).isSameAs(secondRestored);
+            assertThat(fixture.addedItems()).doesNotContain(firstRestored);
+            itemStacks.verify(() -> ItemStack.deserializeBytes(bytes(100)), times(1));
+            itemStacks.verify(() -> ItemStack.deserializeBytes(bytes(101)), times(2));
+        }
+    }
+
+    @Test
     void restoreAllContinuesWhenOnePlayersHistoryAppendFails() throws Exception {
         Path fileInsteadOfDirectory = tempDir.resolve("history-blocker-all");
         Files.writeString(fileInsteadOfDirectory, "occupied", StandardCharsets.UTF_8);

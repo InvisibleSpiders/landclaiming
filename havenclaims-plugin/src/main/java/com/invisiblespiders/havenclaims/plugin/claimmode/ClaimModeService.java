@@ -88,15 +88,20 @@ public final class ClaimModeService {
         List<String> restoreResults = new ArrayList<>();
         boolean partial = false;
         boolean recovery = false;
-        for (ClaimModeItemSnapshot snapshot : session.snapshots()) {
+        List<ClaimModeItemSnapshot> remainingSnapshots = new ArrayList<>(session.snapshots());
+        sessions.put(playerId, retainedSession(session, remainingSnapshots));
+        while (!remainingSnapshots.isEmpty()) {
+            ClaimModeItemSnapshot snapshot = remainingSnapshots.get(0);
             RestoreOutcome outcome = restoreSnapshot(inventory, session, snapshot);
             restoreResults.add(snapshot.slot() + "=" + outcome.historyValue());
             partial = partial || outcome.partial();
             recovery = recovery || outcome.recovery();
+            remainingSnapshots.remove(0);
+            sessions.put(playerId, retainedSession(session, remainingSnapshots));
         }
 
         appendHistory(session, reason, restoreResults);
-        sessions.remove(playerId, session);
+        sessions.remove(playerId);
         if (recovery) {
             return ExitResult.RECOVERY;
         }
@@ -119,6 +124,10 @@ public final class ClaimModeService {
 
     public Component fallbackMessage() {
         return fallbackMessage;
+    }
+
+    private ClaimModeSession retainedSession(ClaimModeSession session, List<ClaimModeItemSnapshot> snapshots) {
+        return new ClaimModeSession(session.playerId(), session.playerName(), session.enteredAt(), snapshots);
     }
 
     private List<ClaimModeItemSnapshot> snapshotClaimModeSlots(PlayerInventory inventory) {
