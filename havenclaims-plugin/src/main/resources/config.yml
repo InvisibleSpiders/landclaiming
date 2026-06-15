@@ -100,7 +100,6 @@ shortcuts:
   sneak-swap-hand:
     # Opens the context claim menu when the player sneaks and presses the swap-hand key.
     enabled: true
-    require-claim-tool-in-hand: false
     cancel-item-swap: true
 
 selection:
