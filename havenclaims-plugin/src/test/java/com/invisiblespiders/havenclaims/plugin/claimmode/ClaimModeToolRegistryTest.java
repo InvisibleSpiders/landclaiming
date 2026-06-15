@@ -41,6 +41,32 @@ class ClaimModeToolRegistryTest {
     }
 
     @Test
+    void looksUpRegisteredToolsById() {
+        ClaimModeTool claimTool = new ClaimModeTool(
+                "claim",
+                0,
+                ClaimModeToolRegistryTest::claimModeItem,
+                true,
+                "",
+                (player, event) -> {}
+        );
+        ClaimModeToolRegistry registry = new ClaimModeToolRegistry(TOOL_KEY, List.of(claimTool));
+
+        assertThat(registry.toolById("claim")).contains(claimTool);
+        assertThat(registry.toolById("missing")).isEmpty();
+    }
+
+    @Test
+    void rejectsDuplicateToolIds() {
+        ClaimModeTool first = new ClaimModeTool("same", 0, () -> new ItemStack(Material.STICK), true, "", (player, event) -> {});
+        ClaimModeTool second = new ClaimModeTool("same", 1, () -> new ItemStack(Material.BLAZE_ROD), true, "", (player, event) -> {});
+
+        assertThatThrownBy(() -> new ClaimModeToolRegistry(TOOL_KEY, List.of(first, second)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("id");
+    }
+
+    @Test
     void rejectsDuplicateToolSlots() {
         ClaimModeTool first = new ClaimModeTool("first", 0, () -> new ItemStack(Material.STICK), true, "", (player, event) -> {});
         ClaimModeTool second = new ClaimModeTool("second", 0, () -> new ItemStack(Material.BLAZE_ROD), true, "", (player, event) -> {});

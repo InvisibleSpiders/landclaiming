@@ -34,6 +34,10 @@ public final class ClaimModeToolRegistry {
         return toolsBySlot;
     }
 
+    public Optional<ClaimModeTool> toolById(String id) {
+        return Optional.ofNullable(toolsById.get(id));
+    }
+
     public ItemStack createItem(String id) {
         ClaimModeTool tool = toolsById.get(id);
         if (tool == null) {
