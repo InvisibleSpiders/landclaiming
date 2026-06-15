@@ -59,7 +59,7 @@ class ClaimEntryGuardTest {
                 deniedId,
                 outside,
                 inside,
-                permission -> permission.equals("landclaims.bypass.entry-deny")
+                permission -> permission.equals("havenclaims.bypass.entry-deny")
         );
 
         assertThat(decision.denied()).isFalse();

@@ -72,7 +72,7 @@ public final class FlagRegistry {
                 label,
                 description,
                 defaultValue,
-                "landclaims.flag." + key
+                "havenclaims.flag." + key
         );
     }
 }

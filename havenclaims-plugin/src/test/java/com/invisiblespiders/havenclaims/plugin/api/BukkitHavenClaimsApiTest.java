@@ -83,7 +83,7 @@ class BukkitHavenClaimsApiTest {
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.add(claim);
         Player player = player(UUID.randomUUID());
-        when(player.hasPermission("landclaims.bypass.protection")).thenReturn(true);
+        when(player.hasPermission("havenclaims.bypass.protection")).thenReturn(true);
         BukkitHavenClaimsApi api = api(new FakeClaimRepository(List.of(claim)), claimIndex);
 
         boolean allowed = api.canBuild(player, location(worldId, 0, 0));

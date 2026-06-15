@@ -58,9 +58,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimsCommand implements CommandExecutor, TabCompleter {
-    private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
-    private static final String CLAIM_MENU_PERMISSION = "landclaims.gui";
-    private static final String CLAIM_DENY_PERMISSION = "landclaims.deny.manage";
+    private static final String CLAIM_TOOL_PERMISSION = "havenclaims.tool.use";
+    private static final String CLAIM_MENU_PERMISSION = "havenclaims.gui";
+    private static final String CLAIM_DENY_PERMISSION = "havenclaims.deny.manage";
     private static final List<String> ROOT_SUGGESTIONS = List.of(
             "tool",
             "create",
@@ -331,7 +331,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean listPlayerClaims(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.userclaims.view")) {
+        if (!player.hasPermission("havenclaims.admin.userclaims.view")) {
             player.sendMessage(message("admin.userclaims.no-permission"));
             return true;
         }
@@ -357,7 +357,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean viewPlayerClaim(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.userclaims.view")) {
+        if (!player.hasPermission("havenclaims.admin.userclaims.view")) {
             player.sendMessage(message("admin.userclaims.no-permission"));
             return true;
         }
@@ -380,7 +380,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean deletePlayerClaim(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.userclaims.delete")) {
+        if (!player.hasPermission("havenclaims.admin.userclaims.delete")) {
             player.sendMessage(message("admin.userclaims.no-permission"));
             return true;
         }
@@ -407,7 +407,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean teleportToPlayerClaim(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.userclaims.teleport")) {
+        if (!player.hasPermission("havenclaims.admin.userclaims.teleport")) {
             player.sendMessage(message("admin.userclaims.no-permission"));
             return true;
         }
@@ -428,7 +428,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean transferPlayerClaim(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.userclaims.transfer")) {
+        if (!player.hasPermission("havenclaims.admin.userclaims.transfer")) {
             player.sendMessage(message("admin.userclaims.no-permission"));
             return true;
         }
@@ -461,7 +461,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean manageAdminUserClaimFlags(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.userclaims.edit")) {
+        if (!player.hasPermission("havenclaims.admin.userclaims.edit")) {
             player.sendMessage(message("admin.userclaims.edit-no-permission"));
             return true;
         }
@@ -577,7 +577,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean manageAdminUserClaimMembers(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.userclaims.edit")) {
+        if (!player.hasPermission("havenclaims.admin.userclaims.edit")) {
             player.sendMessage(message("admin.userclaims.edit-no-permission"));
             return true;
         }
@@ -745,7 +745,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean createAdminClaim(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.claim.create")) {
+        if (!player.hasPermission("havenclaims.admin.claim.create")) {
             player.sendMessage(message("admin.claim.no-permission"));
             return true;
         }
@@ -786,7 +786,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean listAdminClaims(Player player) {
-        if (!player.hasPermission("landclaims.admin.claim.list")) {
+        if (!player.hasPermission("havenclaims.admin.claim.list")) {
             player.sendMessage(message("admin.claim.no-permission"));
             return true;
         }
@@ -807,7 +807,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean deleteAdminClaim(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.claim.delete")) {
+        if (!player.hasPermission("havenclaims.admin.claim.delete")) {
             player.sendMessage(message("admin.claim.no-permission"));
             return true;
         }
@@ -835,7 +835,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean teleportToAdminClaim(Player player, String[] args) {
-        if (!player.hasPermission("landclaims.admin.claim.teleport")) {
+        if (!player.hasPermission("havenclaims.admin.claim.teleport")) {
             player.sendMessage(message("admin.claim.no-permission"));
             return true;
         }

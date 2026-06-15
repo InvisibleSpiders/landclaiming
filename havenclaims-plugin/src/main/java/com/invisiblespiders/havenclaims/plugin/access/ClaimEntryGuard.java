@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 
 public final class ClaimEntryGuard {
-    private static final String ENTRY_BYPASS_PERMISSION = "landclaims.bypass.entry-deny";
+    private static final String ENTRY_BYPASS_PERMISSION = "havenclaims.bypass.entry-deny";
 
     private final ClaimIndex claimIndex;
 

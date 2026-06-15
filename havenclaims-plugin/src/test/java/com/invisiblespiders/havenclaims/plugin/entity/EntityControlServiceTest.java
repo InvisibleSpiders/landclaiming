@@ -93,7 +93,7 @@ class EntityControlServiceTest {
 
     private static Plugin plugin() {
         Plugin plugin = mock(Plugin.class);
-        when(plugin.getName()).thenReturn("LandClaims");
+        when(plugin.getName()).thenReturn("HavenClaims");
         return plugin;
     }
 }

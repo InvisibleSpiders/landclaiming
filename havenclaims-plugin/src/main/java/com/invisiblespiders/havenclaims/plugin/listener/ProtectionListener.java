@@ -41,7 +41,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 public final class ProtectionListener implements Listener {
-    private static final String BYPASS_PERMISSION = "landclaims.bypass.protection";
+    private static final String BYPASS_PERMISSION = "havenclaims.bypass.protection";
 
     private final ProtectionService protectionService;
     private final ClaimIndex claimIndex;

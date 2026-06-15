@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 
 public final class ClaimDenyService {
-    private static final String ADMIN_EDIT_PERMISSION = "landclaims.admin.claim.edit";
+    private static final String ADMIN_EDIT_PERMISSION = "havenclaims.admin.claim.edit";
 
     private final ClaimRepository claimRepository;
     private final ClaimIndex claimIndex;

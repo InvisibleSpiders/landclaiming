@@ -7,10 +7,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
-class LandClaimsMigrationResourceTest {
+class HavenClaimsMigrationResourceTest {
     @Test
     void migrationIndexListsSchemaMigrationsInOrder() throws IOException {
-        String index = resource("db/migrations/landclaims/migrations.index");
+        String index = resource("db/migrations/havenclaims/migrations.index");
 
         assertThat(index.lines()
                 .map(String::trim)
@@ -23,7 +23,7 @@ class LandClaimsMigrationResourceTest {
 
     @Test
     void initialSchemaMigrationCreatesClaimTables() throws IOException {
-        String migration = resource("db/migrations/landclaims/V1__initial_claim_schema.sql");
+        String migration = resource("db/migrations/havenclaims/V1__initial_claim_schema.sql");
 
         assertThat(migration)
                 .contains("CREATE TABLE IF NOT EXISTS claims")
@@ -36,7 +36,7 @@ class LandClaimsMigrationResourceTest {
 
     @Test
     void deniedPlayersMigrationCreatesClaimDeniedPlayersTable() throws IOException {
-        String migration = resource("db/migrations/landclaims/V2__claim_denied_players.sql");
+        String migration = resource("db/migrations/havenclaims/V2__claim_denied_players.sql");
 
         assertThat(migration)
                 .contains("CREATE TABLE IF NOT EXISTS claim_denied_players")
@@ -45,7 +45,7 @@ class LandClaimsMigrationResourceTest {
     }
 
     private static String resource(String path) throws IOException {
-        try (InputStream inputStream = LandClaimsMigrationResourceTest.class.getClassLoader().getResourceAsStream(path)) {
+        try (InputStream inputStream = HavenClaimsMigrationResourceTest.class.getClassLoader().getResourceAsStream(path)) {
             assertThat(inputStream).as(path).isNotNull();
             return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         }

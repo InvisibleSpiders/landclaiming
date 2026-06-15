@@ -105,7 +105,7 @@ tool:
     - "<gray>Charges: <yellow><charges></yellow>/<yellow><max_charges></yellow>"
     - "<gray>Right-click two chunks to select land.</gray>"
 command:
-  player-only: "<red>Only players can use LandClaims commands."
+  player-only: "<red>Only players can use HavenClaims commands."
   unavailable:
     claim-creation: "<red>Claim creation is not available yet."
     claim-info: "<red>Claim info is not available yet."
@@ -116,7 +116,7 @@ command:
   selection:
     cleared: "<yellow>Claim selection cleared."
   help:
-    title: "<gold>LandClaims commands"
+    title: "<gold>HavenClaims commands"
     menu: "<yellow>/claim menu</yellow><gray> - opens the claim management menu for this chunk.</gray>"
     flags: "<yellow>/claim flags</yellow><gray> - opens the flag editor for this chunk.</gray>"
     viewborder: "<yellow>/claim viewborder</yellow><gray> - shows the current selection, claim, or chunk border.</gray>"

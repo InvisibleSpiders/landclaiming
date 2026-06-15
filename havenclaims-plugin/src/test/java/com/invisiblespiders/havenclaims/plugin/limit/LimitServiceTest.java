@@ -10,8 +10,8 @@ class LimitServiceTest {
     @Test
     void resolveLimitReturnsDefaultWhenNoPermissionMatches() {
         LimitService service = new LimitService(10, Map.of(
-                "landclaims.limit.member", 25,
-                "landclaims.limit.vip", 50
+                "havenclaims.limit.member", 25,
+                "havenclaims.limit.vip", 50
         ));
 
         assertThat(service.resolveLimit(Set.of("other.permission"))).isEqualTo(10);
@@ -20,14 +20,14 @@ class LimitServiceTest {
     @Test
     void resolveLimitReturnsHighestMatchingConfiguredLimit() {
         LimitService service = new LimitService(10, Map.of(
-                "landclaims.limit.member", 25,
-                "landclaims.limit.vip", 50,
-                "landclaims.limit.staff", 100
+                "havenclaims.limit.member", 25,
+                "havenclaims.limit.vip", 50,
+                "havenclaims.limit.staff", 100
         ));
 
         assertThat(service.resolveLimit(Set.of(
-                "landclaims.limit.member",
-                "landclaims.limit.staff"
+                "havenclaims.limit.member",
+                "havenclaims.limit.staff"
         ))).isEqualTo(100);
     }
 

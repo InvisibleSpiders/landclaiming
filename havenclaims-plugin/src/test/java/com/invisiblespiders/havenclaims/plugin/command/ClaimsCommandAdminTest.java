@@ -87,7 +87,7 @@ class ClaimsCommandAdminTest {
         AdminClaimService adminClaimService = new AdminClaimService(repository, claimIndex, FlagRegistry.createDefault(), 32);
         ClaimsCommand command = command(adminClaimService);
         Player player = mock(Player.class);
-        when(player.hasPermission("landclaims.admin.claim.list")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.claim.list")).thenReturn(true);
         List<Component> messages = new ArrayList<>();
         org.mockito.Mockito.doAnswer(invocation -> {
             messages.add(invocation.getArgument(0));
@@ -119,7 +119,7 @@ class ClaimsCommandAdminTest {
         Player player = mock(Player.class);
         org.bukkit.Server server = mock(org.bukkit.Server.class);
         OfflinePlayer offlinePlayer = mock(OfflinePlayer.class);
-        when(player.hasPermission("landclaims.admin.userclaims.view")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.view")).thenReturn(true);
         when(player.getServer()).thenReturn(server);
         when(server.getOfflinePlayer(ownerId)).thenReturn(offlinePlayer);
         when(offlinePlayer.getUniqueId()).thenReturn(ownerId);
@@ -182,7 +182,7 @@ class ClaimsCommandAdminTest {
         Player player = mock(Player.class);
         Player target = mock(Player.class);
         Server server = mock(Server.class);
-        when(player.hasPermission("landclaims.admin.userclaims.transfer")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.transfer")).thenReturn(true);
         when(player.getServer()).thenReturn(server);
         when(server.getPlayerExact("NewOwner")).thenReturn(target);
         when(target.getUniqueId()).thenReturn(newOwnerId);
@@ -209,7 +209,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
         Player player = mock(Player.class);
         Server server = mock(Server.class);
-        when(player.hasPermission("landclaims.admin.userclaims.transfer")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.transfer")).thenReturn(true);
         when(player.getServer()).thenReturn(server);
         List<Component> messages = captureMessages(player);
 
@@ -259,7 +259,7 @@ class ClaimsCommandAdminTest {
         ClaimFlagService claimFlagService = new ClaimFlagService(repository, claimIndex, flagRegistry);
         ClaimsCommand command = command(adminClaimService, claimFlagService);
         Player player = mock(Player.class);
-        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.edit")).thenReturn(true);
         List<Component> messages = captureMessages(player);
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{
@@ -293,7 +293,7 @@ class ClaimsCommandAdminTest {
         ClaimFlagService claimFlagService = new ClaimFlagService(repository, claimIndex, flagRegistry);
         ClaimsCommand command = command(adminClaimService, claimFlagService);
         Player player = mock(Player.class);
-        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.edit")).thenReturn(true);
         List<Component> messages = captureMessages(player);
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{
@@ -326,7 +326,7 @@ class ClaimsCommandAdminTest {
         ClaimFlagService claimFlagService = new ClaimFlagService(repository, claimIndex, flagRegistry);
         ClaimsCommand command = command(adminClaimService, claimFlagService);
         Player player = mock(Player.class);
-        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.edit")).thenReturn(true);
         List<Component> messages = captureMessages(player);
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{
@@ -379,7 +379,7 @@ class ClaimsCommandAdminTest {
         ClaimMemberService claimMemberService = new ClaimMemberService(repository, claimIndex);
         ClaimsCommand command = command(adminClaimService, null, claimMemberService);
         Player player = mock(Player.class);
-        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.edit")).thenReturn(true);
         List<Component> messages = captureMessages(player);
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{
@@ -414,7 +414,7 @@ class ClaimsCommandAdminTest {
         ClaimMemberService claimMemberService = new ClaimMemberService(repository, claimIndex);
         ClaimsCommand command = command(adminClaimService, null, claimMemberService);
         Player player = mock(Player.class);
-        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.edit")).thenReturn(true);
         List<Component> messages = captureMessages(player);
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{
@@ -450,7 +450,7 @@ class ClaimsCommandAdminTest {
         Player player = mock(Player.class);
         Server server = mock(Server.class);
         OfflinePlayer member = mock(OfflinePlayer.class);
-        when(player.hasPermission("landclaims.admin.userclaims.edit")).thenReturn(true);
+        when(player.hasPermission("havenclaims.admin.userclaims.edit")).thenReturn(true);
         when(player.getServer()).thenReturn(server);
         when(server.getOfflinePlayer(memberId)).thenReturn(member);
         when(member.getUniqueId()).thenReturn(memberId);

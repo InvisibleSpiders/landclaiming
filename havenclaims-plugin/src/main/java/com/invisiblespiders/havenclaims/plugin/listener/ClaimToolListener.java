@@ -34,7 +34,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimToolListener implements Listener {
-    private static final String CLAIM_TOOL_PERMISSION = "landclaims.tool.use";
+    private static final String CLAIM_TOOL_PERMISSION = "havenclaims.tool.use";
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;

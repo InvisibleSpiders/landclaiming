@@ -33,7 +33,7 @@ class ClaimFlagServiceTest {
                 claim,
                 "build",
                 true,
-                permission -> permission.equals("landclaims.flag.build")
+                permission -> permission.equals("havenclaims.flag.build")
         );
 
         assertThat(result.allowed()).isTrue();
@@ -76,7 +76,7 @@ class ClaimFlagServiceTest {
                 ownerId,
                 claim,
                 "build",
-                permission -> permission.equals("landclaims.flag.build")
+                permission -> permission.equals("havenclaims.flag.build")
         );
 
         assertThat(result.allowed()).isTrue();

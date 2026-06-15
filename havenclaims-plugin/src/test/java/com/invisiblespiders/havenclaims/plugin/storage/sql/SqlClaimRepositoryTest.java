@@ -30,7 +30,7 @@ class SqlClaimRepositoryTest {
     @Test
     void savesAndLoadsClaimWithChunksFlagsAndMembers(@TempDir Path tempDirectory) throws Exception {
         SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("havenclaims.db"));
         applyMigrations(dataSource);
         SqlClaimRepository repository = new SqlClaimRepository(dataSource);
         UUID claimId = UUID.randomUUID();
@@ -68,7 +68,7 @@ class SqlClaimRepositoryTest {
     @Test
     void deletesClaimAndOwnedRows(@TempDir Path tempDirectory) throws Exception {
         SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("havenclaims.db"));
         applyMigrations(dataSource);
         SqlClaimRepository repository = new SqlClaimRepository(dataSource);
         UUID claimId = UUID.randomUUID();
@@ -98,7 +98,7 @@ class SqlClaimRepositoryTest {
     @Test
     void mergesClaimsWithoutConflictingWithRedundantClaimChunks(@TempDir Path tempDirectory) throws Exception {
         SQLiteDataSource dataSource = new SQLiteDataSource();
-        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("landclaims.db"));
+        dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("havenclaims.db"));
         applyMigrations(dataSource);
         SqlClaimRepository repository = new SqlClaimRepository(dataSource);
         ClaimIndex claimIndex = new ClaimIndex();
@@ -163,7 +163,7 @@ class SqlClaimRepositoryTest {
 
     private static void applyMigrations(DataSource dataSource) throws Exception {
         try (InputStream indexIn = SqlClaimRepositoryTest.class.getClassLoader()
-                .getResourceAsStream("db/migrations/landclaims/migrations.index");
+                .getResourceAsStream("db/migrations/havenclaims/migrations.index");
              Connection connection = dataSource.getConnection()) {
             Objects.requireNonNull(indexIn, "migration index resource not found");
             String index = new String(indexIn.readAllBytes(), StandardCharsets.UTF_8);
@@ -173,7 +173,7 @@ class SqlClaimRepositoryTest {
                     continue;
                 }
                 try (InputStream migrationIn = SqlClaimRepositoryTest.class.getClassLoader()
-                        .getResourceAsStream("db/migrations/landclaims/" + migration)) {
+                        .getResourceAsStream("db/migrations/havenclaims/" + migration)) {
                     Objects.requireNonNull(migrationIn, migration + " resource not found");
                     applySql(connection, new String(migrationIn.readAllBytes(), StandardCharsets.UTF_8));
                 }

@@ -80,7 +80,7 @@ class FlagRegistryTest {
                 key,
                 "custom",
                 defaultValue,
-                "landclaims.flag." + key
+                "havenclaims.flag." + key
         );
     }
 }

@@ -40,7 +40,7 @@ class ProtectionListenerTest {
         Optional<ClaimProtectionResult> result = listener.checkProtection(
                 chunk,
                 UUID.randomUUID(),
-                permission -> permission.equals("landclaims.bypass.protection"),
+                permission -> permission.equals("havenclaims.bypass.protection"),
                 "build"
         );
 
@@ -55,7 +55,7 @@ class ProtectionListenerTest {
         Optional<ClaimProtectionResult> result = listener.checkProtection(
                 chunk,
                 UUID.randomUUID(),
-                permission -> permission.equals("landclaims.bypass.protection.interact"),
+                permission -> permission.equals("havenclaims.bypass.protection.interact"),
                 "interact"
         );
 

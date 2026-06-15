@@ -48,7 +48,7 @@ class ExpansionRegistryTest {
                 key,
                 "expansion",
                 false,
-                "landclaims.flag." + key
+                "havenclaims.flag." + key
         );
     }
 }

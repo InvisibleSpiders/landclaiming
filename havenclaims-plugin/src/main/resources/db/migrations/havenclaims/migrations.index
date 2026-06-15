@@ -1,0 +1,3 @@
+# Ordered list of HavenClaims migrations. One filename per line.
+V1__initial_claim_schema.sql
+V2__claim_denied_players.sql

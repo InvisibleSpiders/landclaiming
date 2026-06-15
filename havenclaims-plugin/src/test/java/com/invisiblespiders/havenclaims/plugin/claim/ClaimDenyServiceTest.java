@@ -92,7 +92,7 @@ class ClaimDenyServiceTest {
         repository.claims.add(claim);
         claimIndex.add(claim);
 
-        ClaimDenyResult result = service.denyPlayer(adminId, claim, deniedId, permission -> permission.equals("landclaims.admin.claim.edit"));
+        ClaimDenyResult result = service.denyPlayer(adminId, claim, deniedId, permission -> permission.equals("havenclaims.admin.claim.edit"));
 
         assertThat(result.allowed()).isTrue();
         assertThat(repository.claims.get(0).deniedPlayers()).containsExactly(deniedId);
@@ -109,7 +109,7 @@ class ClaimDenyServiceTest {
                 adminId,
                 claim,
                 adminId,
-                permission -> permission.equals("landclaims.admin.claim.edit")
+                permission -> permission.equals("havenclaims.admin.claim.edit")
         );
 
         assertThat(result.allowed()).isFalse();

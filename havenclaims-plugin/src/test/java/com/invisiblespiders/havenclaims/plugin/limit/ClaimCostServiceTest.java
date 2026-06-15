@@ -45,13 +45,13 @@ class ClaimCostServiceTest {
     void quoteUsesHighestMatchingLimitPermission() {
         ClaimCostService service = new ClaimCostService(
                 new ClaimIndex(),
-                new LimitService(3, Map.of("landclaims.limit.vip", 10)),
+                new LimitService(3, Map.of("havenclaims.limit.vip", 10)),
                 new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
         );
 
         ClaimCostQuote quote = service.quotePlayerClaim(
                 UUID.randomUUID(),
-                Set.of("landclaims.limit.vip"),
+                Set.of("havenclaims.limit.vip"),
                 Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0), new ClaimChunk(UUID.randomUUID(), 1, 0))
         );
 

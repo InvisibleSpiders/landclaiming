@@ -11,14 +11,14 @@ class MessageConfigurationLoaderTest {
     void flattensNestedMessageConfigurationSections() {
         YamlConfiguration configuration = new YamlConfiguration();
         configuration.set("claim.created", "<green>Created <claim_name>.");
-        configuration.set("command.claims.help.title", "<gold>LandClaims commands");
+        configuration.set("command.claims.help.title", "<gold>HavenClaims commands");
         configuration.set("tool.lore", java.util.List.of("Line one", "Line two"));
 
         Map<String, String> messages = MessageConfigurationLoader.load(configuration);
 
         assertThat(messages)
                 .containsEntry("claim.created", "<green>Created <claim_name>.")
-                .containsEntry("command.claims.help.title", "<gold>LandClaims commands");
+                .containsEntry("command.claims.help.title", "<gold>HavenClaims commands");
         assertThat(messages).doesNotContainKey("tool.lore");
     }
 }

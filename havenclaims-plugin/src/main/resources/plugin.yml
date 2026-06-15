@@ -1,67 +1,66 @@
-name: LandClaims
+name: HavenClaims
 version: '${version}'
-main: com.nick.landclaims.plugin.LandClaimsPlugin
+main: com.invisiblespiders.havenclaims.plugin.HavenClaimsPlugin
 api-version: '26.1.2'
-author: Nick
-description: Chunk-based land claiming with configurable protections.
+author: InvisibleSpiders
+description: Chunk-based Haven land claiming with configurable protections.
 depend:
   - HavenCore
 softdepend:
   - VaultUnlocked
 commands:
   claim:
-    description: Opens LandClaims commands and menus.
+    description: Opens HavenClaims commands and menus.
     usage: /claim
-    aliases: [claims, lc]
 permissions:
-  landclaims.use:
-    description: Allows basic LandClaims usage.
+  havenclaims.use:
+    description: Allows basic HavenClaims usage.
     default: true
-  landclaims.claim:
+  havenclaims.claim:
     description: Allows creating player claims.
     default: true
-  landclaims.gui:
+  havenclaims.gui:
     description: Allows opening claim menus.
     default: true
-  landclaims.tool.use:
+  havenclaims.tool.use:
     description: Allows using the claim tool.
     default: true
-  landclaims.tool.craft:
+  havenclaims.tool.craft:
     description: Allows crafting the claim tool.
     default: true
-  landclaims.tool.recharge:
+  havenclaims.tool.recharge:
     description: Allows recharging the claim tool.
     default: true
-  landclaims.member.manage:
+  havenclaims.member.manage:
     description: Allows managing claim members.
     default: true
-  landclaims.deny.manage:
+  havenclaims.deny.manage:
     description: Allows managing claim denied-player lists.
     default: true
-  landclaims.bypass.claim-limit:
+  havenclaims.bypass.claim-limit:
     description: Bypasses claim allowance limits.
     default: op
-  landclaims.bypass.claim-buffer:
+  havenclaims.bypass.claim-buffer:
     description: Bypasses claim buffer distance checks.
     default: op
-  landclaims.bypass.protection:
+  havenclaims.bypass.protection:
     description: Bypasses claim protection checks.
     default: op
-  landclaims.bypass.entry-deny:
+  havenclaims.bypass.entry-deny:
     description: Bypasses claim denied-entry checks.
     default: op
-  landclaims.admin:
-    description: Grants all LandClaims admin permissions.
+  havenclaims.admin:
+    description: Grants all HavenClaims admin permissions.
     default: op
     children:
-      landclaims.admin.claim.create: true
-      landclaims.admin.claim.edit: true
-      landclaims.admin.claim.delete: true
-      landclaims.admin.claim.list: true
-      landclaims.admin.claim.teleport: true
-      landclaims.admin.userclaims.view: true
-      landclaims.admin.userclaims.edit: true
-      landclaims.admin.userclaims.delete: true
-      landclaims.admin.userclaims.teleport: true
-      landclaims.admin.userclaims.transfer: true
-      landclaims.admin.reload: true
+      havenclaims.admin.claim.create: true
+      havenclaims.admin.claim.edit: true
+      havenclaims.admin.claim.delete: true
+      havenclaims.admin.claim.list: true
+      havenclaims.admin.claim.teleport: true
+      havenclaims.admin.userclaims.view: true
+      havenclaims.admin.userclaims.edit: true
+      havenclaims.admin.userclaims.delete: true
+      havenclaims.admin.userclaims.teleport: true
+      havenclaims.admin.userclaims.transfer: true
+      havenclaims.admin.reload: true

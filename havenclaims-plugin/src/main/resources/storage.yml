@@ -2,11 +2,11 @@
 storage:
   type: sqlite
   sqlite:
-    file: landclaims.db
+    file: havenclaims.db
   mysql:
     host: localhost
     port: 3306
-    database: landclaims
+    database: havenclaims
     username: root
     password: ""
     pool-size: 10

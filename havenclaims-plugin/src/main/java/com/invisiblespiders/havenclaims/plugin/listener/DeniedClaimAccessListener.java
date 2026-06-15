@@ -23,7 +23,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.Vector;
 
 public final class DeniedClaimAccessListener implements Listener {
-    private static final String ENTRY_BYPASS_PERMISSION = "landclaims.bypass.entry-deny";
+    private static final String ENTRY_BYPASS_PERMISSION = "havenclaims.bypass.entry-deny";
 
     private final ClaimIndex claimIndex;
     private final ClaimEntryGuard entryGuard;

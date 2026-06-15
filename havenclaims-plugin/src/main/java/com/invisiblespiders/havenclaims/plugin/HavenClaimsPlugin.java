@@ -86,7 +86,7 @@ public final class HavenClaimsPlugin extends JavaPlugin {
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "admin", PermissionDefault.OP);
         registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "bypass", PermissionDefault.OP);
         LimitService limitService = new LimitService(
-                getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("landclaims.limit.default", 10)),
+                getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("havenclaims.limit.default", 10)),
                 limitPermissions
         );
         ClaimCostService claimCostService = new ClaimCostService(
@@ -297,8 +297,8 @@ public final class HavenClaimsPlugin extends JavaPlugin {
     private ClaimRepository createClaimRepository() {
         HavenDataSource havenDataSource = HavenAPI.get(HavenDataSource.class);
         havenDataSource.registerMigrations(
-                "landclaims",
-                "db/migrations/landclaims",
+                "havenclaims",
+                "db/migrations/havenclaims",
                 getClass().getClassLoader()
         );
         return new SqlClaimRepository(havenDataSource.getDataSource());

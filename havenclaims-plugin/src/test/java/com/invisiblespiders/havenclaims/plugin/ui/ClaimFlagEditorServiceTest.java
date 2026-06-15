@@ -12,8 +12,8 @@ class ClaimFlagEditorServiceTest {
         ClaimFlagEditorService service = new ClaimFlagEditorService();
 
         ClaimFlagEditor editor = service.buildEditor("Home", List.of(
-                new ClaimFlagRow("build", "Access", "Build", "Allow block placement.", true, "landclaims.flag.build"),
-                new ClaimFlagRow("fluid_flow", "Environment", "Fluid Flow", "Allow water and lava.", false, "landclaims.flag.fluid_flow")
+                new ClaimFlagRow("build", "Access", "Build", "Allow block placement.", true, "havenclaims.flag.build"),
+                new ClaimFlagRow("fluid_flow", "Environment", "Fluid Flow", "Allow water and lava.", false, "havenclaims.flag.fluid_flow")
         ));
 
         assertThat(editor.claimName()).isEqualTo("Home");
@@ -40,7 +40,7 @@ class ClaimFlagEditorServiceTest {
                         "Remove Hostiles",
                         "Removes hostile mobs unless named or tamed.",
                         true,
-                        "landclaims.flag.remove_hostile_entities"
+                        "havenclaims.flag.remove_hostile_entities"
                 ),
                 new ClaimFlagRow(
                         "remove_passive_entities",
@@ -48,7 +48,7 @@ class ClaimFlagEditorServiceTest {
                         "Remove Passives",
                         "Removes passive mobs unless named or tamed.",
                         false,
-                        "landclaims.flag.remove_passive_entities"
+                        "havenclaims.flag.remove_passive_entities"
                 )
         ));
 

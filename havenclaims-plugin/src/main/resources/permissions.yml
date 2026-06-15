@@ -1,34 +1,34 @@
 # Permission nodes registered at startup for permission editor discovery.
 limits:
-  landclaims.limit.default: 10
-  landclaims.limit.member: 25
-  landclaims.limit.vip: 75
-  landclaims.limit.elite: 150
+  havenclaims.limit.default: 10
+  havenclaims.limit.member: 25
+  havenclaims.limit.vip: 75
+  havenclaims.limit.elite: 150
 flag-edit:
-  landclaims.flag.edit.basic:
+  havenclaims.flag.edit.basic:
     - build
     - break
     - interact
     - container_access
-  landclaims.flag.edit.environment:
+  havenclaims.flag.edit.environment:
     - fluid_flow
     - explosion_damage
     - fire_spread
     - mob_griefing
 
 commands:
-  landclaims.deny.manage: "Allows claim owners and managers to use /claim deny, /claim undeny, and /claim denied."
+  havenclaims.deny.manage: "Allows claim owners and managers to use /claim deny, /claim undeny, and /claim denied."
 admin:
-  landclaims.admin.claim.create: "Allows staff to create server-owned admin claims."
-  landclaims.admin.claim.edit: "Allows staff to edit server-owned admin claims."
-  landclaims.admin.claim.delete: "Allows staff to delete server-owned admin claims."
-  landclaims.admin.claim.list: "Allows staff to list server-owned admin claims."
-  landclaims.admin.claim.teleport: "Allows staff to teleport to server-owned admin claims."
-  landclaims.admin.userclaims.view: "Allows staff to browse player claims."
-  landclaims.admin.userclaims.edit: "Allows staff to edit player claim flags and members."
-  landclaims.admin.userclaims.delete: "Allows staff to delete player claims."
-  landclaims.admin.userclaims.teleport: "Allows staff to teleport to player claims."
-  landclaims.admin.userclaims.transfer: "Allows staff to transfer player claims."
-  landclaims.admin.reload: "Allows staff to reload LandClaims configuration when supported."
+  havenclaims.admin.claim.create: "Allows staff to create server-owned admin claims."
+  havenclaims.admin.claim.edit: "Allows staff to edit server-owned admin claims."
+  havenclaims.admin.claim.delete: "Allows staff to delete server-owned admin claims."
+  havenclaims.admin.claim.list: "Allows staff to list server-owned admin claims."
+  havenclaims.admin.claim.teleport: "Allows staff to teleport to server-owned admin claims."
+  havenclaims.admin.userclaims.view: "Allows staff to browse player claims."
+  havenclaims.admin.userclaims.edit: "Allows staff to edit player claim flags and members."
+  havenclaims.admin.userclaims.delete: "Allows staff to delete player claims."
+  havenclaims.admin.userclaims.teleport: "Allows staff to teleport to player claims."
+  havenclaims.admin.userclaims.transfer: "Allows staff to transfer player claims."
+  havenclaims.admin.reload: "Allows staff to reload HavenClaims configuration when supported."
 bypass:
-  landclaims.bypass.entry-deny: "Allows staff to enter claims even when listed as denied."
+  havenclaims.bypass.entry-deny: "Allows staff to enter claims even when listed as denied."

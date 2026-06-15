@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 class ClaimToolServiceTest {
     @Test
     void spendsChargesWhenEnoughRemain() {
-        ClaimToolService service = new ClaimToolService("landclaims");
+        ClaimToolService service = new ClaimToolService("havenclaims");
         ItemStack tool = toolWithCharges(5, 5);
 
         assertThat(service.currentCharges(tool)).isEqualTo(5);
@@ -29,7 +29,7 @@ class ClaimToolServiceTest {
 
     @Test
     void doesNotSpendChargesWhenNotEnoughRemain() {
-        ClaimToolService service = new ClaimToolService("landclaims");
+        ClaimToolService service = new ClaimToolService("havenclaims");
         ItemStack tool = toolWithCharges(2, 2);
 
         assertThat(service.spendCharges(tool, 3)).isFalse();
@@ -42,8 +42,8 @@ class ClaimToolServiceTest {
         ItemMeta itemMeta = mock(ItemMeta.class);
         PersistentDataContainer persistentDataContainer = mock(PersistentDataContainer.class);
         Map<NamespacedKey, Integer> values = new HashMap<>();
-        values.put(new NamespacedKey("landclaims", "claim_tool_current_charges"), currentCharges);
-        values.put(new NamespacedKey("landclaims", "claim_tool_max_charges"), maxCharges);
+        values.put(new NamespacedKey("havenclaims", "claim_tool_current_charges"), currentCharges);
+        values.put(new NamespacedKey("havenclaims", "claim_tool_max_charges"), maxCharges);
 
         when(itemStack.hasItemMeta()).thenReturn(true);
         when(itemStack.getItemMeta()).thenReturn(itemMeta);

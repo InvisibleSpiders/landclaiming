@@ -19,7 +19,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public final class BukkitHavenClaimsApi implements HavenClaimsApi {
-    private static final String BYPASS_PERMISSION = "landclaims.bypass.protection";
+    private static final String BYPASS_PERMISSION = "havenclaims.bypass.protection";
 
     private final ClaimRepository claimRepository;
     private final ClaimIndex claimIndex;
