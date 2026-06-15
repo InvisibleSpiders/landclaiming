@@ -1,13 +1,13 @@
-package com.nick.landclaims.api;
+package com.invisiblespiders.havenclaims.api;
 
-import com.nick.landclaims.api.claim.ClaimView;
+import com.invisiblespiders.havenclaims.api.claim.ClaimView;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
-public interface LandClaimsApi {
+public interface HavenClaimsApi {
     Optional<ClaimView> getClaimAt(Location location);
 
     Optional<ClaimView> getClaimById(UUID claimId);

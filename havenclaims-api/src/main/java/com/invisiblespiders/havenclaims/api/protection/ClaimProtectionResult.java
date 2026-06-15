@@ -1,4 +1,4 @@
-package com.nick.landclaims.api.protection;
+package com.invisiblespiders.havenclaims.api.protection;
 
 public enum ClaimProtectionResult {
     ALLOW,

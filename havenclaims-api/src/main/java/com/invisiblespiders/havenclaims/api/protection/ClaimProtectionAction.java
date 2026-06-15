@@ -1,4 +1,4 @@
-package com.nick.landclaims.api.protection;
+package com.invisiblespiders.havenclaims.api.protection;
 
 import java.util.UUID;
 

@@ -1,4 +1,4 @@
-package com.nick.landclaims.api.flag;
+package com.invisiblespiders.havenclaims.api.flag;
 
 public record ClaimFlagDefinition(
         String key,
