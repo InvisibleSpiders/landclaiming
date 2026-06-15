@@ -148,6 +148,34 @@ class ClaimModeCommandTest {
     }
 
     @Test
+    void exitPartialResultUsesPartialRestoreMessage() {
+        PlayerFixture fixture = playerFixture();
+        ClaimModeService service = mock(ClaimModeService.class);
+        when(service.isInClaimMode(fixture.playerId())).thenReturn(true);
+        when(service.exit(fixture.player(), ClaimModeService.ExitReason.MANUAL))
+                .thenReturn(ClaimModeService.ExitResult.PARTIAL);
+        ClaimModeCommand command = command(service);
+
+        command.execute(fixture.player(), ClaimModeAction.OFF);
+
+        assertThat(plain(fixture.messages())).containsExactly("Some stored items were moved.");
+    }
+
+    @Test
+    void exitRecoveryResultUsesRecoveryMessage() {
+        PlayerFixture fixture = playerFixture();
+        ClaimModeService service = mock(ClaimModeService.class);
+        when(service.isInClaimMode(fixture.playerId())).thenReturn(true);
+        when(service.exit(fixture.player(), ClaimModeService.ExitReason.MANUAL))
+                .thenReturn(ClaimModeService.ExitResult.RECOVERY);
+        ClaimModeCommand command = command(service);
+
+        command.execute(fixture.player(), ClaimModeAction.OFF);
+
+        assertThat(plain(fixture.messages())).containsExactly("Some stored items need recovery.");
+    }
+
+    @Test
     void tabCompletesModeActions() {
         ClaimModeCommand command = command(service(true));
 
@@ -228,7 +256,9 @@ class ClaimModeCommandTest {
                 "claim-mode.exited", "<yellow>Claim mode disabled.",
                 "claim-mode.already-active", "<yellow>You are already in claim mode.",
                 "claim-mode.not-active", "<yellow>You are not in claim mode.",
-                "claim-mode.disabled", "<red>Claim mode is disabled."
+                "claim-mode.disabled", "<red>Claim mode is disabled.",
+                "claim-mode.restore-partial", "<yellow>Some stored items were moved.",
+                "claim-mode.restore-recovery", "<red>Some stored items need recovery."
         ));
     }
 

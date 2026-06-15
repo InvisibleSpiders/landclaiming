@@ -69,9 +69,12 @@ public final class ClaimModeCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendExitMessage(Player player, ClaimModeService.ExitResult result) {
-        String key = result == ClaimModeService.ExitResult.NOT_ACTIVE
-                ? "claim-mode.not-active"
-                : "claim-mode.exited";
+        String key = switch (result) {
+            case RESTORED -> "claim-mode.exited";
+            case PARTIAL -> "claim-mode.restore-partial";
+            case RECOVERY -> "claim-mode.restore-recovery";
+            case NOT_ACTIVE -> "claim-mode.not-active";
+        };
         player.sendMessage(messageService.render(key, Map.of()));
     }
 }

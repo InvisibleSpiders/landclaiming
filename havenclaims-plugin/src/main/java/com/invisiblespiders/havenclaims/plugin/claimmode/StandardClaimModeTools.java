@@ -1,6 +1,7 @@
 package com.invisiblespiders.havenclaims.plugin.claimmode;
 
 import java.util.List;
+import java.util.Objects;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
@@ -13,8 +14,16 @@ public final class StandardClaimModeTools {
     }
 
     public static ClaimModeToolRegistry createRegistry(NamespacedKey toolKey) {
+        return createRegistry(toolKey, (player, event) -> {});
+    }
+
+    public static ClaimModeToolRegistry createRegistry(
+            NamespacedKey toolKey,
+            ClaimModeTool.ClaimModeToolHandler claimHandler
+    ) {
+        ClaimModeTool.ClaimModeToolHandler handler = Objects.requireNonNull(claimHandler, "claimHandler");
         return new ClaimModeToolRegistry(toolKey, List.of(
-                new ClaimModeTool("claim", 0, StandardClaimModeTools::claimTool, true, "", (player, event) -> {}),
+                new ClaimModeTool("claim", 0, StandardClaimModeTools::claimTool, true, "", handler),
                 new ClaimModeTool("subclaim", 1, StandardClaimModeTools::subclaimTool, false, "claim-mode.subclaim-coming-soon", (player, event) -> {}),
                 new ClaimModeTool("menu", 7, StandardClaimModeTools::menuTool, true, "", (player, event) -> player.performCommand("claim menu")),
                 new ClaimModeTool("exit", 8, StandardClaimModeTools::exitTool, true, "", (player, event) -> player.performCommand("claimmode off"))

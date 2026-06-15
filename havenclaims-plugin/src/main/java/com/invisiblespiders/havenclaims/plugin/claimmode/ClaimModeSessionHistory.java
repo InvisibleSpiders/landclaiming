@@ -13,10 +13,14 @@ import java.util.UUID;
 
 public final class ClaimModeSessionHistory {
     private final Path historyFile;
-    private final int historyPerPlayer;
+    private int historyPerPlayer;
 
     public ClaimModeSessionHistory(Path dataFolder, int historyPerPlayer) {
         this.historyFile = Objects.requireNonNull(dataFolder, "dataFolder").resolve("logs").resolve("claimmode-history.log");
+        this.historyPerPlayer = Math.max(1, historyPerPlayer);
+    }
+
+    public void reload(int historyPerPlayer) {
         this.historyPerPlayer = Math.max(1, historyPerPlayer);
     }
 

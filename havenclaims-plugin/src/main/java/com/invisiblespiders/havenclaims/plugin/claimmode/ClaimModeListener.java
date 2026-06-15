@@ -136,14 +136,7 @@ public final class ClaimModeListener implements Listener {
 
         ItemStack item = event.getItem();
         if (isClaimModeTool(item)) {
-            cancelBaseInteraction(event);
-            claimModeService.toolRegistry().resolve(item).ifPresent(tool -> {
-                if (tool.enabled()) {
-                    tool.handler().handle(player, event);
-                    return;
-                }
-                player.sendMessage(message(tool.disabledMessageKey(), Map.of()));
-            });
+            claimModeService.toolRegistry().resolve(item).ifPresent(tool -> handleClaimModeTool(player, event, tool));
             return;
         }
 
@@ -250,6 +243,15 @@ public final class ClaimModeListener implements Listener {
 
     private boolean isClaimModeTool(ItemStack item) {
         return claimModeService.toolRegistry().isClaimModeTool(item);
+    }
+
+    private void handleClaimModeTool(Player player, PlayerInteractEvent event, ClaimModeTool tool) {
+        cancelBaseInteraction(event);
+        if (tool.enabled()) {
+            tool.handler().handle(player, event);
+            return;
+        }
+        player.sendMessage(message(tool.disabledMessageKey(), Map.of()));
     }
 
     private Component message(String key, Map<String, String> placeholders) {

@@ -399,6 +399,64 @@ class ClaimModeServiceTest {
     }
 
     @Test
+    void flushActiveSessionsToRecoveryPersistsRetainedSnapshotsAfterRestoreFailure() {
+        PlayerFixture fixture = playerFixture("Alice");
+        ItemStack firstBackup = item(Material.DIAMOND, 1, bytes(110));
+        ItemStack secondBackup = item(Material.EMERALD, 1, bytes(111));
+        ItemStack firstRestored = item(Material.DIAMOND, 1, bytes(112));
+        fixture.setStoredItem(0, firstBackup);
+        fixture.setStoredItem(1, secondBackup);
+        ClaimModeRecoveryStore recoveryStore = new ClaimModeRecoveryStore(tempDir);
+        ClaimModeService service = service(true, recoveryStore);
+
+        service.enter(fixture.player());
+        try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(110))).thenReturn(firstRestored);
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(111)))
+                    .thenThrow(new IllegalStateException("restore exploded"));
+
+            assertThatThrownBy(() -> service.exit(fixture.player(), ClaimModeService.ExitReason.PLUGIN_DISABLE))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("restore exploded");
+        }
+
+        service.flushActiveSessionsToRecovery(ClaimModeService.ExitReason.PLUGIN_DISABLE);
+
+        assertThat(service.isInClaimMode(fixture.playerId())).isFalse();
+        assertThat(recoveryStore.pendingFor(fixture.playerId()))
+                .singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.playerName()).isEqualTo("Alice");
+                    assertThat(entry.originalSlot()).isEqualTo("hotbar-1");
+                    assertThat(entry.reason()).isEqualTo("plugin-disable-unresolved");
+                    assertThat(entry.summary()).contains("type=EMERALD");
+                });
+    }
+
+    @Test
+    void flushActiveSessionsToRecoveryKeepsEmergencyPendingWhenDurableRecoveryFails() throws Exception {
+        Path fileInsteadOfDirectory = tempDir.resolve("flush-recovery-blocker");
+        Files.writeString(fileInsteadOfDirectory, "occupied", StandardCharsets.UTF_8);
+        PlayerFixture fixture = playerFixture("Alice");
+        ItemStack diamondBackup = item(Material.DIAMOND, 1, bytes(120));
+        fixture.setStoredItem(0, diamondBackup);
+        ClaimModeRecoveryStore recoveryStore = new ClaimModeRecoveryStore(fileInsteadOfDirectory);
+        ClaimModeService service = service(true, recoveryStore);
+        service.enter(fixture.player());
+
+        service.flushActiveSessionsToRecovery(ClaimModeService.ExitReason.PLUGIN_DISABLE);
+
+        assertThat(service.isInClaimMode(fixture.playerId())).isFalse();
+        assertThat(recoveryStore.pendingFor(fixture.playerId()))
+                .singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.originalSlot()).isEqualTo("hotbar-0");
+                    assertThat(entry.reason()).isEqualTo("plugin-disable-unresolved;recovery-log-failed;pending-memory");
+                    assertThat(entry.summary()).contains("type=DIAMOND");
+                });
+    }
+
+    @Test
     void restoreAllExitsOnlyActivePlayers() {
         PlayerFixture active = playerFixture("Alice");
         PlayerFixture inactive = playerFixture("Bob");

@@ -32,4 +32,16 @@ class ClaimModeCommandGuardTest {
         assertThat(guard.isBlocked("/storage")).isFalse();
         assertThat(guard.isBlocked("/pay Alice 10")).isTrue();
     }
+
+    @Test
+    void claimAllowanceOnlyExemptsModeBridgeWhenClaimCommandIsBlocked() {
+        ClaimModeCommandGuard guard = new ClaimModeCommandGuard(
+                new ClaimModeConfig(true, 5, List.of("claim", "claims"), List.of("claimmode", "cm", "claim"))
+        );
+
+        assertThat(guard.isBlocked("/claim mode on")).isFalse();
+        assertThat(guard.isBlocked("/minecraft:claim mode off")).isFalse();
+        assertThat(guard.isBlocked("/claim create Home")).isTrue();
+        assertThat(guard.isBlocked("/claims create Home")).isTrue();
+    }
 }

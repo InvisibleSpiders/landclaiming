@@ -122,6 +122,25 @@ public final class ClaimModeService {
         }
     }
 
+    public void flushActiveSessionsToRecovery(ExitReason reason) {
+        Objects.requireNonNull(reason, "reason");
+        List<ClaimModeSession> activeSessions = new ArrayList<>(sessions.values());
+        for (ClaimModeSession session : activeSessions) {
+            for (ClaimModeItemSnapshot snapshot : session.snapshots()) {
+                if (snapshot.empty()) {
+                    continue;
+                }
+                ClaimModeRecoveryEntry entry = recoveryEntry(session, snapshot, recoveryReason(reason));
+                try {
+                    recoveryStore.add(entry);
+                } catch (RuntimeException exception) {
+                    recoveryStore.addPendingOnly(emergencyRecoveryEntry(entry));
+                }
+            }
+            sessions.remove(session.playerId());
+        }
+    }
+
     public Component fallbackMessage() {
         return fallbackMessage;
     }
@@ -214,6 +233,18 @@ public final class ClaimModeService {
         );
     }
 
+    private ClaimModeRecoveryEntry recoveryEntry(ClaimModeSession session, ClaimModeItemSnapshot snapshot, String reason) {
+        return new ClaimModeRecoveryEntry(
+                session.playerId(),
+                session.playerName(),
+                Instant.now(),
+                snapshot.slot(),
+                snapshot.summary(),
+                snapshot.backup(),
+                reason
+        );
+    }
+
     private ClaimModeRecoveryEntry emergencyRecoveryEntry(ClaimModeRecoveryEntry entry) {
         return new ClaimModeRecoveryEntry(
                 entry.playerId(),
@@ -222,8 +253,12 @@ public final class ClaimModeService {
                 entry.originalSlot(),
                 entry.summary(),
                 entry.backup(),
-                "inventory-full;recovery-log-failed;pending-memory"
+                entry.reason() + ";recovery-log-failed;pending-memory"
         );
+    }
+
+    private static String recoveryReason(ExitReason reason) {
+        return reason.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-') + "-unresolved";
     }
 
     private void appendHistory(ClaimModeSession session, ExitReason reason, List<String> restoreResults) {

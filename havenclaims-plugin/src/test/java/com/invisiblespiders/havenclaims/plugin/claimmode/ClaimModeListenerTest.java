@@ -10,8 +10,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.listener.ClaimToolListener;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
+import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
+import com.invisiblespiders.havenclaims.plugin.tool.ClaimToolService;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
@@ -21,7 +25,10 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Container;
@@ -45,6 +52,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
@@ -307,8 +315,8 @@ class ClaimModeListenerTest {
     void interactWithEnabledToolCancelsBaseActionAndInvokesHandler() {
         AtomicBoolean handled = new AtomicBoolean(false);
         Fixture fixture = fixture(true, new ClaimModeTool(
-                "claim",
-                0,
+                "menu",
+                7,
                 ClaimModeListenerTest::claimModeItem,
                 true,
                 "",
@@ -318,7 +326,7 @@ class ClaimModeListenerTest {
         PlayerInteractEvent event = new PlayerInteractEvent(
                 fixture.player(),
                 Action.RIGHT_CLICK_AIR,
-                fixture.registry().createItem("claim"),
+                fixture.registry().createItem("menu"),
                 null,
                 BlockFace.SELF
         );
@@ -328,6 +336,46 @@ class ClaimModeListenerTest {
         assertThat(event.isCancelled()).isTrue();
         assertThat(event.useItemInHand()).isEqualTo(Event.Result.DENY);
         assertThat(handled).isTrue();
+    }
+
+    @Test
+    void claimToolInvokesLegacySelectionHandler() {
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        ClaimToolService claimToolService = mock(ClaimToolService.class);
+        ClaimToolListener claimToolListener = new ClaimToolListener(claimToolService, selectionService);
+        Fixture fixture = fixture(true, new ClaimModeTool(
+                "claim",
+                0,
+                ClaimModeListenerTest::claimModeItem,
+                true,
+                "",
+                (player, event) -> claimToolListener.handleClaimToolSelection(event)
+        ));
+        UUID worldId = UUID.randomUUID();
+        Chunk firstChunk = chunk(worldId, 0, 0);
+        Chunk secondChunk = chunk(worldId, 1, 0);
+        Block firstBlock = block(firstChunk);
+        Block secondBlock = block(secondChunk);
+        Location location = mock(Location.class);
+        when(fixture.player().getLocation()).thenReturn(location);
+        when(location.getChunk()).thenReturn(firstChunk, secondChunk);
+        when(fixture.player().hasPermission("havenclaims.tool.use")).thenReturn(true);
+        when(fixture.player().getEffectivePermissions()).thenReturn(Set.of());
+        ItemStack tool = fixture.registry().createItem("claim");
+        ClaimModeListener claimModeListener = listener(fixture.service());
+        when(claimToolService.isClaimTool(tool)).thenReturn(true);
+
+        PlayerInteractEvent first = interact(fixture.player(), tool, firstBlock);
+        claimModeListener.onInteract(first);
+        assertThat(first.isCancelled()).isTrue();
+        assertThat(first.useInteractedBlock()).isEqualTo(Event.Result.DENY);
+        assertThat(first.useItemInHand()).isEqualTo(Event.Result.DENY);
+
+        PlayerInteractEvent second = interact(fixture.player(), tool, secondBlock);
+        claimModeListener.onInteract(second);
+
+        assertThat(selectionService.pendingSelection(fixture.playerId()))
+                .contains(Set.of(new ClaimChunk(worldId, 0, 0), new ClaimChunk(worldId, 1, 0)));
     }
 
     @Test
@@ -453,6 +501,33 @@ class ClaimModeListenerTest {
                 hotbarButton
         );
         return event;
+    }
+
+    private static PlayerInteractEvent interact(Player player, ItemStack item, Block block) {
+        return new PlayerInteractEvent(
+                player,
+                Action.RIGHT_CLICK_BLOCK,
+                item,
+                block,
+                BlockFace.UP,
+                EquipmentSlot.HAND
+        );
+    }
+
+    private static Block block(Chunk chunk) {
+        Block block = mock(Block.class);
+        when(block.getChunk()).thenReturn(chunk);
+        return block;
+    }
+
+    private static Chunk chunk(UUID worldId, int chunkX, int chunkZ) {
+        World world = mock(World.class);
+        Chunk chunk = mock(Chunk.class);
+        when(world.getUID()).thenReturn(worldId);
+        when(chunk.getWorld()).thenReturn(world);
+        when(chunk.getX()).thenReturn(chunkX);
+        when(chunk.getZ()).thenReturn(chunkZ);
+        return chunk;
     }
 
     private static InventoryClickEvent playerInventoryClick(

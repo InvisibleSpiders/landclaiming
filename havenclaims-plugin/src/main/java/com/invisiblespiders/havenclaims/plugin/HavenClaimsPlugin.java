@@ -98,6 +98,7 @@ public final class HavenClaimsPlugin extends JavaPlugin
     private ClaimIndex claimIndex;
     private ClaimModeService claimModeService;
     private ClaimModeCommandGuard claimModeCommandGuard;
+    private ClaimModeSessionHistory claimModeSessionHistory;
     private HavenDataSource havenDataSource;
     private DialogService dialogService;
 
@@ -115,18 +116,8 @@ public final class HavenClaimsPlugin extends JavaPlugin
         ClaimModeConfig claimModeConfig = ClaimModeConfig.from(getConfig());
         claimModeCommandGuard = new ClaimModeCommandGuard(claimModeConfig);
         ClaimModeRecoveryStore claimModeRecoveryStore = new ClaimModeRecoveryStore(getDataFolder().toPath());
-        ClaimModeSessionHistory claimModeSessionHistory = new ClaimModeSessionHistory(
+        claimModeSessionHistory = new ClaimModeSessionHistory(
                 getDataFolder().toPath(), claimModeConfig.historyPerPlayer());
-        ClaimModeToolRegistry claimModeToolRegistry = StandardClaimModeTools.createRegistry(
-                new NamespacedKey(this, "claim_mode_tool"));
-        claimModeService = new ClaimModeService(
-                claimModeConfig,
-                claimModeToolRegistry,
-                claimModeSessionHistory,
-                claimModeRecoveryStore,
-                Component.text("Claim mode")
-        );
-        claimToolService.setClaimModeToolRegistry(claimModeToolRegistry);
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
@@ -201,6 +192,17 @@ public final class HavenClaimsPlugin extends JavaPlugin
                 getConfig().getBoolean("selection.clear-on-tool-switch", true),
                 getConfig().getBoolean("selection.double-crouch-clear.enabled", true)
         );
+        ClaimModeToolRegistry claimModeToolRegistry = StandardClaimModeTools.createRegistry(
+                new NamespacedKey(this, "claim_mode_tool"),
+                (player, event) -> claimToolListener.handleClaimToolSelection(event));
+        claimModeService = new ClaimModeService(
+                claimModeConfig,
+                claimModeToolRegistry,
+                claimModeSessionHistory,
+                claimModeRecoveryStore,
+                Component.text("Claim mode")
+        );
+        claimToolService.setClaimModeToolRegistry(claimModeToolRegistry);
         getServer().getPluginManager().registerEvents(claimToolListener, this);
         getServer().getPluginManager().registerEvents(
                 new ClaimModeListener(claimModeService, claimModeCommandGuard, messageService), this);
@@ -297,6 +299,7 @@ public final class HavenClaimsPlugin extends JavaPlugin
             ClaimModeConfig claimModeConfig = ClaimModeConfig.from(getConfig());
             claimModeService.reload(claimModeConfig);
             claimModeCommandGuard.reload(claimModeConfig);
+            claimModeSessionHistory.reload(claimModeConfig.historyPerPlayer());
             claimCreationService.reload(
                     getConfig().getInt("claiming.player-buffer-distance", 3),
                     getConfig().getInt("claiming.admin-buffer-distance", 3),
@@ -369,9 +372,11 @@ public final class HavenClaimsPlugin extends JavaPlugin
         if (claimModeService != null) {
             claimModeService.restoreAll(
                     getServer().getOnlinePlayers(), ClaimModeService.ExitReason.PLUGIN_DISABLE);
+            claimModeService.flushActiveSessionsToRecovery(ClaimModeService.ExitReason.PLUGIN_DISABLE);
             claimModeService = null;
         }
         claimModeCommandGuard = null;
+        claimModeSessionHistory = null;
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.clearAll();
             chunkBorderVisualService = null;

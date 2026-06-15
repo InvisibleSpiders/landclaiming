@@ -88,6 +88,10 @@ public class ClaimToolListener implements Listener {
             return;
         }
 
+        handleClaimToolSelection(event);
+    }
+
+    public void handleClaimToolSelection(PlayerInteractEvent event) {
         event.setCancelled(true);
         Player player = event.getPlayer();
         if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
