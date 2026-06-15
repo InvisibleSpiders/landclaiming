@@ -56,6 +56,34 @@ class ClaimToolServiceTest {
         assertThat(service.isClaimTool(registry.createItem("menu"))).isFalse();
     }
 
+    @Test
+    void distinguishesChargedAndClaimModeClaimTools() {
+        ClaimToolService service = new ClaimToolService("havenclaims");
+        ClaimModeToolRegistry registry = new ClaimModeToolRegistry(
+                new NamespacedKey("havenclaims", "claim_mode_tool"),
+                List.of(
+                        new ClaimModeTool("claim", 0, () -> toolWithClaimModeId("claim"), true, "", (player, event) -> {}),
+                        new ClaimModeTool("menu", 7, () -> toolWithClaimModeId("menu"), true, "", (player, event) -> {})
+                )
+        );
+        service.setClaimModeToolRegistry(registry);
+        ItemStack chargedTool = toolWithCharges(5, 5);
+        ItemStack claimModeClaimTool = registry.createItem("claim");
+        ItemStack menuTool = registry.createItem("menu");
+
+        assertThat(service.isClaimTool(chargedTool)).isTrue();
+        assertThat(service.isClaimTool(claimModeClaimTool)).isTrue();
+        assertThat(service.isClaimTool(menuTool)).isFalse();
+
+        assertThat(service.isChargedClaimTool(chargedTool)).isTrue();
+        assertThat(service.isChargedClaimTool(claimModeClaimTool)).isFalse();
+        assertThat(service.isChargedClaimTool(menuTool)).isFalse();
+
+        assertThat(service.isClaimModeClaimTool(chargedTool)).isFalse();
+        assertThat(service.isClaimModeClaimTool(claimModeClaimTool)).isTrue();
+        assertThat(service.isClaimModeClaimTool(menuTool)).isFalse();
+    }
+
     private static ItemStack toolWithCharges(int currentCharges, int maxCharges) {
         ItemStack itemStack = mock(ItemStack.class);
         ItemMeta itemMeta = mock(ItemMeta.class);
@@ -79,11 +107,15 @@ class ClaimToolServiceTest {
     }
 
     private static ItemStack toolWithClaimModeId(String id) {
+        ItemStack template = mock(ItemStack.class);
         ItemStack itemStack = mock(ItemStack.class);
         ItemMeta itemMeta = mock(ItemMeta.class);
         PersistentDataContainer persistentDataContainer = mock(PersistentDataContainer.class);
         Map<NamespacedKey, String> values = new HashMap<>();
 
+        when(template.clone()).thenReturn(itemStack);
+        when(template.hasItemMeta()).thenReturn(true);
+        when(template.getItemMeta()).thenReturn(itemMeta);
         when(itemStack.hasItemMeta()).thenReturn(true);
         when(itemStack.getItemMeta()).thenReturn(itemMeta);
         when(itemMeta.getPersistentDataContainer()).thenReturn(persistentDataContainer);
@@ -93,6 +125,6 @@ class ClaimToolServiceTest {
             values.put(invocation.getArgument(0), invocation.getArgument(2));
             return null;
         }).when(persistentDataContainer).set(any(NamespacedKey.class), eq(PersistentDataType.STRING), eq(id));
-        return itemStack;
+        return template;
     }
 }

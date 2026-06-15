@@ -65,7 +65,7 @@ public class ClaimToolService {
     }
 
     public int currentCharges(ItemStack itemStack) {
-        if (!isClaimTool(itemStack)) {
+        if (!isChargedClaimTool(itemStack)) {
             return 0;
         }
 
@@ -76,7 +76,7 @@ public class ClaimToolService {
     }
 
     public int maxCharges(ItemStack itemStack) {
-        if (!isClaimTool(itemStack)) {
+        if (!isChargedClaimTool(itemStack)) {
             return 0;
         }
 
@@ -92,7 +92,7 @@ public class ClaimToolService {
         }
 
         int currentCharges = currentCharges(itemStack);
-        if (!isClaimTool(itemStack) || currentCharges < amount) {
+        if (!isChargedClaimTool(itemStack) || currentCharges < amount) {
             return false;
         }
 
@@ -106,11 +106,10 @@ public class ClaimToolService {
     }
 
     public boolean isClaimTool(ItemStack itemStack) {
-        if (claimModeToolRegistry != null && claimModeToolRegistry.resolve(itemStack)
-                .map(tool -> tool.id().equals("claim"))
-                .orElse(false)) {
-            return true;
-        }
+        return isClaimModeClaimTool(itemStack) || isChargedClaimTool(itemStack);
+    }
+
+    public boolean isChargedClaimTool(ItemStack itemStack) {
         if (itemStack == null || !itemStack.hasItemMeta()) {
             return false;
         }
@@ -118,6 +117,12 @@ public class ClaimToolService {
         return itemStack.getItemMeta()
                 .getPersistentDataContainer()
                 .has(currentChargesKey, PersistentDataType.INTEGER);
+    }
+
+    public boolean isClaimModeClaimTool(ItemStack itemStack) {
+        return claimModeToolRegistry != null && claimModeToolRegistry.resolve(itemStack)
+                .map(tool -> tool.id().equals("claim"))
+                .orElse(false);
     }
 
     private void updateLore(ItemStack itemStack, int currentCharges, int maxCharges) {
