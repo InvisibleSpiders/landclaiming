@@ -109,7 +109,7 @@ public final class ClaimModeService {
         }
     }
 
-    Component fallbackMessage() {
+    public Component fallbackMessage() {
         return fallbackMessage;
     }
 
