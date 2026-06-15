@@ -3,6 +3,7 @@ package com.invisiblespiders.havenclaims.plugin.claimmode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -64,9 +65,11 @@ public final class ClaimModeService {
         }
 
         PlayerInventory inventory = player.getInventory();
-        List<ClaimModeItemSnapshot> snapshots = snapshotAndClearClaimModeSlots(inventory);
-        placeClaimModeTools(inventory);
+        List<ClaimModeItemSnapshot> snapshots = snapshotClaimModeSlots(inventory);
+        Map<Integer, ItemStack> toolItems = createClaimModeToolItems();
+        clearClaimModeSlots(inventory);
         sessions.put(playerId, new ClaimModeSession(playerId, player.getName(), Instant.now(), snapshots));
+        placeClaimModeTools(inventory, toolItems);
         return EnterResult.ENTERED;
     }
 
@@ -87,12 +90,11 @@ public final class ClaimModeService {
         for (ClaimModeItemSnapshot snapshot : session.snapshots()) {
             RestoreOutcome outcome = restoreSnapshot(inventory, session, snapshot);
             restoreResults.add(snapshot.slot() + "=" + outcome.historyValue());
-            partial = partial || outcome == RestoreOutcome.INVENTORY || outcome == RestoreOutcome.RECOVERY;
-            recovery = recovery || outcome == RestoreOutcome.RECOVERY;
+            partial = partial || outcome.partial();
+            recovery = recovery || outcome.recovery();
         }
 
-        history.append(session.playerId(), session.playerName(), session.enteredAt(), Instant.now(),
-                reason, session.snapshots(), restoreResults);
+        appendHistory(session, reason, restoreResults);
         if (recovery) {
             return ExitResult.RECOVERY;
         }
@@ -113,20 +115,33 @@ public final class ClaimModeService {
         return fallbackMessage;
     }
 
-    private List<ClaimModeItemSnapshot> snapshotAndClearClaimModeSlots(PlayerInventory inventory) {
+    private List<ClaimModeItemSnapshot> snapshotClaimModeSlots(PlayerInventory inventory) {
         List<ClaimModeItemSnapshot> snapshots = new ArrayList<>();
         for (int slot = 0; slot <= 8; slot++) {
             snapshots.add(ClaimModeItemSnapshot.from("hotbar-" + slot, inventory.getItem(slot)));
-            inventory.setItem(slot, null);
         }
         snapshots.add(ClaimModeItemSnapshot.from("offhand", inventory.getItemInOffHand()));
-        inventory.setItemInOffHand(null);
         return snapshots;
     }
 
-    private void placeClaimModeTools(PlayerInventory inventory) {
+    private Map<Integer, ItemStack> createClaimModeToolItems() {
+        Map<Integer, ItemStack> toolItems = new LinkedHashMap<>();
         for (ClaimModeTool tool : toolRegistry.toolsBySlot().values()) {
-            inventory.setItem(tool.slot(), toolRegistry.createItem(tool.id()));
+            toolItems.put(tool.slot(), toolRegistry.createItem(tool.id()));
+        }
+        return toolItems;
+    }
+
+    private void clearClaimModeSlots(PlayerInventory inventory) {
+        for (int slot = 0; slot <= 8; slot++) {
+            inventory.setItem(slot, null);
+        }
+        inventory.setItemInOffHand(null);
+    }
+
+    private void placeClaimModeTools(PlayerInventory inventory, Map<Integer, ItemStack> toolItems) {
+        for (Map.Entry<Integer, ItemStack> entry : toolItems.entrySet()) {
+            inventory.setItem(entry.getKey(), entry.getValue());
         }
     }
 
@@ -159,18 +174,50 @@ public final class ClaimModeService {
         if (leftovers.isEmpty()) {
             return RestoreOutcome.INVENTORY;
         }
+        boolean emergencyPending = false;
         for (ItemStack leftover : leftovers.values()) {
-            recoveryStore.add(new ClaimModeRecoveryEntry(
-                    session.playerId(),
-                    session.playerName(),
-                    Instant.now(),
-                    snapshot.slot(),
-                    ClaimModeItemCodec.summary(leftover),
-                    ClaimModeItemCodec.serialize(leftover),
-                    "inventory-full"
-            ));
+            ClaimModeRecoveryEntry entry = recoveryEntry(session, snapshot.slot(), leftover, "inventory-full");
+            try {
+                recoveryStore.add(entry);
+            } catch (RuntimeException exception) {
+                recoveryStore.addPendingOnly(emergencyRecoveryEntry(entry));
+                emergencyPending = true;
+            }
         }
-        return RestoreOutcome.RECOVERY;
+        return emergencyPending ? RestoreOutcome.EMERGENCY_RECOVERY : RestoreOutcome.RECOVERY;
+    }
+
+    private ClaimModeRecoveryEntry recoveryEntry(ClaimModeSession session, String slot, ItemStack item, String reason) {
+        return new ClaimModeRecoveryEntry(
+                session.playerId(),
+                session.playerName(),
+                Instant.now(),
+                slot,
+                ClaimModeItemCodec.summary(item),
+                ClaimModeItemCodec.serialize(item),
+                reason
+        );
+    }
+
+    private ClaimModeRecoveryEntry emergencyRecoveryEntry(ClaimModeRecoveryEntry entry) {
+        return new ClaimModeRecoveryEntry(
+                entry.playerId(),
+                entry.playerName(),
+                Instant.now(),
+                entry.originalSlot(),
+                entry.summary(),
+                entry.backup(),
+                "inventory-full;recovery-log-failed;pending-memory"
+        );
+    }
+
+    private void appendHistory(ClaimModeSession session, ExitReason reason, List<String> restoreResults) {
+        try {
+            history.append(session.playerId(), session.playerName(), session.enteredAt(), Instant.now(),
+                    reason, session.snapshots(), restoreResults);
+        } catch (RuntimeException exception) {
+            restoreResults.add("history=recovery-log-failed;restore-complete");
+        }
     }
 
     private boolean restoreExact(PlayerInventory inventory, String slot, ItemStack item) {
@@ -205,7 +252,8 @@ public final class ClaimModeService {
         EMPTY("empty"),
         EXACT("exact"),
         INVENTORY("inventory"),
-        RECOVERY("recovery");
+        RECOVERY("recovery"),
+        EMERGENCY_RECOVERY("recovery-log-failed;pending-memory");
 
         private final String historyValue;
 
@@ -215,6 +263,14 @@ public final class ClaimModeService {
 
         String historyValue() {
             return historyValue;
+        }
+
+        boolean partial() {
+            return this == INVENTORY || recovery();
+        }
+
+        boolean recovery() {
+            return this == RECOVERY || this == EMERGENCY_RECOVERY;
         }
     }
 }

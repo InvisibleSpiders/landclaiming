@@ -1,6 +1,7 @@
 package com.invisiblespiders.havenclaims.plugin.claimmode;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,6 +17,8 @@ import static org.mockito.Mockito.when;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +104,48 @@ class ClaimModeServiceTest {
     }
 
     @Test
+    void enterDoesNotMutateInventoryWhenToolCreationFails() {
+        PlayerFixture fixture = playerFixture();
+        ItemStack diamond = item(Material.DIAMOND, 3, bytes(40));
+        ItemStack shield = item(Material.SHIELD, 1, bytes(41));
+        fixture.setStoredItem(0, diamond);
+        fixture.setOffhand(shield);
+        ClaimModeService service = service(true, new ClaimModeRecoveryStore(tempDir), throwingToolRegistry(),
+                new ClaimModeSessionHistory(tempDir, 5));
+
+        assertThatThrownBy(() -> service.enter(fixture.player()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tool creation failed");
+
+        assertThat(service.isInClaimMode(fixture.playerId())).isFalse();
+        assertThat(fixture.slot(0)).isSameAs(diamond);
+        assertThat(fixture.offhand()).isSameAs(shield);
+        verify(fixture.inventory(), never()).setItem(anyInt(), any());
+        verify(fixture.inventory(), never()).setItemInOffHand(any());
+    }
+
+    @Test
+    void enterDoesNotClearEarlierSlotsWhenLaterSnapshotSerializationFails() {
+        PlayerFixture fixture = playerFixture();
+        ItemStack first = item(Material.DIAMOND, 3, bytes(42));
+        ItemStack second = item(Material.EMERALD, 2, bytes(43));
+        when(second.serializeAsBytes()).thenThrow(new IllegalStateException("snapshot failed"));
+        fixture.setStoredItem(0, first);
+        fixture.setStoredItem(1, second);
+        ClaimModeService service = service(true);
+
+        assertThatThrownBy(() -> service.enter(fixture.player()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("snapshot failed");
+
+        assertThat(service.isInClaimMode(fixture.playerId())).isFalse();
+        assertThat(fixture.slot(0)).isSameAs(first);
+        assertThat(fixture.slot(1)).isSameAs(second);
+        verify(fixture.inventory(), never()).setItem(anyInt(), any());
+        verify(fixture.inventory(), never()).setItemInOffHand(any());
+    }
+
+    @Test
     void exitRemovesSessionAndRestoresExactSlots() throws Exception {
         PlayerFixture fixture = playerFixture();
         ItemStack diamondBackup = item(Material.DIAMOND, 3, bytes(10));
@@ -137,11 +182,11 @@ class ClaimModeServiceTest {
         ItemStack restoredDiamond = item(Material.DIAMOND, 3, bytes(21));
         ItemStack unrelated = item(Material.STONE, 1, bytes(22));
         fixture.setStoredItem(0, diamondBackup);
+        fixture.allowAddItemSlot(9);
         ClaimModeService service = service(true);
 
         service.enter(fixture.player());
         fixture.setStoredItem(0, unrelated);
-        fixture.addItemResult(Map.of());
         try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
             itemStacks.when(() -> ItemStack.deserializeBytes(bytes(20))).thenReturn(restoredDiamond);
 
@@ -149,6 +194,7 @@ class ClaimModeServiceTest {
 
             assertThat(result).isEqualTo(ClaimModeService.ExitResult.PARTIAL);
             assertThat(fixture.slot(0)).isSameAs(unrelated);
+            assertThat(fixture.slot(9)).isSameAs(restoredDiamond);
             assertThat(fixture.addedItems()).containsExactly(restoredDiamond);
         }
     }
@@ -166,7 +212,7 @@ class ClaimModeServiceTest {
 
         service.enter(fixture.player());
         fixture.setStoredItem(0, unrelated);
-        fixture.addItemResult(Map.of(0, leftover));
+        fixture.rejectNextAddItemWith(leftover);
         try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
             itemStacks.when(() -> ItemStack.deserializeBytes(bytes(30))).thenReturn(restoredDiamond);
 
@@ -182,6 +228,93 @@ class ClaimModeServiceTest {
                     assertThat(entry.reason()).isEqualTo("inventory-full");
                     assertThat(entry.summary()).contains("type=DIAMOND");
                 });
+        assertThat(fixture.addedItems()).containsExactly(restoredDiamond);
+        assertThat(fixture.slot(0)).isSameAs(unrelated);
+        assertThat(fixture.allSlots()).doesNotContainValue(restoredDiamond);
+    }
+
+    @Test
+    void exitKeepsEmergencyPendingRecoveryWhenDurableRecoveryAppendFails() throws Exception {
+        Path fileInsteadOfDirectory = tempDir.resolve("not-a-directory");
+        Files.writeString(fileInsteadOfDirectory, "occupied", StandardCharsets.UTF_8);
+        PlayerFixture fixture = playerFixture();
+        ItemStack diamondBackup = item(Material.DIAMOND, 3, bytes(50));
+        ItemStack restoredDiamond = item(Material.DIAMOND, 3, bytes(51));
+        ItemStack unrelated = item(Material.STONE, 1, bytes(52));
+        fixture.setStoredItem(0, diamondBackup);
+        ClaimModeRecoveryStore recoveryStore = new ClaimModeRecoveryStore(fileInsteadOfDirectory);
+        ClaimModeService service = service(true, recoveryStore);
+
+        service.enter(fixture.player());
+        fixture.setStoredItem(0, unrelated);
+        fixture.rejectNextAddItemWith(restoredDiamond);
+        try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(50))).thenReturn(restoredDiamond);
+
+            ClaimModeService.ExitResult result = service.exit(fixture.player(), ClaimModeService.ExitReason.DEATH);
+
+            assertThat(result).isEqualTo(ClaimModeService.ExitResult.RECOVERY);
+        }
+        assertThat(recoveryStore.pendingFor(fixture.playerId()))
+                .singleElement()
+                .satisfies(entry -> {
+                    assertThat(entry.originalSlot()).isEqualTo("hotbar-0");
+                    assertThat(entry.reason()).isEqualTo("inventory-full;recovery-log-failed;pending-memory");
+                    assertThat(entry.summary()).contains("type=DIAMOND");
+                });
+    }
+
+    @Test
+    void exitRestoresItemsAndRemovesSessionWhenHistoryAppendFails() throws Exception {
+        Path fileInsteadOfDirectory = tempDir.resolve("history-blocker");
+        Files.writeString(fileInsteadOfDirectory, "occupied", StandardCharsets.UTF_8);
+        PlayerFixture fixture = playerFixture();
+        ItemStack diamondBackup = item(Material.DIAMOND, 3, bytes(60));
+        ItemStack restoredDiamond = item(Material.DIAMOND, 3, bytes(61));
+        fixture.setStoredItem(0, diamondBackup);
+        ClaimModeService service = service(true, new ClaimModeRecoveryStore(tempDir), registry(),
+                new ClaimModeSessionHistory(fileInsteadOfDirectory, 5));
+
+        service.enter(fixture.player());
+        try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(60))).thenReturn(restoredDiamond);
+
+            ClaimModeService.ExitResult result = service.exit(fixture.player(), ClaimModeService.ExitReason.LOGOUT);
+
+            assertThat(result).isEqualTo(ClaimModeService.ExitResult.RESTORED);
+        }
+        assertThat(service.isInClaimMode(fixture.playerId())).isFalse();
+        assertThat(fixture.slot(0)).isSameAs(restoredDiamond);
+    }
+
+    @Test
+    void restoreAllContinuesWhenOnePlayersHistoryAppendFails() throws Exception {
+        Path fileInsteadOfDirectory = tempDir.resolve("history-blocker-all");
+        Files.writeString(fileInsteadOfDirectory, "occupied", StandardCharsets.UTF_8);
+        PlayerFixture first = playerFixture("Alice");
+        PlayerFixture second = playerFixture("Bob");
+        ItemStack firstBackup = item(Material.DIAMOND, 1, bytes(70));
+        ItemStack secondBackup = item(Material.EMERALD, 1, bytes(71));
+        ItemStack firstRestored = item(Material.DIAMOND, 1, bytes(72));
+        ItemStack secondRestored = item(Material.EMERALD, 1, bytes(73));
+        first.setStoredItem(0, firstBackup);
+        second.setStoredItem(0, secondBackup);
+        ClaimModeService service = service(true, new ClaimModeRecoveryStore(tempDir), registry(),
+                new ClaimModeSessionHistory(fileInsteadOfDirectory, 5));
+
+        service.enter(first.player());
+        service.enter(second.player());
+        try (MockedStatic<ItemStack> itemStacks = mockStatic(ItemStack.class)) {
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(70))).thenReturn(firstRestored);
+            itemStacks.when(() -> ItemStack.deserializeBytes(bytes(71))).thenReturn(secondRestored);
+
+            service.restoreAll(List.of(first.player(), second.player()), ClaimModeService.ExitReason.PLUGIN_DISABLE);
+        }
+
+        assertThat(service.isInClaimMode(first.playerId())).isFalse();
+        assertThat(service.isInClaimMode(second.playerId())).isFalse();
+        assertThat(first.slot(0)).isSameAs(firstRestored);
+        assertThat(second.slot(0)).isSameAs(secondRestored);
     }
 
     @Test
@@ -204,10 +337,15 @@ class ClaimModeServiceTest {
     }
 
     private ClaimModeService service(boolean enabled, ClaimModeRecoveryStore recoveryStore) {
+        return service(enabled, recoveryStore, registry(), new ClaimModeSessionHistory(tempDir, 5));
+    }
+
+    private ClaimModeService service(boolean enabled, ClaimModeRecoveryStore recoveryStore,
+                                     ClaimModeToolRegistry registry, ClaimModeSessionHistory history) {
         return new ClaimModeService(
                 new ClaimModeConfig(enabled, 5, List.of("storage"), List.of("claimmode", "cm", "claim")),
-                registry(),
-                new ClaimModeSessionHistory(tempDir, 5),
+                registry,
+                history,
                 recoveryStore,
                 FALLBACK
         );
@@ -217,6 +355,14 @@ class ClaimModeServiceTest {
         return new ClaimModeToolRegistry(TOOL_KEY, List.of(
                 new ClaimModeTool("claim", 0, () -> claimModeItem(Material.GOLDEN_HOE), true, "", (player, event) -> {}),
                 new ClaimModeTool("exit", 1, () -> claimModeItem(Material.BARRIER), true, "", (player, event) -> {})
+        ));
+    }
+
+    private ClaimModeToolRegistry throwingToolRegistry() {
+        return new ClaimModeToolRegistry(TOOL_KEY, List.of(
+                new ClaimModeTool("broken", 0, () -> {
+                    throw new IllegalStateException("tool creation failed");
+                }, true, "", (player, event) -> {})
         ));
     }
 
@@ -296,8 +442,20 @@ class ClaimModeServiceTest {
             inventoryState.addItemResult(result);
         }
 
+        void allowAddItemSlot(int slot) {
+            inventoryState.allowAddItemSlot(slot);
+        }
+
+        void rejectNextAddItemWith(ItemStack leftover) {
+            inventoryState.rejectNextAddItemWith(leftover);
+        }
+
         List<ItemStack> addedItems() {
             return inventoryState.addedItems();
+        }
+
+        Map<Integer, ItemStack> allSlots() {
+            return inventoryState.allSlots();
         }
     }
 
@@ -305,6 +463,8 @@ class ClaimModeServiceTest {
         private final PlayerInventory inventory;
         private final Map<Integer, ItemStack> slots = new HashMap<>();
         private final List<ItemStack> addedItems = new java.util.ArrayList<>();
+        private final Deque<Integer> acceptedAddItemSlots = new ArrayDeque<>();
+        private final Deque<ItemStack> rejectedAddItemLeftovers = new ArrayDeque<>();
         private ItemStack offhand;
         private HashMap<Integer, ItemStack> addItemResult = new HashMap<>();
 
@@ -324,8 +484,17 @@ class ClaimModeServiceTest {
                 return null;
             }).when(inventory).setItemInOffHand(any());
             when(inventory.addItem(any(ItemStack.class))).thenAnswer(invocation -> {
-                addedItems.add(invocation.getArgument(0));
-                return addItemResult;
+                ItemStack item = invocation.getArgument(0);
+                addedItems.add(item);
+                if (!rejectedAddItemLeftovers.isEmpty()) {
+                    return new HashMap<>(Map.of(0, rejectedAddItemLeftovers.removeFirst()));
+                }
+                if (!acceptedAddItemSlots.isEmpty()) {
+                    int slot = acceptedAddItemSlots.removeFirst();
+                    slots.put(slot, item);
+                    return new HashMap<Integer, ItemStack>();
+                }
+                return new HashMap<>(addItemResult);
             });
         }
 
@@ -349,8 +518,26 @@ class ClaimModeServiceTest {
             addItemResult = new HashMap<>(result);
         }
 
+        void allowAddItemSlot(int slot) {
+            acceptedAddItemSlots.addLast(slot);
+        }
+
+        void rejectNextAddItemWith(ItemStack leftover) {
+            rejectedAddItemLeftovers.addLast(leftover);
+        }
+
         List<ItemStack> addedItems() {
             return addedItems;
+        }
+
+        Map<Integer, ItemStack> allSlots() {
+            Map<Integer, ItemStack> nonEmptySlots = new HashMap<>();
+            for (Map.Entry<Integer, ItemStack> entry : slots.entrySet()) {
+                if (entry.getValue() != null) {
+                    nonEmptySlots.put(entry.getKey(), entry.getValue());
+                }
+            }
+            return Map.copyOf(nonEmptySlots);
         }
     }
 }

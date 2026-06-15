@@ -24,6 +24,10 @@ public final class ClaimModeRecoveryStore {
         pendingEntries.add(recoveryEntry);
     }
 
+    public void addPendingOnly(ClaimModeRecoveryEntry entry) {
+        pendingEntries.add(Objects.requireNonNull(entry, "entry"));
+    }
+
     public List<ClaimModeRecoveryEntry> pendingFor(UUID playerId) {
         return pendingEntries.stream()
                 .filter(entry -> entry.playerId().equals(playerId))
