@@ -1,8 +1,8 @@
-# LandClaims
+# HavenClaims
 
-LandClaims is a Paper land claiming plugin that protects land by chunks. It uses a charged golden hoe claim tool, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
+HavenClaims is a Paper land claiming plugin that protects land by chunks. It uses a charged golden hoe claim tool, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
 
-This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing with descriptions, a claim menu shell, enforced claim protection flags, admin claim commands, advanced entity-control flags, and the public `LandClaimsApi` service for other plugins.
+This branch is an MVP foundation. The current build includes claim-tool selection, claim creation, same-name merge confirmation, claim cost previews, member commands, clickable flag editing with descriptions, a claim menu shell, enforced claim protection flags, admin claim commands, advanced entity-control flags, and the public `HavenClaimsApi` service for other plugins.
 
 ## Requirements
 
@@ -17,10 +17,10 @@ Feature PRs should follow the [development checklist](docs/development-checklist
 
 ## Install
 
-1. Download the latest `LandClaims` jar from GitHub Releases.
+1. Download the latest `HavenClaims` jar from GitHub Releases.
 2. Place the jar in your Paper server `plugins` folder.
 3. Restart the server.
-4. Edit generated files in `plugins/LandClaims/`.
+4. Edit generated files in `plugins/HavenClaims/`.
 5. Restart the server after configuration changes. Runtime reload via `/claim admin reload` is planned but not complete in this build.
 
 ## Quick Start
@@ -36,58 +36,58 @@ Feature PRs should follow the [development checklist](docs/development-checklist
 
 ## Persistence
 
-Created claims are saved through the configured SQL repository when `/claim create` succeeds. On server startup, LandClaims loads saved claims into the in-memory claim index, so claims persist through restarts as long as the configured database is retained.
+Created claims are saved through the configured SQL repository when `/claim create` succeeds. On server startup, HavenClaims loads saved claims into the in-memory claim index, so claims persist through restarts as long as the configured database is retained.
 
 ## Commands
 
-Base command: `/claim`. Aliases: `/claims`, `/lc`.
+Base command: `/claim`.
 
 | Command | Permission | Description |
 | --- | --- | --- |
-| `/claim` | `landclaims.use` | Shows the command help output. |
-| `/claim tool` | `landclaims.tool.use` | Gives the configured claim tool. The default item is a charged golden hoe. |
-| `/claim create <name>` | `landclaims.claim` | Creates a player claim from the current completed two-corner selection. |
-| `/claim cost` | `landclaims.claim` | Previews selected chunks, allowance, over-limit chunks, and cost. `/claim quote` is also accepted. |
-| `/claim menu` | `landclaims.gui` | Opens the claim management menu for the claim at the player's current chunk. |
-| `/claim flags` | `landclaims.gui` | Opens the clickable flag editor for the claim at the player's current chunk. |
-| `/claim viewborder` | `landclaims.use` | Shows the pending selection border, the current claim border, or the current chunk border. |
-| `/claim flag list` | `landclaims.gui` | Opens the same flag editor as `/claim flags`. |
-| `/claim flag set <flag> <true\|false>` | Claim owner plus `landclaims.flag.<flag>` | Sets a claim flag directly. Also accepts `on/off` and `yes/no`. |
-| `/claim flag toggle <flag>` | Claim owner plus `landclaims.flag.<flag>` | Toggles a claim flag and redraws the flag editor. |
+| `/claim` | `havenclaims.use` | Shows the command help output. |
+| `/claim tool` | `havenclaims.tool.use` | Gives the configured claim tool. The default item is a charged golden hoe. |
+| `/claim create <name>` | `havenclaims.claim` | Creates a player claim from the current completed two-corner selection. |
+| `/claim cost` | `havenclaims.claim` | Previews selected chunks, allowance, over-limit chunks, and cost. `/claim quote` is also accepted. |
+| `/claim menu` | `havenclaims.gui` | Opens the claim management menu for the claim at the player's current chunk. |
+| `/claim flags` | `havenclaims.gui` | Opens the clickable flag editor for the claim at the player's current chunk. |
+| `/claim viewborder` | `havenclaims.use` | Shows the pending selection border, the current claim border, or the current chunk border. |
+| `/claim flag list` | `havenclaims.gui` | Opens the same flag editor as `/claim flags`. |
+| `/claim flag set <flag> <true\|false>` | Claim owner plus `havenclaims.flag.<flag>` | Sets a claim flag directly. Also accepts `on/off` and `yes/no`. |
+| `/claim flag toggle <flag>` | Claim owner plus `havenclaims.flag.<flag>` | Toggles a claim flag and redraws the flag editor. |
 | `/claim member list` | Any player in claim | Lists members for the claim at the player's current chunk. |
 | `/claim member add <player> [member\|manager]` | Claim owner or manager | Adds an online player to the claim. Managers can only add `member` role entries. |
 | `/claim member remove <player>` | Claim owner or manager | Removes an existing claim member. Managers cannot remove other managers. |
-| `/claim deny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Denies a player from entering the claim at the player's current chunk. Names must be online; UUIDs are accepted. |
-| `/claim undeny <player\|uuid>` | Claim owner or manager plus `landclaims.deny.manage` | Removes a player from the current claim's denied-entry list. |
-| `/claim denied` | `landclaims.deny.manage` | Lists players denied from entering the current claim. |
-| `/claim admin create <name>` | `landclaims.admin.claim.create` | Creates a server-owned admin claim from the current completed selection. |
-| `/claim admin list` | `landclaims.admin.claim.list` | Lists server-owned admin claims and their IDs. |
-| `/claim admin delete <claim-id>` | `landclaims.admin.claim.delete` | Deletes a server-owned admin claim by UUID. |
-| `/claim admin teleport <claim-id>` | `landclaims.admin.claim.teleport` | Teleports to the center of an admin claim's first chunk. |
-| `/claim admin userclaims list <player\|uuid>` | `landclaims.admin.userclaims.view` | Lists a player's claims and IDs from anywhere. |
-| `/claim admin userclaims view <claim-id>` | `landclaims.admin.userclaims.view` | Shows a player claim by UUID from anywhere. |
-| `/claim admin userclaims delete <claim-id>` | `landclaims.admin.userclaims.delete` | Deletes a player claim by UUID. |
-| `/claim admin userclaims teleport <claim-id>` | `landclaims.admin.userclaims.teleport` | Teleports to the center of a player claim's first chunk. |
-| `/claim admin userclaims transfer <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.transfer` | Transfers player claim ownership. Names must be online; UUIDs are accepted. |
-| `/claim admin userclaims flag list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists flags for a player claim by UUID. |
-| `/claim admin userclaims flag set <claim-id> <flag> <true\|false>` | `landclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
-| `/claim admin userclaims flag toggle <claim-id> <flag>` | `landclaims.admin.userclaims.edit` | Toggles a player claim flag by UUID. |
-| `/claim admin userclaims member list <claim-id>` | `landclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
-| `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `landclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
-| `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `landclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
-| `/claim info` | `landclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
-| `/claim cancel` | `landclaims.claim` | Clears the player's pending first corner or completed claim selection. |
-| `/claim mergeconfirm` | `landclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
-| `/claim mergecancel` | `landclaims.claim` | Cancels a pending same-name adjacent claim merge. Usually clicked from chat. |
+| `/claim deny <player\|uuid>` | Claim owner or manager plus `havenclaims.deny.manage` | Denies a player from entering the claim at the player's current chunk. Names must be online; UUIDs are accepted. |
+| `/claim undeny <player\|uuid>` | Claim owner or manager plus `havenclaims.deny.manage` | Removes a player from the current claim's denied-entry list. |
+| `/claim denied` | `havenclaims.deny.manage` | Lists players denied from entering the current claim. |
+| `/claim admin create <name>` | `havenclaims.admin.claim.create` | Creates a server-owned admin claim from the current completed selection. |
+| `/claim admin list` | `havenclaims.admin.claim.list` | Lists server-owned admin claims and their IDs. |
+| `/claim admin delete <claim-id>` | `havenclaims.admin.claim.delete` | Deletes a server-owned admin claim by UUID. |
+| `/claim admin teleport <claim-id>` | `havenclaims.admin.claim.teleport` | Teleports to the center of an admin claim's first chunk. |
+| `/claim admin userclaims list <player\|uuid>` | `havenclaims.admin.userclaims.view` | Lists a player's claims and IDs from anywhere. |
+| `/claim admin userclaims view <claim-id>` | `havenclaims.admin.userclaims.view` | Shows a player claim by UUID from anywhere. |
+| `/claim admin userclaims delete <claim-id>` | `havenclaims.admin.userclaims.delete` | Deletes a player claim by UUID. |
+| `/claim admin userclaims teleport <claim-id>` | `havenclaims.admin.userclaims.teleport` | Teleports to the center of a player claim's first chunk. |
+| `/claim admin userclaims transfer <claim-id> <player\|uuid>` | `havenclaims.admin.userclaims.transfer` | Transfers player claim ownership. Names must be online; UUIDs are accepted. |
+| `/claim admin userclaims flag list <claim-id>` | `havenclaims.admin.userclaims.edit` | Lists flags for a player claim by UUID. |
+| `/claim admin userclaims flag set <claim-id> <flag> <true\|false>` | `havenclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
+| `/claim admin userclaims flag toggle <claim-id> <flag>` | `havenclaims.admin.userclaims.edit` | Toggles a player claim flag by UUID. |
+| `/claim admin userclaims member list <claim-id>` | `havenclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
+| `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `havenclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
+| `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `havenclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
+| `/claim info` | `havenclaims.use` | Shows claim name, owner type, chunk count, and whether the player owns the claim. |
+| `/claim cancel` | `havenclaims.claim` | Clears the player's pending first corner or completed claim selection. |
+| `/claim mergeconfirm` | `havenclaims.claim` | Confirms a pending same-name adjacent claim merge. Usually clicked from chat. |
+| `/claim mergecancel` | `havenclaims.claim` | Cancels a pending same-name adjacent claim merge. Usually clicked from chat. |
 
 ## Shortcuts
 
 | Shortcut | Permission | Description |
 | --- | --- | --- |
-| Right-click with claim tool | `landclaims.tool.use` | Selects claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
-| Switch away from claim tool | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.clear-on-tool-switch` is enabled. |
-| Double crouch | `landclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
-| Sneak + swap hand | `landclaims.gui` | Opens `/claim menu` when the claim tool is involved. |
+| Right-click with claim tool | `havenclaims.tool.use` | Selects claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
+| Switch away from claim tool | `havenclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.clear-on-tool-switch` is enabled. |
+| Double crouch | `havenclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
+| Sneak + swap hand | `havenclaims.gui` | Opens `/claim menu` when the claim tool is involved. |
 
 ## Selection Behavior
 
@@ -97,7 +97,7 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 
 ## Visuals
 
-Chunk borders use temporary glowing `BlockDisplay` entities. There is no native Paper chunk glow API, so LandClaims draws display-entity line segments for the viewing player and removes them on timeout when configured, selection clear, logout, plugin disable, or replacement.
+Chunk borders use temporary glowing `BlockDisplay` entities. There is no native Paper chunk glow API, so HavenClaims draws display-entity line segments for the viewing player and removes them on timeout when configured, selection clear, logout, plugin disable, or replacement.
 
 Claim preview border colors:
 
@@ -141,7 +141,7 @@ notifications:
 
 ## Denied Entry
 
-Claim owners and managers can deny specific players from entering a claim. Denied players are pushed back to their last allowed location when they cross into the claim. If they are already inside a denied claim, LandClaims sends them to the nearest bordering unclaimed chunk it can find.
+Claim owners and managers can deny specific players from entering a claim. Denied players are pushed back to their last allowed location when they cross into the claim. If they are already inside a denied claim, HavenClaims sends them to the nearest bordering unclaimed chunk it can find.
 
 Relevant config:
 
@@ -157,36 +157,36 @@ access-denial:
 
 | Permission | Default | Description |
 | --- | --- | --- |
-| `landclaims.use` | `true` | Allows basic LandClaims usage and help/info access. |
-| `landclaims.claim` | `true` | Allows player claim creation, cost previews, selection cancellation, and merge confirmation flows. |
-| `landclaims.gui` | `true` | Allows opening claim menus and flag editor views. |
-| `landclaims.tool.use` | `true` | Allows receiving and using the claim tool. |
-| `landclaims.tool.craft` | `true` | Allows crafting the claim tool when the recipe is enabled. |
-| `landclaims.tool.recharge` | `true` | Reserved for claim tool recharge flows. |
-| `landclaims.member.manage` | `true` | Reserved for broader member management permission gating. Current member commands are owner-gated. |
-| `landclaims.deny.manage` | `true` | Allows using denied-entry management commands. Claim ownership or manager role is still required. |
-| `landclaims.limit.default` | Registered from `permissions.yml` | Grants the default configured chunk allowance, currently 10. |
-| `landclaims.limit.member` | Registered from `permissions.yml` | Grants the member configured chunk allowance, currently 25. |
-| `landclaims.limit.vip` | Registered from `permissions.yml` | Grants the VIP configured chunk allowance, currently 75. |
-| `landclaims.limit.elite` | Registered from `permissions.yml` | Grants the elite configured chunk allowance, currently 150. |
-| `landclaims.flag.<flag>` | Server permission system | Allows the claim owner to edit a specific flag, such as `landclaims.flag.build` or `landclaims.flag.item_drop`. |
-| `landclaims.bypass.claim-limit` | `op` | Bypasses claim allowance limits. |
-| `landclaims.bypass.claim-buffer` | `op` | Bypasses configured claim buffer distance checks. |
-| `landclaims.bypass.protection` | `op` | Bypasses all protection checks. |
-| `landclaims.bypass.protection.<flag>` | `op` by convention | Bypasses one protection flag check through the public API and internal protection checks. |
-| `landclaims.bypass.entry-deny` | `op` | Allows staff to enter claims even when listed as denied. |
-| `landclaims.admin` | `op` | Parent permission for admin claim and user-claim tools. |
-| `landclaims.admin.claim.create` | child of `landclaims.admin` | Allows creating server-owned admin claims. |
-| `landclaims.admin.claim.edit` | child of `landclaims.admin` | Reserved for admin claim editing flows beyond creation/deletion. |
-| `landclaims.admin.claim.delete` | child of `landclaims.admin` | Allows deleting server-owned admin claims. |
-| `landclaims.admin.claim.list` | child of `landclaims.admin` | Allows listing server-owned admin claims. |
-| `landclaims.admin.claim.teleport` | child of `landclaims.admin` | Allows teleporting to server-owned admin claims. |
-| `landclaims.admin.userclaims.view` | child of `landclaims.admin` | Allows browsing player claims from anywhere. |
-| `landclaims.admin.userclaims.edit` | child of `landclaims.admin` | Allows editing player claim flags and members by UUID. |
-| `landclaims.admin.userclaims.delete` | child of `landclaims.admin` | Allows deleting player claims by UUID. |
-| `landclaims.admin.userclaims.teleport` | child of `landclaims.admin` | Allows teleporting to player claims by UUID. |
-| `landclaims.admin.userclaims.transfer` | child of `landclaims.admin` | Allows transferring player claim ownership by UUID. |
-| `landclaims.admin.reload` | child of `landclaims.admin` | Planned runtime reload command. |
+| `havenclaims.use` | `true` | Allows basic HavenClaims usage and help/info access. |
+| `havenclaims.claim` | `true` | Allows player claim creation, cost previews, selection cancellation, and merge confirmation flows. |
+| `havenclaims.gui` | `true` | Allows opening claim menus and flag editor views. |
+| `havenclaims.tool.use` | `true` | Allows receiving and using the claim tool. |
+| `havenclaims.tool.craft` | `true` | Allows crafting the claim tool when the recipe is enabled. |
+| `havenclaims.tool.recharge` | `true` | Reserved for claim tool recharge flows. |
+| `havenclaims.member.manage` | `true` | Reserved for broader member management permission gating. Current member commands are owner-gated. |
+| `havenclaims.deny.manage` | `true` | Allows using denied-entry management commands. Claim ownership or manager role is still required. |
+| `havenclaims.limit.default` | Registered from `permissions.yml` | Grants the default configured chunk allowance, currently 10. |
+| `havenclaims.limit.member` | Registered from `permissions.yml` | Grants the member configured chunk allowance, currently 25. |
+| `havenclaims.limit.vip` | Registered from `permissions.yml` | Grants the VIP configured chunk allowance, currently 75. |
+| `havenclaims.limit.elite` | Registered from `permissions.yml` | Grants the elite configured chunk allowance, currently 150. |
+| `havenclaims.flag.<flag>` | Server permission system | Allows the claim owner to edit a specific flag, such as `havenclaims.flag.build` or `havenclaims.flag.item_drop`. |
+| `havenclaims.bypass.claim-limit` | `op` | Bypasses claim allowance limits. |
+| `havenclaims.bypass.claim-buffer` | `op` | Bypasses configured claim buffer distance checks. |
+| `havenclaims.bypass.protection` | `op` | Bypasses all protection checks. |
+| `havenclaims.bypass.protection.<flag>` | `op` by convention | Bypasses one protection flag check through the public API and internal protection checks. |
+| `havenclaims.bypass.entry-deny` | `op` | Allows staff to enter claims even when listed as denied. |
+| `havenclaims.admin` | `op` | Parent permission for admin claim and user-claim tools. |
+| `havenclaims.admin.claim.create` | child of `havenclaims.admin` | Allows creating server-owned admin claims. |
+| `havenclaims.admin.claim.edit` | child of `havenclaims.admin` | Reserved for admin claim editing flows beyond creation/deletion. |
+| `havenclaims.admin.claim.delete` | child of `havenclaims.admin` | Allows deleting server-owned admin claims. |
+| `havenclaims.admin.claim.list` | child of `havenclaims.admin` | Allows listing server-owned admin claims. |
+| `havenclaims.admin.claim.teleport` | child of `havenclaims.admin` | Allows teleporting to server-owned admin claims. |
+| `havenclaims.admin.userclaims.view` | child of `havenclaims.admin` | Allows browsing player claims from anywhere. |
+| `havenclaims.admin.userclaims.edit` | child of `havenclaims.admin` | Allows editing player claim flags and members by UUID. |
+| `havenclaims.admin.userclaims.delete` | child of `havenclaims.admin` | Allows deleting player claims by UUID. |
+| `havenclaims.admin.userclaims.teleport` | child of `havenclaims.admin` | Allows teleporting to player claims by UUID. |
+| `havenclaims.admin.userclaims.transfer` | child of `havenclaims.admin` | Allows transferring player claim ownership by UUID. |
+| `havenclaims.admin.reload` | child of `havenclaims.admin` | Planned runtime reload command. |
 
 ## Flags
 
@@ -236,27 +236,27 @@ advanced:
 - Spawned hostile or passive entities are removed immediately when the matching claim flag is enabled.
 - Existing entities are checked on the configured cleanup interval.
 - Entities explicitly named by a player/admin name tag and tamed entities are preserved by default as a safety guard.
-- Plugin display/custom names, including rarity labels from other plugins, do not count as name-tag protection unless the entity was actually marked by LandClaims during a name-tag interaction.
+- Plugin display/custom names, including rarity labels from other plugins, do not count as name-tag protection unless the entity was actually marked by HavenClaims during a name-tag interaction.
 - In the flag editor, entity-control flags show `REMOVING` or `KEEPING` so owners can tell at a glance what the claim will do.
 
 ## Plugin API
 
-LandClaims registers `com.nick.landclaims.api.LandClaimsApi` with Bukkit's `ServicesManager`.
+HavenClaims registers `com.invisiblespiders.havenclaims.api.HavenClaimsApi` with Bukkit's `ServicesManager`.
 
-Other plugins can retrieve it after LandClaims enables:
+Other plugins can retrieve it after HavenClaims enables:
 
 ```java
-RegisteredServiceProvider<LandClaimsApi> provider =
-        getServer().getServicesManager().getRegistration(LandClaimsApi.class);
-LandClaimsApi landClaims = provider == null ? null : provider.getProvider();
+RegisteredServiceProvider<HavenClaimsApi> provider =
+        getServer().getServicesManager().getRegistration(HavenClaimsApi.class);
+HavenClaimsApi havenClaims = provider == null ? null : provider.getProvider();
 ```
 
 Useful calls:
 
 ```java
-landClaims.getClaimAt(location);
-landClaims.getClaimsOwnedBy(playerUuid);
-landClaims.canBuild(player, location);
-landClaims.canInteract(player, location, "item_drop");
-landClaims.canInteract(player, location, "mob_griefing");
+havenClaims.getClaimAt(location);
+havenClaims.getClaimsOwnedBy(playerUuid);
+havenClaims.canBuild(player, location);
+havenClaims.canInteract(player, location, "item_drop");
+havenClaims.canInteract(player, location, "mob_griefing");
 ```

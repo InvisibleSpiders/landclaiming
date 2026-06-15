@@ -2,26 +2,26 @@
 
 Core permissions:
 
-- `landclaims.use`
-- `landclaims.claim`
-- `landclaims.gui`
-- `landclaims.tool.use`
-- `landclaims.tool.craft`
-- `landclaims.tool.recharge`
-- `landclaims.member.manage`
+- `havenclaims.use`
+- `havenclaims.claim`
+- `havenclaims.gui`
+- `havenclaims.tool.use`
+- `havenclaims.tool.craft`
+- `havenclaims.tool.recharge`
+- `havenclaims.member.manage`
 
 Admin permissions:
 
-- `landclaims.admin`
-- `landclaims.admin.claim.create`
-- `landclaims.admin.claim.edit`
-- `landclaims.admin.claim.delete`
-- `landclaims.admin.claim.list`
-- `landclaims.admin.claim.teleport`
-- `landclaims.admin.userclaims.view`
-- `landclaims.admin.userclaims.edit`
-- `landclaims.admin.userclaims.delete`
-- `landclaims.admin.userclaims.teleport`
-- `landclaims.admin.userclaims.transfer`
+- `havenclaims.admin`
+- `havenclaims.admin.claim.create`
+- `havenclaims.admin.claim.edit`
+- `havenclaims.admin.claim.delete`
+- `havenclaims.admin.claim.list`
+- `havenclaims.admin.claim.teleport`
+- `havenclaims.admin.userclaims.view`
+- `havenclaims.admin.userclaims.edit`
+- `havenclaims.admin.userclaims.delete`
+- `havenclaims.admin.userclaims.teleport`
+- `havenclaims.admin.userclaims.transfer`
 
-Limit permissions are configured in `permissions.yml`, such as `landclaims.limit.member` and `landclaims.limit.vip`.
+Limit permissions are configured in `permissions.yml`, such as `havenclaims.limit.member` and `havenclaims.limit.vip`.

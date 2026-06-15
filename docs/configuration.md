@@ -1,6 +1,6 @@
 # Configuration
 
-LandClaims generates commented YAML files in `plugins/LandClaims/`.
+HavenClaims generates commented YAML files in `plugins/HavenClaims/`.
 
 - `config.yml` controls claim buffers, limits, UI preferences, shortcuts, and over-limit economy settings.
 - `storage.yml` controls SQLite or MySQL/MariaDB storage.
