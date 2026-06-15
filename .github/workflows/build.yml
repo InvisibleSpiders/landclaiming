@@ -9,8 +9,11 @@ on:
       - 'v*.*.*'
   pull_request:
 
+# Default least-privilege token for all jobs. The release job opts into
+# contents: write explicitly so PR/branch builds never run untrusted build
+# logic with a write-scoped GITHUB_TOKEN.
 permissions:
-  contents: write
+  contents: read
   packages: read
 
 jobs:
@@ -26,6 +29,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -45,8 +51,38 @@ jobs:
           name: HavenClaims
           path: havenclaims-plugin/build/libs/HavenClaims-*.jar
 
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Build
+        run: ./gradlew build
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: havenclaims-plugin/build/libs/HavenClaims-*.jar

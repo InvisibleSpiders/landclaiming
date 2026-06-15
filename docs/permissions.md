@@ -23,5 +23,10 @@ Admin permissions:
 - `havenclaims.admin.userclaims.delete`
 - `havenclaims.admin.userclaims.teleport`
 - `havenclaims.admin.userclaims.transfer`
+- `havenclaims.admin.limit`
 
-Limit permissions are configured in `permissions.yml`, such as `havenclaims.limit.member` and `havenclaims.limit.vip`.
+Claim limits are stored per player in the HavenClaims database and inherit `limits.default-claim-limit` when no override exists.
+Use `/claim admin limit` commands or the `HavenClaimsLimitService` API to adjust them.
+
+Flag edit groups are configured in `permissions.yml`.
+Group nodes such as `havenclaims.flag.edit.basic` grant child permissions such as `havenclaims.flag.build`.

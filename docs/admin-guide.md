@@ -16,8 +16,8 @@ Admin claims are server-owned claims for spawn, arenas, roads, shops, and event 
 | `/claim admin userclaims teleport <claim-id>` | `havenclaims.admin.userclaims.teleport` | Teleports to the center of the first chunk in a player claim. |
 | `/claim admin userclaims transfer <claim-id> <player\|uuid>` | `havenclaims.admin.userclaims.transfer` | Transfers player claim ownership. Names must be online; UUIDs are accepted. |
 | `/claim admin userclaims flag list <claim-id>` | `havenclaims.admin.userclaims.edit` | Lists flags for a player claim by UUID. |
-| `/claim admin userclaims flag set <claim-id> <flag> <true\|false>` | `havenclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
-| `/claim admin userclaims flag toggle <claim-id> <flag>` | `havenclaims.admin.userclaims.edit` | Toggles a player claim flag by UUID. |
+| `/claim admin userclaims flag set <claim-id> <flag> <off\|visitors\|all>` | `havenclaims.admin.userclaims.edit` | Sets a player claim flag by UUID. |
+| `/claim admin userclaims flag cycle <claim-id> <flag>` | `havenclaims.admin.userclaims.edit` | Cycles a player claim flag by UUID. |
 | `/claim admin userclaims member list <claim-id>` | `havenclaims.admin.userclaims.edit` | Lists members for a player claim by UUID. |
 | `/claim admin userclaims member add <claim-id> <player\|uuid> [member\|manager]` | `havenclaims.admin.userclaims.edit` | Adds or updates a player claim member by UUID. Names must be online; UUIDs are accepted. |
 | `/claim admin userclaims member remove <claim-id> <player\|uuid>` | `havenclaims.admin.userclaims.edit` | Removes a player claim member by UUID or known player name. |
@@ -28,5 +28,4 @@ Admin claim creation does not charge economy currency or spend claim-tool charge
 
 - `/claim admin mode`
 - `/claim admin edit <claim-id>`
-- `/claim admin reload`
 - Future claim audit logging.

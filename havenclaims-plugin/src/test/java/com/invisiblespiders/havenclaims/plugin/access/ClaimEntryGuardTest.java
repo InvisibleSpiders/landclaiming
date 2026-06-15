@@ -2,6 +2,7 @@ package com.invisiblespiders.havenclaims.plugin.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
@@ -65,6 +66,47 @@ class ClaimEntryGuardTest {
         assertThat(decision.denied()).isFalse();
     }
 
+    @Test
+    void nearestUnclaimedBorderChunkSkipsOtherClaims() {
+        UUID worldId = UUID.randomUUID();
+        ClaimChunk deniedChunk = new ClaimChunk(worldId, 0, 0);
+        ClaimChunk alreadyClaimedBorder = new ClaimChunk(worldId, 1, 0);
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim deniedClaim = claim(deniedChunk, Set.of(UUID.randomUUID()));
+        claimIndex.add(deniedClaim);
+        claimIndex.add(claim(alreadyClaimedBorder, Set.of()));
+        ClaimEntryGuard guard = new ClaimEntryGuard(claimIndex);
+
+        ClaimChunk fallback = guard.nearestUnclaimedBorderChunk(deniedChunk, deniedClaim);
+
+        assertThat(fallback).isNotEqualTo(alreadyClaimedBorder);
+        assertThat(claimIndex.findAt(fallback)).isEmpty();
+    }
+
+    @Test
+    void nearestUnclaimedBorderChunkExpandsPastClaimedImmediateNeighbors() {
+        UUID worldId = UUID.randomUUID();
+        ClaimChunk deniedChunk = new ClaimChunk(worldId, 0, 0);
+        ClaimIndex claimIndex = new ClaimIndex();
+        Claim deniedClaim = claim(deniedChunk, Set.of(UUID.randomUUID()));
+        claimIndex.add(deniedClaim);
+        claimIndex.add(claim(new ClaimChunk(worldId, 1, 0), Set.of()));
+        claimIndex.add(claim(new ClaimChunk(worldId, -1, 0), Set.of()));
+        claimIndex.add(claim(new ClaimChunk(worldId, 0, 1), Set.of()));
+        claimIndex.add(claim(new ClaimChunk(worldId, 0, -1), Set.of()));
+        ClaimEntryGuard guard = new ClaimEntryGuard(claimIndex);
+
+        ClaimChunk fallback = guard.nearestUnclaimedBorderChunk(deniedChunk, deniedClaim);
+
+        assertThat(claimIndex.findAt(fallback)).isEmpty();
+        assertThat(fallback).isNotIn(
+                new ClaimChunk(worldId, 1, 0),
+                new ClaimChunk(worldId, -1, 0),
+                new ClaimChunk(worldId, 0, 1),
+                new ClaimChunk(worldId, 0, -1)
+        );
+    }
+
     private static Claim claim(ClaimChunk chunk, Set<UUID> deniedPlayers) {
         Instant now = Instant.parse("2026-06-09T00:00:00Z");
         return new Claim(
@@ -74,7 +116,7 @@ class ClaimEntryGuardTest {
                 UUID.randomUUID(),
                 chunk.worldId(),
                 Set.of(chunk),
-                Map.of("build", false),
+                Map.of("build", FlagState.OFF),
                 Set.of(),
                 deniedPlayers,
                 now,

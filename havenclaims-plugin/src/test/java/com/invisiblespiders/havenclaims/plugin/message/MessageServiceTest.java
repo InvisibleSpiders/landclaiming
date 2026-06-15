@@ -63,6 +63,36 @@ class MessageServiceTest {
     }
 
     @Test
+    void renderPlainOrDefaultUsesFallbackWhenKeyIsMissing() {
+        MessageService service = new MessageService(Map.of());
+
+        String rendered = service.renderPlainOrDefault("claim.missing", Map.of(), "Fallback");
+
+        assertThat(rendered).isEqualTo("Fallback");
+    }
+
+    @Test
+    void renderPlainOrDefaultUsesConfiguredMessageWhenKeyExists() {
+        MessageService service = new MessageService(Map.of("claim.label", "<yellow><label></yellow>"));
+
+        String rendered = service.renderPlainOrDefault("claim.label", Map.of("label", "Build"), "Fallback");
+
+        assertThat(rendered).isEqualTo("Build");
+    }
+
+    @Test
+    void renderOrDefaultUsesFallbackTemplateWhenKeyIsMissing() {
+        MessageService service = new MessageService(Map.of());
+
+        String rendered = service.renderPlainText(service.renderOrDefault(
+                "claim.missing",
+                Map.of("label", "Build"),
+                "<yellow><label></yellow>"));
+
+        assertThat(rendered).isEqualTo("Build");
+    }
+
+    @Test
     void constructorDefensivelyCopiesMessages() {
         Map<String, String> messages = new HashMap<>();
         messages.put("claim.created", "Claim <claim_name> created.");
@@ -88,5 +118,23 @@ class MessageServiceTest {
 
         assertThatNullPointerException()
                 .isThrownBy(() -> service.renderPlain("claim.created", placeholders));
+    }
+
+    @Test
+    void reloadSwapsMessageMap() {
+        MessageService service = new MessageService(Map.of("key.one", "old value"));
+
+        service.reload(Map.of("key.one", "new value"));
+
+        assertThat(service.renderPlain("key.one", Map.of())).isEqualTo("new value");
+    }
+
+    @Test
+    void reloadWithNewKeyMakesItAvailable() {
+        MessageService service = new MessageService(Map.of("key.one", "original"));
+
+        service.reload(Map.of("key.one", "original", "key.two", "added"));
+
+        assertThat(service.renderPlain("key.two", Map.of())).isEqualTo("added");
     }
 }

@@ -2,6 +2,7 @@ package com.invisiblespiders.havenclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -136,7 +137,7 @@ class ClaimDenyServiceTest {
                 ownerId,
                 worldId,
                 Set.of(new ClaimChunk(worldId, 0, 0)),
-                Map.of("build", false),
+                Map.of("build", FlagState.OFF),
                 members,
                 deniedPlayers,
                 now,

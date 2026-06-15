@@ -43,8 +43,8 @@ public class ClaimToolListener implements Listener {
     private final ClaimBorderColorService claimBorderColorService;
     private final ClaimIndex claimIndex;
     private final MessageService messageService;
-    private final boolean clearOnToolSwitch;
-    private final boolean doubleCrouchClearEnabled;
+    private boolean clearOnToolSwitch;
+    private boolean doubleCrouchClearEnabled;
 
     public ClaimToolListener(ClaimToolService claimToolService, SelectionService selectionService) {
         this(claimToolService, selectionService, null, null, null, null, null, false, false);
@@ -70,6 +70,11 @@ public class ClaimToolListener implements Listener {
         this.messageService = messageService;
         this.clearOnToolSwitch = clearOnToolSwitch;
         this.doubleCrouchClearEnabled = doubleCrouchClearEnabled;
+    }
+
+    public void reload(boolean newClearOnToolSwitch, boolean newDoubleCrouchClearEnabled) {
+        this.clearOnToolSwitch = newClearOnToolSwitch;
+        this.doubleCrouchClearEnabled = newDoubleCrouchClearEnabled;
     }
 
     @EventHandler

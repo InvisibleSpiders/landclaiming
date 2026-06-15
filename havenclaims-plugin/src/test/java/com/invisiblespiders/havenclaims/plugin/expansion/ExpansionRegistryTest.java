@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.invisiblespiders.havenclaims.api.flag.ClaimFlagDefinition;
+import com.invisiblespiders.havenclaims.api.flag.FlagKind;
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import org.junit.jupiter.api.Test;
 
 class ExpansionRegistryTest {
@@ -45,9 +47,8 @@ class ExpansionRegistryTest {
 
     private static ClaimFlagDefinition flag(String key) {
         return new ClaimFlagDefinition(
-                key,
-                "expansion",
-                false,
+                key, "expansion", key, "",
+                FlagKind.PLAYER_ACTION, true, FlagState.OFF,
                 "havenclaims.flag." + key
         );
     }

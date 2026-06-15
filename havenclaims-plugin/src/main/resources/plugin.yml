@@ -3,7 +3,7 @@ version: '${version}'
 main: com.invisiblespiders.havenclaims.plugin.HavenClaimsPlugin
 api-version: '26.1.2'
 author: InvisibleSpiders
-description: Chunk-based Haven land claiming with configurable protections.
+description: Chunk-based land claiming with configurable protections.
 depend:
   - HavenCore
 softdepend:
@@ -12,6 +12,7 @@ commands:
   claim:
     description: Opens HavenClaims commands and menus.
     usage: /claim
+    aliases: [claims, lc]
 permissions:
   havenclaims.use:
     description: Allows basic HavenClaims usage.
@@ -63,4 +64,5 @@ permissions:
       havenclaims.admin.userclaims.delete: true
       havenclaims.admin.userclaims.teleport: true
       havenclaims.admin.userclaims.transfer: true
+      havenclaims.admin.limit: true
       havenclaims.admin.reload: true

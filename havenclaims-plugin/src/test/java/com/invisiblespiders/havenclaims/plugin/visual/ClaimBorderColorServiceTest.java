@@ -11,6 +11,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostConfig;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostService;
+import com.invisiblespiders.havenclaims.plugin.limit.ClaimLimitRepository;
 import com.invisiblespiders.havenclaims.plugin.limit.LimitService;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -128,7 +130,11 @@ class ClaimBorderColorServiceTest {
             );
             ClaimCostService claimCostService = new ClaimCostService(
                     claimIndex,
-                    new LimitService(defaultLimit, permissionLimits),
+                    new LimitService(defaultLimit, new ClaimLimitRepository() {
+                        @Override public OptionalInt getLimit(UUID id) { return OptionalInt.empty(); }
+                        @Override public void setLimit(UUID id, int limit) {}
+                        @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
+                    }),
                     new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
             );
             service = new ClaimBorderColorService(claimCreationService, claimIndex, claimCostService);

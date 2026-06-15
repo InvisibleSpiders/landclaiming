@@ -1,5 +1,6 @@
 package com.invisiblespiders.havenclaims.plugin.claim;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
@@ -18,9 +19,9 @@ public final class ClaimCreationService {
     private final ClaimIndex claimIndex;
     private final ClaimService claimService;
     private final FlagRegistry flagRegistry;
-    private final int playerBufferDistance;
-    private final int adminBufferDistance;
-    private final int maxClaimNameLength;
+    private int playerBufferDistance;
+    private int adminBufferDistance;
+    private int maxClaimNameLength;
 
     public ClaimCreationService(
             ClaimRepository claimRepository,
@@ -46,13 +47,29 @@ public final class ClaimCreationService {
         this.maxClaimNameLength = maxClaimNameLength;
     }
 
+    public void reload(int newPlayerBufferDistance, int newAdminBufferDistance, int newMaxNameLength) {
+        if (newPlayerBufferDistance < 0 || newAdminBufferDistance < 0) {
+            throw new IllegalArgumentException("buffer distances must be non-negative");
+        }
+        if (newMaxNameLength < 1) {
+            throw new IllegalArgumentException("maxClaimNameLength must be at least 1");
+        }
+        this.playerBufferDistance = newPlayerBufferDistance;
+        this.adminBufferDistance = newAdminBufferDistance;
+        this.maxClaimNameLength = newMaxNameLength;
+    }
+
     public ClaimValidationResult createPlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+        return createPlayerClaim(ownerUuid, name, chunks, false);
+    }
+
+    public ClaimValidationResult createPlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks, boolean bypassBuffer) {
         Objects.requireNonNull(ownerUuid, "ownerUuid");
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(chunks, "chunks");
 
         String trimmedName = name.trim();
-        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks);
+        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks, bypassBuffer);
         if (!validationResult.isAllowed()) {
             return validationResult;
         }
@@ -64,13 +81,18 @@ public final class ClaimCreationService {
     // caller already has them (e.g. to decide whether to show a merge-confirmation prompt).
     public ClaimValidationResult createPlayerClaim(
             UUID ownerUuid, String name, Set<ClaimChunk> chunks, List<Claim> mergeTargets) {
+        return createPlayerClaim(ownerUuid, name, chunks, mergeTargets, false);
+    }
+
+    public ClaimValidationResult createPlayerClaim(
+            UUID ownerUuid, String name, Set<ClaimChunk> chunks, List<Claim> mergeTargets, boolean bypassBuffer) {
         Objects.requireNonNull(ownerUuid, "ownerUuid");
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(chunks, "chunks");
         Objects.requireNonNull(mergeTargets, "mergeTargets");
 
         String trimmedName = name.trim();
-        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks);
+        ClaimValidationResult validationResult = validatePlayerClaim(ownerUuid, trimmedName, chunks, bypassBuffer);
         if (!validationResult.isAllowed()) {
             return validationResult;
         }
@@ -85,7 +107,7 @@ public final class ClaimCreationService {
             Claim existingClaim = mergeTargets.get(0);
             Set<ClaimChunk> mergedChunks = new HashSet<>();
             // Union flags, members, and deniedPlayers from ALL targets so nothing is silently dropped.
-            Map<String, Boolean> mergedFlags = new HashMap<>(defaultFlags());
+            Map<String, FlagState> mergedFlags = new HashMap<>(defaultFlags());
             Set<ClaimMember> mergedMembers = new HashSet<>();
             Set<UUID> mergedDeniedPlayers = new HashSet<>();
             for (Claim mergeTarget : mergeTargets) {
@@ -120,12 +142,16 @@ public final class ClaimCreationService {
             return ClaimValidationResult.allowed();
         }
 
+        UUID claimWorldId = chunks.iterator().next().worldId();
+        if (chunks.stream().anyMatch(c -> !c.worldId().equals(claimWorldId))) {
+            throw new IllegalArgumentException("All selected chunks must belong to the same world");
+        }
         Claim claim = new Claim(
                 UUID.randomUUID(),
                 trimmedName,
                 OwnerType.PLAYER,
                 ownerUuid,
-                chunks.iterator().next().worldId(),
+                claimWorldId,
                 chunks,
                 defaultFlags(),
                 now,
@@ -179,6 +205,10 @@ public final class ClaimCreationService {
     }
 
     public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
+        return validatePlayerClaim(ownerUuid, name, chunks, false);
+    }
+
+    public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks, boolean bypassBuffer) {
         Objects.requireNonNull(ownerUuid, "ownerUuid");
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(chunks, "chunks");
@@ -196,12 +226,14 @@ public final class ClaimCreationService {
 
         // Snapshot once — findAll() rebuilds the distinct list, so calling it inside the loop
         // would re-scan the entire chunk map on every proposed-chunk iteration.
-        List<Claim> allClaims = claimIndex.findAll();
-        for (ClaimChunk proposedChunk : chunks) {
-            for (Claim existingClaim : allClaims) {
-                ClaimValidationResult bufferResult = validateBuffer(ownerUuid, proposedChunk, existingClaim);
-                if (!bufferResult.isAllowed()) {
-                    return bufferResult;
+        if (!bypassBuffer) {
+            List<Claim> allClaims = claimIndex.findAll();
+            for (ClaimChunk proposedChunk : chunks) {
+                for (Claim existingClaim : allClaims) {
+                    ClaimValidationResult bufferResult = validateBuffer(ownerUuid, proposedChunk, existingClaim);
+                    if (!bufferResult.isAllowed()) {
+                        return bufferResult;
+                    }
                 }
             }
         }
@@ -227,8 +259,8 @@ public final class ClaimCreationService {
         return ClaimValidationResult.denied("claims.too-close");
     }
 
-    private Map<String, Boolean> defaultFlags() {
+    private Map<String, FlagState> defaultFlags() {
         return flagRegistry.keys().stream()
-                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultValue));
+                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultState));
     }
 }

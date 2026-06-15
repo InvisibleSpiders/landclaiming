@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
+import com.invisiblespiders.havenclaims.api.limit.HavenClaimsLimitService;
 import com.invisiblespiders.havenclaims.plugin.admin.AdminClaimService;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
@@ -19,6 +21,7 @@ import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import com.invisiblespiders.havenclaims.plugin.tool.ClaimToolService;
+import dev.invisiblespiders.haven.api.model.ReloadResult;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Server;
@@ -48,7 +52,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", ""}))
-                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims");
+                .containsExactlyInAnyOrder("create", "list", "delete", "teleport", "userclaims", "limit", "reload", "browse");
     }
 
     @Test
@@ -64,7 +68,7 @@ class ClaimsCommandAdminTest {
         ClaimsCommand command = command(new AdminClaimService());
 
         assertThat(command.onTabComplete(mock(Player.class), mock(Command.class), "claim", new String[]{"admin", "userclaims", "flag", ""}))
-                .containsExactlyInAnyOrder("list", "set", "toggle");
+                .containsExactlyInAnyOrder("list", "set", "cycle");
     }
 
     @Test
@@ -269,23 +273,23 @@ class ClaimsCommandAdminTest {
                 "set",
                 home.id().toString(),
                 "build",
-                "true"
+                "ALL"
         });
 
         Claim updated = repository.findClaimById(home.id()).orElseThrow();
-        assertThat(updated.flags()).containsEntry("build", true);
+        assertThat(updated.flags()).containsEntry("build", FlagState.ALL);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
-                .containsExactly("Set build to true for Home.");
+                .containsExactly("Set build to ALL for Home.");
     }
 
     @Test
-    void adminUserclaimsFlagToggleUpdatesPlayerClaimWhenAllowed() {
+    void adminUserclaimsFlagCycleUpdatesPlayerClaimWhenAllowed() {
         FakeClaimRepository repository = new FakeClaimRepository();
         ClaimIndex claimIndex = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim home = playerClaim("Home", ownerId, worldId, 0, Map.of("build", true));
+        Claim home = playerClaim("Home", ownerId, worldId, 0, Map.of("build", FlagState.ALL));
         repository.claims.add(home);
         claimIndex.add(home);
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
@@ -300,16 +304,16 @@ class ClaimsCommandAdminTest {
                 "admin",
                 "userclaims",
                 "flag",
-                "toggle",
+                "cycle",
                 home.id().toString(),
                 "build"
         });
 
         Claim updated = repository.findClaimById(home.id()).orElseThrow();
-        assertThat(updated.flags()).containsEntry("build", false);
+        assertThat(updated.flags()).containsEntry("build", FlagState.OFF);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(updated);
         assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
-                .containsExactly("Toggled build for Home.");
+                .containsExactly("Cycled build for Home.");
     }
 
     @Test
@@ -341,7 +345,7 @@ class ClaimsCommandAdminTest {
                 .map(PlainTextComponentSerializer.plainText()::serialize)
                 .toList();
         assertThat(plainMessages).first().isEqualTo("Flags for Home:");
-        assertThat(plainMessages).anyMatch(message -> message.contains("build") && message.contains("false"));
+        assertThat(plainMessages).anyMatch(message -> message.contains("build") && message.contains("VISITORS"));
     }
 
     @Test
@@ -472,6 +476,110 @@ class ClaimsCommandAdminTest {
                 );
     }
 
+    @Test
+    void adminReloadCallsReloadActionAndSendsSuccessMessage() {
+        boolean[] called = {false};
+        Supplier<ReloadResult> reloadAction = () -> {
+            called[0] = true;
+            return ReloadResult.ok("reloaded");
+        };
+        ClaimsCommand command = commandWithReloadAction(reloadAction);
+        Player admin = mockAdmin();
+        List<Component> messages = captureMessages(admin);
+
+        command.onCommand(admin, mockCommand(), "claim", new String[]{"admin", "reload"});
+
+        assertThat(called[0]).isTrue();
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .hasSize(1)
+                .first()
+                .asString()
+                .contains("Config reloaded.")
+                .contains("reloaded");
+    }
+
+    @Test
+    void adminReloadSendsFailureMessageWhenReloadFails() {
+        Supplier<ReloadResult> reloadAction = () -> ReloadResult.fail("Config file is invalid");
+        ClaimsCommand command = commandWithReloadAction(reloadAction);
+        Player admin = mockAdmin();
+        List<Component> messages = captureMessages(admin);
+
+        command.onCommand(admin, mockCommand(), "claim", new String[]{"admin", "reload"});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .hasSize(1)
+                .first()
+                .asString()
+                .contains("Reload failed:")
+                .contains("Config file is invalid");
+    }
+
+    @Test
+    void adminBrowseRequiresDeletePermission() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"admin", "browse", UUID.randomUUID().toString()});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("You do not have permission to manage user claims.");
+    }
+
+    @Test
+    void adminBrowseSendsUnavailableWhenServiceNull() {
+        ClaimsCommand command = command(new AdminClaimService());
+        Player player = mock(Player.class);
+        when(player.hasPermission("havenclaims.admin.userclaims.delete")).thenReturn(true);
+        List<Component> messages = captureMessages(player);
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"admin", "browse", UUID.randomUUID().toString()});
+
+        assertThat(messages.stream().map(PlainTextComponentSerializer.plainText()::serialize).toList())
+                .containsExactly("Admin claim management is not available yet.");
+    }
+
+    private static Player mockAdmin() {
+        Player admin = mock(Player.class);
+        when(admin.hasPermission("havenclaims.admin.reload")).thenReturn(true);
+        return admin;
+    }
+
+    private static Command mockCommand() {
+        return mock(Command.class);
+    }
+
+    private static ClaimsCommand commandWithReloadAction(Supplier<ReloadResult> reloadAction) {
+        return new ClaimsCommand(
+                mock(ClaimToolService.class),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new MessageService(Map.ofEntries(
+                        Map.entry("admin.reload.success", "<green>Config reloaded. <detail>"),
+                        Map.entry("admin.reload.failed", "<red>Reload failed: <detail>"),
+                        Map.entry("admin.no-permission", "<red>No permission.")
+                )),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new AdminClaimService(),
+                mock(HavenClaimsLimitService.class),
+                reloadAction,
+                null
+        );
+    }
+
     private static ClaimsCommand command(AdminClaimService adminClaimService) {
         return command(adminClaimService, null, null);
     }
@@ -505,13 +613,15 @@ class ClaimsCommandAdminTest {
                         Map.entry("admin.userclaims.transferred", "<green>Transferred <claim_name> to <player>."),
                         Map.entry("admin.userclaims.edit-no-permission", "<red>You do not have permission to edit user claims."),
                         Map.entry("admin.userclaims.flag-list-header", "<gold>Flags for <claim_name>:"),
-                        Map.entry("admin.userclaims.flag-list-entry", "<gray>- <flag>: <value>"),
-                        Map.entry("admin.userclaims.flag-set", "<green>Set <flag> to <value> for <claim_name>."),
-                        Map.entry("admin.userclaims.flag-toggled", "<green>Toggled <flag> for <claim_name>."),
+                        Map.entry("admin.userclaims.flag-list-entry", "<gray>- <flag>: <state>"),
+                        Map.entry("admin.userclaims.flag-set", "<green>Set <flag> to <state> for <claim_name>."),
+                        Map.entry("admin.userclaims.flag-cycled", "<green>Cycled <flag> for <claim_name>."),
                         Map.entry("admin.userclaims.member-list-header", "<gold>Members for <claim_name>:"),
                         Map.entry("admin.userclaims.member-list-entry", "<gray>- <player> (<role>)"),
                         Map.entry("admin.userclaims.member-added", "<green>Added <player> as <role> to <claim_name>."),
-                        Map.entry("admin.userclaims.member-removed", "<green>Removed <player> from <claim_name>.")
+                        Map.entry("admin.userclaims.member-removed", "<green>Removed <player> from <claim_name>."),
+                        Map.entry("admin.claim.unavailable", "<red>Admin claim management is not available yet."),
+                        Map.entry("admin.userclaims.browse.usage", "<red>Usage: /claim admin browse <player|uuid>")
                 )),
                 claimMemberService,
                 null,
@@ -522,7 +632,10 @@ class ClaimsCommandAdminTest {
                 null,
                 null,
                 null,
-                adminClaimService
+                adminClaimService,
+                mock(HavenClaimsLimitService.class),
+                null,
+                null
         );
     }
 
@@ -554,7 +667,7 @@ class ClaimsCommandAdminTest {
         return playerClaim(name, ownerId, worldId, chunkX, Map.of());
     }
 
-    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX, Map<String, Boolean> flags) {
+    private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX, Map<String, FlagState> flags) {
         return playerClaim(name, ownerId, worldId, chunkX, flags, Set.of());
     }
 
@@ -563,7 +676,7 @@ class ClaimsCommandAdminTest {
             UUID ownerId,
             UUID worldId,
             int chunkX,
-            Map<String, Boolean> flags,
+            Map<String, FlagState> flags,
             Set<ClaimMember> members
     ) {
         Instant now = Instant.parse("2026-06-10T00:00:00Z");

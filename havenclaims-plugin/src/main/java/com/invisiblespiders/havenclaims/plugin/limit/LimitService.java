@@ -1,29 +1,47 @@
 package com.invisiblespiders.havenclaims.plugin.limit;
 
-import java.util.Map;
+import com.invisiblespiders.havenclaims.api.limit.HavenClaimsLimitService;
 import java.util.Objects;
-import java.util.Set;
+import java.util.UUID;
 
-public final class LimitService {
-    private final int defaultLimit;
-    private final Map<String, Integer> permissionLimits;
+public final class LimitService implements HavenClaimsLimitService {
+    private int defaultLimit;
+    private final ClaimLimitRepository repository;
 
-    public LimitService(int defaultLimit, Map<String, Integer> permissionLimits) {
+    public LimitService(int defaultLimit, ClaimLimitRepository repository) {
         this.defaultLimit = defaultLimit;
-        this.permissionLimits = Map.copyOf(Objects.requireNonNull(permissionLimits, "permissionLimits"));
+        this.repository = Objects.requireNonNull(repository, "repository");
     }
 
-    public int resolveLimit(Set<String> permissions) {
-        Objects.requireNonNull(permissions, "permissions");
+    public void reload(int newDefaultLimit) {
+        this.defaultLimit = newDefaultLimit;
+    }
 
-        int resolved = defaultLimit;
-        for (String permission : permissions) {
-            Integer configuredLimit = permissionLimits.get(permission);
-            if (configuredLimit != null && configuredLimit > resolved) {
-                resolved = configuredLimit;
-            }
-        }
-        return resolved;
+    @Override
+    public int getLimit(UUID playerId) {
+        Objects.requireNonNull(playerId, "playerId");
+        return repository.getLimit(playerId).orElse(defaultLimit);
+    }
+
+    @Override
+    public void setLimit(UUID playerId, int limit) {
+        Objects.requireNonNull(playerId, "playerId");
+        if (limit < 1) throw new IllegalArgumentException("limit must be >= 1");
+        repository.setLimit(playerId, limit);
+    }
+
+    @Override
+    public void addChunks(UUID playerId, int chunks) {
+        Objects.requireNonNull(playerId, "playerId");
+        if (chunks < 1) throw new IllegalArgumentException("chunks must be >= 1");
+        repository.updateLimit(playerId, defaultLimit, current -> current + chunks);
+    }
+
+    @Override
+    public void removeChunks(UUID playerId, int chunks) {
+        Objects.requireNonNull(playerId, "playerId");
+        if (chunks < 1) throw new IllegalArgumentException("chunks must be >= 1");
+        repository.updateLimit(playerId, defaultLimit, current -> Math.max(1, current - chunks));
     }
 
     public int overageChunks(int proposedTotalChunks, int allowedChunks) {
@@ -35,12 +53,15 @@ public final class LimitService {
     }
 
     public static double exponentialOverLimitCost(int overageChunks, double baseCost, double multiplier) {
-        int normalizedOverageChunks = Math.max(0, overageChunks);
-        double normalizedBaseCost = Math.max(0.0, baseCost);
-        double normalizedMultiplier = Math.max(0.0, multiplier);
+        int n = Math.max(0, overageChunks);
+        double base = Math.max(0.0, baseCost);
+        double mult = Math.max(0.0, multiplier);
         double total = 0.0;
-        for (int chunkNumber = 0; chunkNumber < normalizedOverageChunks; chunkNumber++) {
-            total += normalizedBaseCost * Math.pow(normalizedMultiplier, chunkNumber);
+        for (int i = 0; i < n; i++) {
+            total += base * Math.pow(mult, i);
+            if (total >= Double.MAX_VALUE) {
+                return Double.MAX_VALUE;
+            }
         }
         return total;
     }

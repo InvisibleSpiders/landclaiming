@@ -2,6 +2,7 @@ package com.invisiblespiders.havenclaims.plugin.claim;
 
 import com.invisiblespiders.havenclaims.api.claim.ClaimChunkView;
 import com.invisiblespiders.havenclaims.api.claim.ClaimView;
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -16,7 +17,7 @@ public record Claim(
         UUID ownerUuid,
         UUID worldId,
         Set<ClaimChunk> claimChunks,
-        Map<String, Boolean> flags,
+        Map<String, FlagState> flags,
         Set<ClaimMember> members,
         Set<UUID> deniedPlayers,
         Instant createdAt,
@@ -42,7 +43,7 @@ public record Claim(
             UUID ownerUuid,
             UUID worldId,
             Set<ClaimChunk> claimChunks,
-            Map<String, Boolean> flags,
+            Map<String, FlagState> flags,
             Set<ClaimMember> members,
             Instant createdAt,
             Instant updatedAt
@@ -57,7 +58,7 @@ public record Claim(
             UUID ownerUuid,
             UUID worldId,
             Set<ClaimChunk> claimChunks,
-            Map<String, Boolean> flags,
+            Map<String, FlagState> flags,
             Instant createdAt,
             Instant updatedAt
     ) {

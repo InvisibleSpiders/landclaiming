@@ -7,7 +7,7 @@ import java.util.UUID;
 import java.util.function.LongSupplier;
 
 public final class DoubleCrouchClearService {
-    private final int windowTicks;
+    private int windowTicks;
     private final LongSupplier currentTickSupplier;
     private final Map<UUID, Long> lastCrouchTicks = new HashMap<>();
 
@@ -17,6 +17,13 @@ public final class DoubleCrouchClearService {
         }
         this.windowTicks = windowTicks;
         this.currentTickSupplier = Objects.requireNonNull(currentTickSupplier, "currentTickSupplier");
+    }
+
+    public void reload(int newWindowTicks) {
+        if (newWindowTicks < 1) {
+            throw new IllegalArgumentException("windowTicks must be at least 1");
+        }
+        this.windowTicks = newWindowTicks;
     }
 
     public boolean recordCrouch(UUID playerId) {

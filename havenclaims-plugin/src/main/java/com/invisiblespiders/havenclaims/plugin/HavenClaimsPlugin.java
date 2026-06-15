@@ -1,6 +1,7 @@
 package com.invisiblespiders.havenclaims.plugin;
 
 import com.invisiblespiders.havenclaims.api.HavenClaimsApi;
+import com.invisiblespiders.havenclaims.api.limit.HavenClaimsLimitService;
 import com.invisiblespiders.havenclaims.plugin.api.BukkitHavenClaimsApi;
 import com.invisiblespiders.havenclaims.plugin.admin.AdminClaimService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationService;
@@ -18,7 +19,10 @@ import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.flag.ClaimFlagService;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostConfig;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostService;
+import com.invisiblespiders.havenclaims.plugin.limit.ClaimLimitRepository;
 import com.invisiblespiders.havenclaims.plugin.limit.LimitService;
+import com.invisiblespiders.havenclaims.plugin.limit.SqlClaimLimitRepository;
+import com.invisiblespiders.havenclaims.plugin.listener.AdminClaimBrowserListener;
 import com.invisiblespiders.havenclaims.plugin.listener.ClaimToolListener;
 import com.invisiblespiders.havenclaims.plugin.listener.ClaimBoundaryNotificationListener;
 import com.invisiblespiders.havenclaims.plugin.listener.DeniedClaimAccessListener;
@@ -34,6 +38,7 @@ import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import com.invisiblespiders.havenclaims.plugin.storage.sql.SqlClaimRepository;
 import com.invisiblespiders.havenclaims.plugin.tool.ClaimToolService;
+import com.invisiblespiders.havenclaims.plugin.ui.AdminClaimBrowserService;
 import com.invisiblespiders.havenclaims.plugin.ui.ClaimFlagEditorService;
 import com.invisiblespiders.havenclaims.plugin.ui.ClaimMenuService;
 import com.invisiblespiders.havenclaims.plugin.ui.DialogService;
@@ -42,25 +47,46 @@ import com.invisiblespiders.havenclaims.plugin.visual.BukkitChunkBorderRenderer;
 import com.invisiblespiders.havenclaims.plugin.visual.ClaimBorderColorService;
 import com.invisiblespiders.havenclaims.plugin.visual.ChunkBorderVisualService;
 import dev.invisiblespiders.haven.api.HavenAPI;
+import dev.invisiblespiders.haven.api.model.ReloadResult;
+import dev.invisiblespiders.haven.api.model.SuiteHealthReport;
+import dev.invisiblespiders.haven.api.model.SuiteHealthSeverity;
 import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
+import dev.invisiblespiders.haven.api.service.HavenSuiteEntry;
+import dev.invisiblespiders.haven.api.service.HavenSuiteRegistry;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import javax.sql.DataSource;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.ServicePriority;
 
-public final class HavenClaimsPlugin extends JavaPlugin {
+public final class HavenClaimsPlugin extends JavaPlugin
+        implements HavenSuiteEntry {
     private HavenClaimsApi havenClaimsApi;
+    private LimitService limitService;
     private ChunkBorderVisualService chunkBorderVisualService;
     private EntityControlService entityControlService;
+    private MessageService messageService;
+    private ClaimCostService claimCostService;
+    private ClaimCreationService claimCreationService;
+    private DoubleCrouchClearService doubleCrouchClearService;
+    private ClaimToolListener claimToolListener;
+    private DeniedClaimAccessListener deniedClaimAccessListener;
+    private ClaimBoundaryNotificationListener claimBoundaryNotificationListener;
+    private ClaimIndex claimIndex;
+    private HavenDataSource havenDataSource;
+    private DialogService dialogService;
 
     @Override
     public void onEnable() {
@@ -72,24 +98,36 @@ public final class HavenClaimsPlugin extends JavaPlugin {
 
         ClaimService claimService = new ClaimService();
         ClaimToolService claimToolService = new ClaimToolService(this);
-        MessageService messageService = new MessageService(MessageConfigurationLoader.load(loadYamlResource("messages.yml")));
+        messageService = new MessageService(MessageConfigurationLoader.load(loadYamlResource("messages.yml")));
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
-        ClaimRepository claimRepository = createClaimRepository();
-        ClaimIndex claimIndex = new ClaimIndex();
-        claimIndex.load(claimRepository.findAllClaims());
-        Map<String, Integer> limitPermissions = loadLimitPermissions(loadYamlResource("permissions.yml"));
-        PermissionBankService permissionBankService = new PermissionBankService(getServer().getPluginManager());
-        permissionBankService.registerLimitPermissions(limitPermissions);
-        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "commands", PermissionDefault.TRUE);
-        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "admin", PermissionDefault.OP);
-        registerConfiguredPermissions(permissionBankService, loadYamlResource("permissions.yml"), "bypass", PermissionDefault.OP);
-        LimitService limitService = new LimitService(
-                getConfig().getInt("limits.default-claim-limit", limitPermissions.getOrDefault("havenclaims.limit.default", 10)),
-                limitPermissions
+        havenDataSource = HavenAPI.get(HavenDataSource.class);
+        havenDataSource.registerMigrations(
+                "havenclaims",
+                "db/migrations/havenclaims",
+                getClass().getClassLoader()
         );
-        ClaimCostService claimCostService = new ClaimCostService(
+        DataSource dataSource = havenDataSource.getDataSource();
+        ClaimRepository claimRepository = new SqlClaimRepository(dataSource);
+        claimIndex = new ClaimIndex();
+        claimIndex.load(claimRepository.findAllClaims());
+        PermissionBankService permissionBankService = new PermissionBankService(getServer().getPluginManager());
+        YamlConfiguration permissionsConfiguration = loadYamlResource("permissions.yml");
+        permissionBankService.registerFlagEditGroups(
+                permissionsConfiguration.getConfigurationSection("flag-edit"),
+                PermissionDefault.TRUE);
+        registerConfiguredPermissions(permissionBankService, permissionsConfiguration, "commands", PermissionDefault.TRUE);
+        registerConfiguredPermissions(permissionBankService, permissionsConfiguration, "admin", PermissionDefault.OP);
+        registerConfiguredPermissions(permissionBankService, permissionsConfiguration, "bypass", PermissionDefault.OP);
+        ClaimLimitRepository claimLimitRepository = new SqlClaimLimitRepository(dataSource);
+        limitService = new LimitService(
+                getConfig().getInt("limits.default-claim-limit", 10),
+                claimLimitRepository
+        );
+        getServer().getServicesManager().register(
+                HavenClaimsLimitService.class, limitService, this, ServicePriority.Normal);
+        claimCostService = new ClaimCostService(
                 claimIndex,
                 limitService,
                 ClaimCostConfig.from(getConfig())
@@ -100,7 +138,7 @@ public final class HavenClaimsPlugin extends JavaPlugin {
                         ? new HavenEconomyServiceAdapter(havenEconomy)
                         : new NoopEconomyService()
         );
-        ClaimCreationService claimCreationService = new ClaimCreationService(
+        claimCreationService = new ClaimCreationService(
                 claimRepository,
                 claimIndex,
                 claimService,
@@ -114,7 +152,7 @@ public final class HavenClaimsPlugin extends JavaPlugin {
                 claimIndex,
                 claimCostService
         );
-        DoubleCrouchClearService doubleCrouchClearService = new DoubleCrouchClearService(
+        doubleCrouchClearService = new DoubleCrouchClearService(
                 getConfig().getInt("selection.double-crouch-clear.window-ticks", 80),
                 () -> getServer().getCurrentTick()
         );
@@ -124,53 +162,58 @@ public final class HavenClaimsPlugin extends JavaPlugin {
         getServer().getServicesManager().register(HavenClaimsApi.class, havenClaimsApi, this, ServicePriority.Normal);
         new ClaimToolRecipeService(this, claimToolService).register(loadYamlResource("recipes.yml"));
 
-        getServer().getPluginManager().registerEvents(
-                new ClaimToolListener(
-                        claimToolService,
-                        selectionService,
-                        doubleCrouchClearService,
-                        chunkBorderVisualService,
-                        claimBorderColorService,
-                        claimIndex,
-                        messageService,
-                        getConfig().getBoolean("selection.clear-on-tool-switch", true),
-                        getConfig().getBoolean("selection.double-crouch-clear.enabled", true)
-                ),
-                this
+        claimToolListener = new ClaimToolListener(
+                claimToolService,
+                selectionService,
+                doubleCrouchClearService,
+                chunkBorderVisualService,
+                claimBorderColorService,
+                claimIndex,
+                messageService,
+                getConfig().getBoolean("selection.clear-on-tool-switch", true),
+                getConfig().getBoolean("selection.double-crouch-clear.enabled", true)
         );
+        getServer().getPluginManager().registerEvents(claimToolListener, this);
         getServer().getPluginManager().registerEvents(
                 new ProtectionListener(protectionService, claimIndex, messageService),
                 this
         );
-        getServer().getPluginManager().registerEvents(
-                new DeniedClaimAccessListener(
-                        claimIndex,
-                        messageService,
-                        getConfig().getBoolean("access-denial.enabled", true),
-                        getConfig().getBoolean("access-denial.knockback.enabled", true),
-                        getConfig().getDouble("access-denial.knockback.strength", 0.65D)
-                ),
-                this
+        deniedClaimAccessListener = new DeniedClaimAccessListener(
+                claimIndex,
+                messageService,
+                getConfig().getBoolean("access-denial.enabled", true),
+                getConfig().getBoolean("access-denial.knockback.enabled", true),
+                getConfig().getDouble("access-denial.knockback.strength", 0.65D)
         );
-        getServer().getPluginManager().registerEvents(
-                new ClaimBoundaryNotificationListener(
-                        claimIndex,
-                        messageService,
-                        getConfig().getBoolean("notifications.claim-boundary.enabled", true),
-                        getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
-                        getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
-                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar"),
-                        getConfig().getString("notifications.claim-boundary.enter.delivery",
-                                getConfig().getString("notifications.claim-boundary.delivery", "action_bar")),
-                        getConfig().getString("notifications.claim-boundary.exit.delivery",
-                                getConfig().getString("notifications.claim-boundary.delivery", "action_bar"))
-                ),
-                this
+        getServer().getPluginManager().registerEvents(deniedClaimAccessListener, this);
+        claimBoundaryNotificationListener = new ClaimBoundaryNotificationListener(
+                claimIndex,
+                messageService,
+                getConfig().getBoolean("notifications.claim-boundary.enabled", true),
+                getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
+                getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
+                getConfig().getString("notifications.claim-boundary.delivery", "action_bar"),
+                getConfig().getString("notifications.claim-boundary.enter.delivery",
+                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar")),
+                getConfig().getString("notifications.claim-boundary.exit.delivery",
+                        getConfig().getString("notifications.claim-boundary.delivery", "action_bar"))
         );
+        getServer().getPluginManager().registerEvents(claimBoundaryNotificationListener, this);
         if (entityControlService != null) {
             getServer().getPluginManager().registerEvents(new EntityControlListener(entityControlService), this);
             entityControlService.start(getConfig().getLong("advanced.entity-control.cleanup-interval-ticks", 200L));
         }
+        AdminClaimService adminClaimService = new AdminClaimService(
+                claimRepository,
+                claimIndex,
+                flagRegistry,
+                getConfig().getInt("claiming.max-name-length", 32)
+        );
+        AdminClaimBrowserService adminClaimBrowserService = new AdminClaimBrowserService(
+                adminClaimService, claimCostService, claimPaymentService, messageService);
+        getServer().getPluginManager().registerEvents(
+                new AdminClaimBrowserListener(adminClaimBrowserService), this);
+        dialogService = new DialogService(getConfig().getBoolean("ui.prefer-dialogs", true));
         ClaimsCommand claimsCommand = new ClaimsCommand(
                         claimToolService,
                         selectionService,
@@ -183,29 +226,107 @@ public final class HavenClaimsPlugin extends JavaPlugin {
                         new ClaimMemberService(claimRepository, claimIndex),
                         new ClaimDenyService(claimRepository, claimIndex),
                         new ClaimFlagService(claimRepository, claimIndex, flagRegistry),
-                        new ClaimFlagEditorService(),
-                        new ClaimMenuService(),
-                        new DialogService(),
+                        new ClaimFlagEditorService(messageService),
+                        new ClaimMenuService(messageService),
+                        dialogService,
                         new InventoryGuiFallbackService(),
                         chunkBorderVisualService,
                         claimBorderColorService,
-                        new AdminClaimService(
-                                claimRepository,
-                                claimIndex,
-                                flagRegistry,
-                                getConfig().getInt("claiming.max-name-length", 32)
-                        )
+                        adminClaimService,
+                        limitService,
+                        this::performReload,
+                        adminClaimBrowserService
                 );
-        Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
-                .setExecutor(claimsCommand);
-        Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml")
-                .setTabCompleter(claimsCommand);
+        var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
+        claimCommand.setExecutor(claimsCommand);
+        claimCommand.setTabCompleter(claimsCommand);
 
         getLogger().info("HavenClaims enabled.");
+        HavenSuiteRegistry suiteRegistry = HavenAPI.get(HavenSuiteRegistry.class);
+        if (suiteRegistry != null) {
+            suiteRegistry.register(this);
+        }
+    }
+
+    public ReloadResult performReload() {
+        try {
+            reloadConfig();
+            messageService.reload(
+                    MessageConfigurationLoader.load(
+                            loadYamlResource("messages.yml")));
+            limitService.reload(
+                    getConfig().getInt("limits.default-claim-limit", 10));
+            claimCostService.reload(
+                    ClaimCostConfig.from(getConfig()));
+            claimCreationService.reload(
+                    getConfig().getInt("claiming.player-buffer-distance", 3),
+                    getConfig().getInt("claiming.admin-buffer-distance", 3),
+                    getConfig().getInt("claiming.max-name-length", 32));
+            doubleCrouchClearService.reload(
+                    getConfig().getInt("selection.double-crouch-clear.window-ticks", 80));
+            claimToolListener.reload(
+                    getConfig().getBoolean("selection.clear-on-tool-switch", true),
+                    getConfig().getBoolean("selection.double-crouch-clear.enabled", true));
+            deniedClaimAccessListener.reload(
+                    getConfig().getBoolean("access-denial.enabled", true),
+                    getConfig().getBoolean("access-denial.knockback.enabled", true),
+                    getConfig().getDouble("access-denial.knockback.strength", 0.65D));
+            dialogService.reload(
+                    getConfig().getBoolean("ui.prefer-dialogs", true));
+            String defaultDel = getConfig().getString("notifications.claim-boundary.delivery", "action_bar");
+            claimBoundaryNotificationListener.reload(
+                    getConfig().getBoolean("notifications.claim-boundary.enabled", true),
+                    getConfig().getBoolean("notifications.claim-boundary.enter.enabled", true),
+                    getConfig().getBoolean("notifications.claim-boundary.exit.enabled", true),
+                    defaultDel,
+                    getConfig().getString("notifications.claim-boundary.enter.delivery", defaultDel),
+                    getConfig().getString("notifications.claim-boundary.exit.delivery", defaultDel));
+            return ReloadResult.ok("HavenClaims reloaded successfully.");
+        } catch (Exception e) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Config reload failed", e);
+            return ReloadResult.fail("Reload failed: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public String pluginName() {
+        return getName();
+    }
+
+    @Override
+    public String pluginVersion() {
+        return getDescription().getVersion();
+    }
+
+    @Override
+    public List<SuiteHealthReport> health() {
+        List<SuiteHealthReport> reports = new ArrayList<>();
+        if (havenDataSource != null) {
+            try (Connection connection = havenDataSource.getDataSource().getConnection();
+                 PreparedStatement statement = connection.prepareStatement("SELECT 1")) {
+                statement.execute();
+                reports.add(new SuiteHealthReport(SuiteHealthSeverity.PASS, "database", "connected"));
+            } catch (SQLException e) {
+                reports.add(new SuiteHealthReport(SuiteHealthSeverity.FAIL, "database", e.getMessage()));
+            }
+        }
+        int claimCount = claimIndex != null ? claimIndex.findAll().size() : 0;
+        reports.add(new SuiteHealthReport(SuiteHealthSeverity.PASS, "claims",
+                claimCount + " loaded"));
+        return reports;
+    }
+
+    @Override
+    public ReloadResult reload() {
+        return performReload();
     }
 
     @Override
     public void onDisable() {
+        HavenSuiteRegistry suiteRegistry = HavenAPI.get(HavenSuiteRegistry.class);
+        if (suiteRegistry != null) {
+            suiteRegistry.unregister(getName());
+        }
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.clearAll();
             chunkBorderVisualService = null;
@@ -214,10 +335,24 @@ public final class HavenClaimsPlugin extends JavaPlugin {
             entityControlService.stop();
             entityControlService = null;
         }
+        if (limitService != null) {
+            getServer().getServicesManager().unregister(HavenClaimsLimitService.class, limitService);
+            limitService = null;
+        }
         if (havenClaimsApi != null) {
             getServer().getServicesManager().unregister(HavenClaimsApi.class, havenClaimsApi);
             havenClaimsApi = null;
         }
+        messageService = null;
+        limitService = null;
+        claimCostService = null;
+        claimCreationService = null;
+        doubleCrouchClearService = null;
+        claimToolListener = null;
+        deniedClaimAccessListener = null;
+        claimBoundaryNotificationListener = null;
+        dialogService = null;
+        claimIndex = null;
         getLogger().info("HavenClaims disabled.");
     }
 
@@ -238,19 +373,6 @@ public final class HavenClaimsPlugin extends JavaPlugin {
     private YamlConfiguration loadYamlResource(String resourceName) {
         File resourceFile = getDataFolder().toPath().resolve(resourceName).toFile();
         return YamlConfiguration.loadConfiguration(resourceFile);
-    }
-
-    private Map<String, Integer> loadLimitPermissions(YamlConfiguration permissionsConfiguration) {
-        ConfigurationSection limitsSection = permissionsConfiguration.getConfigurationSection("limits");
-        if (limitsSection == null) {
-            return Map.of();
-        }
-
-        Map<String, Integer> limitPermissions = new HashMap<>();
-        for (String permissionNode : limitsSection.getKeys(false)) {
-            limitPermissions.put(permissionNode, limitsSection.getInt(permissionNode));
-        }
-        return Map.copyOf(limitPermissions);
     }
 
     private void registerConfiguredPermissions(
@@ -278,7 +400,7 @@ public final class HavenClaimsPlugin extends JavaPlugin {
                         getConfig().getDouble("visuals.border.thickness", 0.08D),
                         (float) getConfig().getDouble("visuals.border.view-range", 96.0D)
                 ),
-                getConfig().getInt("visuals.border.duration-ticks", 0)
+                getConfig().getInt("visuals.border.duration-ticks", 100)
         );
     }
 
@@ -294,13 +416,4 @@ public final class HavenClaimsPlugin extends JavaPlugin {
         );
     }
 
-    private ClaimRepository createClaimRepository() {
-        HavenDataSource havenDataSource = HavenAPI.get(HavenDataSource.class);
-        havenDataSource.registerMigrations(
-                "havenclaims",
-                "db/migrations/havenclaims",
-                getClass().getClassLoader()
-        );
-        return new SqlClaimRepository(havenDataSource.getDataSource());
-    }
 }

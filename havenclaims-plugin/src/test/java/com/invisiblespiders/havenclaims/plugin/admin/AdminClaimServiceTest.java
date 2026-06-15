@@ -2,6 +2,7 @@ package com.invisiblespiders.havenclaims.plugin.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
@@ -49,7 +50,7 @@ class AdminClaimServiceTest {
         assertThat(created.name()).isEqualTo("Spawn");
         assertThat(created.owner()).isEqualTo(OwnerType.ADMIN);
         assertThat(created.ownerUuid()).isNull();
-        assertThat(created.flags()).containsEntry("build", false).containsEntry("fluid_flow", false);
+        assertThat(created.flags()).containsEntry("build", FlagState.VISITORS).containsEntry("fluid_flow", FlagState.OFF);
         assertThat(created.claimChunks()).containsExactlyInAnyOrderElementsOf(chunks);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 1))).contains(created);
     }

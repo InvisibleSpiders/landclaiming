@@ -2,6 +2,7 @@ package com.invisiblespiders.havenclaims.plugin.claim;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ class ClaimCreationServiceTest {
         assertThat(saved.name()).isEqualTo("Home");
         assertThat(saved.owner()).isEqualTo(OwnerType.PLAYER);
         assertThat(saved.ownerUuid()).isEqualTo(ownerId);
-        assertThat(saved.flags()).containsEntry("build", false).containsEntry("break", false);
+        assertThat(saved.flags()).containsEntry("build", FlagState.VISITORS).containsEntry("break", FlagState.VISITORS);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 0))).contains(saved);
     }
 
@@ -84,6 +85,24 @@ class ClaimCreationServiceTest {
         assertThat(result.isAllowed()).isFalse();
         assertThat(result.messageKey()).contains("claims.too-close");
         assertThat(repository.savedClaims).isEmpty();
+    }
+
+    @Test
+    void allowsPlayerClaimInsideOtherPlayerBufferWhenBypassed() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        UUID worldId = UUID.randomUUID();
+        claimIndex.add(existingClaim(UUID.randomUUID(), worldId, Set.of(new ClaimChunk(worldId, 0, 0)), OwnerType.PLAYER));
+        ClaimCreationService service = service(repository, claimIndex);
+
+        ClaimValidationResult result = service.validatePlayerClaim(
+                UUID.randomUUID(),
+                "Home",
+                Set.of(new ClaimChunk(worldId, 3, 0)),
+                true
+        );
+
+        assertThat(result.isAllowed()).isTrue();
     }
 
     @Test
@@ -257,6 +276,22 @@ class ClaimCreationServiceTest {
         );
     }
 
+    @Test
+    void reloadEnforcesNewMaxNameLength() {
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService service = new ClaimCreationService(
+                repository, claimIndex, new ClaimService(), FlagRegistry.createDefault(), 3, 3, 10);
+        UUID owner = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        Set<ClaimChunk> chunks = Set.of(new ClaimChunk(worldId, 0, 0));
+
+        service.reload(3, 3, 4);
+
+        ClaimValidationResult result = service.validatePlayerClaim(owner, "TooLongName", chunks);
+        assertThat(result.isAllowed()).isFalse();
+    }
+
     private static ClaimCreationService service(FakeClaimRepository repository, ClaimIndex claimIndex) {
         return new ClaimCreationService(
                 repository,
@@ -293,7 +328,7 @@ class ClaimCreationServiceTest {
                 ownerId,
                 worldId,
                 chunks,
-                Map.of("build", false),
+                Map.of("build", FlagState.OFF),
                 Set.of(),
                 deniedPlayers,
                 now,

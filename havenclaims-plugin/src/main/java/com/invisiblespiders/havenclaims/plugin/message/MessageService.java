@@ -12,7 +12,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 public final class MessageService {
     private static final String MISSING_MESSAGE_PREFIX = "Missing message: ";
 
-    private final Map<String, String> messages;
+    private Map<String, String> messages;
     private final MiniMessage miniMessage;
     private final PlainTextComponentSerializer plainTextSerializer;
 
@@ -20,6 +20,10 @@ public final class MessageService {
         this.messages = Map.copyOf(Objects.requireNonNull(messages, "messages"));
         this.miniMessage = MiniMessage.miniMessage();
         this.plainTextSerializer = PlainTextComponentSerializer.plainText();
+    }
+
+    public void reload(Map<String, String> newMessages) {
+        this.messages = Map.copyOf(Objects.requireNonNull(newMessages, "newMessages"));
     }
 
     public Component render(String key, Map<String, String> placeholders) {
@@ -33,8 +37,31 @@ public final class MessageService {
         return miniMessage.deserialize(template, placeholderResolver(placeholders));
     }
 
+    public Component renderOrDefault(String key, Map<String, String> placeholders, String fallbackTemplate) {
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(placeholders, "placeholders");
+        Objects.requireNonNull(fallbackTemplate, "fallbackTemplate");
+
+        String template = messages.getOrDefault(key, fallbackTemplate);
+        return miniMessage.deserialize(template, placeholderResolver(placeholders));
+    }
+
     public String renderPlain(String key, Map<String, String> placeholders) {
         return plainTextSerializer.serialize(render(key, placeholders));
+    }
+
+    public String renderPlainText(Component component) {
+        return plainTextSerializer.serialize(Objects.requireNonNull(component, "component"));
+    }
+
+    public String renderPlainOrDefault(String key, Map<String, String> placeholders, String fallback) {
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(placeholders, "placeholders");
+        Objects.requireNonNull(fallback, "fallback");
+        if (!messages.containsKey(key)) {
+            return fallback;
+        }
+        return renderPlain(key, placeholders);
     }
 
     private static TagResolver placeholderResolver(Map<String, String> placeholders) {

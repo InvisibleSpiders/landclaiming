@@ -1,10 +1,15 @@
 package com.invisiblespiders.havenclaims.plugin.admin;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
+import com.invisiblespiders.havenclaims.plugin.economy.ClaimPaymentService;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
+import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostQuote;
+import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostService;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
 import java.util.Comparator;
@@ -143,6 +148,11 @@ public final class AdminClaimService {
                     if (claim.owner() != OwnerType.PLAYER) {
                         return AdminClaimResult.denied("admin.userclaims.not-player");
                     }
+                    // Drop the incoming owner from the member roster — owner and member are distinct
+                    // roles, and leaving a stale member row would duplicate their access grant.
+                    Set<ClaimMember> retainedMembers = claim.members().stream()
+                            .filter(member -> !member.memberUuid().equals(newOwnerId))
+                            .collect(Collectors.toSet());
                     Claim transferred = new Claim(
                             claim.id(),
                             claim.name(),
@@ -151,7 +161,7 @@ public final class AdminClaimService {
                             claim.worldId(),
                             claim.claimChunks(),
                             claim.flags(),
-                            claim.members(),
+                            retainedMembers,
                             claim.deniedPlayers(),
                             claim.createdAt(),
                             Instant.now()
@@ -161,6 +171,32 @@ public final class AdminClaimService {
                     return AdminClaimResult.success(transferred);
                 })
                 .orElseGet(() -> AdminClaimResult.denied("admin.userclaims.not-found"));
+    }
+
+    public DisbandResult disbandPlayerClaims(UUID ownerId, boolean refund,
+            ClaimCostService costService, ClaimPaymentService paymentService) {
+        requireStorage();
+        Objects.requireNonNull(ownerId, "ownerId");
+        Objects.requireNonNull(costService, "costService");
+        Objects.requireNonNull(paymentService, "paymentService");
+
+        List<Claim> claims = listPlayerClaims(ownerId);
+        if (claims.isEmpty()) {
+            return new DisbandResult(0, 0.0);
+        }
+        double totalRefunded = 0.0;
+        for (Claim claim : claims) {
+            if (refund) {
+                double amount = costService.computeDeletionRefund(ownerId, claim.claimChunks().size());
+                if (amount > 0.0) {
+                    paymentService.refund(ownerId, new ClaimCostQuote(0, 0, 0, 0, 0, amount));
+                    totalRefunded += amount;
+                }
+            }
+            claimRepository.deleteClaim(claim.id());
+            claimIndex.remove(claim.id());
+        }
+        return new DisbandResult(claims.size(), totalRefunded);
     }
 
     public List<Claim> sortForAdminList(List<Claim> claims) {
@@ -177,8 +213,8 @@ public final class AdminClaimService {
         }
     }
 
-    private Map<String, Boolean> defaultFlags() {
+    private Map<String, FlagState> defaultFlags() {
         return flagRegistry.keys().stream()
-                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultValue));
+                .collect(Collectors.toUnmodifiableMap(key -> key, flagRegistry::defaultState));
     }
 }

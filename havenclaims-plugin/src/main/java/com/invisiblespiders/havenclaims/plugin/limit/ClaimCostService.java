@@ -10,7 +10,7 @@ import java.util.UUID;
 public final class ClaimCostService {
     private final ClaimIndex claimIndex;
     private final LimitService limitService;
-    private final ClaimCostConfig claimCostConfig;
+    private ClaimCostConfig claimCostConfig;
 
     public ClaimCostService(
             ClaimIndex claimIndex,
@@ -22,12 +22,32 @@ public final class ClaimCostService {
         this.claimCostConfig = Objects.requireNonNull(claimCostConfig, "claimCostConfig");
     }
 
-    public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<String> permissions, Set<ClaimChunk> selectedChunks) {
+    public void reload(ClaimCostConfig newConfig) {
+        this.claimCostConfig = Objects.requireNonNull(newConfig, "newConfig");
+    }
+
+    public boolean isPaidOverLimitEnabled() {
+        return claimCostConfig.overLimitEnabled();
+    }
+
+    public double computeDeletionRefund(UUID ownerId, int chunksBeingRemoved) {
         Objects.requireNonNull(ownerId, "ownerId");
-        Objects.requireNonNull(permissions, "permissions");
+        int allowedChunks = limitService.getLimit(ownerId);
+        int existingTotal = claimIndex.findAll().stream()
+                .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
+                .mapToInt(c -> c.claimChunks().size())
+                .sum();
+        int afterDeletion = existingTotal - chunksBeingRemoved;
+        double costBefore = claimCostConfig.priceOverage(Math.max(0, existingTotal - allowedChunks));
+        double costAfter  = claimCostConfig.priceOverage(Math.max(0, afterDeletion  - allowedChunks));
+        return Math.max(0.0, costBefore - costAfter);
+    }
+
+    public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<ClaimChunk> selectedChunks) {
+        Objects.requireNonNull(ownerId, "ownerId");
         Objects.requireNonNull(selectedChunks, "selectedChunks");
 
-        int allowedChunks = limitService.resolveLimit(permissions);
+        int allowedChunks = limitService.getLimit(ownerId);
         int existingChunks = claimIndex.findAll().stream()
                 .filter(claim -> claim.owner() == OwnerType.PLAYER && ownerId.equals(claim.ownerUuid()))
                 .mapToInt(claim -> claim.claimChunks().size())

@@ -1,5 +1,6 @@
 package com.invisiblespiders.havenclaims.api.claim;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -17,5 +18,5 @@ public interface ClaimView {
 
     Set<ClaimChunkView> chunks();
 
-    Map<String, Boolean> flags();
+    Map<String, FlagState> flags();
 }

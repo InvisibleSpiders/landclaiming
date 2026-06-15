@@ -1,5 +1,6 @@
 package com.invisiblespiders.havenclaims.plugin.entity;
 
+import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
@@ -97,10 +98,10 @@ public final class EntityControlService {
 
     private boolean shouldRemove(LivingEntity entity, Claim claim) {
         if (isHostile(entity)) {
-            return claim.flags().getOrDefault(REMOVE_HOSTILE_FLAG, false);
+            return claim.flags().getOrDefault(REMOVE_HOSTILE_FLAG, FlagState.OFF) != FlagState.OFF;
         }
         if (isPassive(entity)) {
-            return claim.flags().getOrDefault(REMOVE_PASSIVE_FLAG, false);
+            return claim.flags().getOrDefault(REMOVE_PASSIVE_FLAG, FlagState.OFF) != FlagState.OFF;
         }
         return false;
     }

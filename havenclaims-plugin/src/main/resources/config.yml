@@ -12,12 +12,11 @@ claiming:
   allow-merge-with-own-claims: true
 
 limits:
-  # Enables claim limits from permissions.yml.
-  use-permission-limits: true
-  # Used when no configured limit permission is found.
+  # Used when a player has no database-backed claim limit override.
   default-claim-limit: 10
   over-limit:
-    # Allows economy payments for chunks above the player's permission limit.
+    # Allows economy payments for chunks above the player's claim limit.
+    # When disabled, over-limit claims are denied unless the player has havenclaims.bypass.claim-limit.
     enabled: true
     # Options: flat, exponential.
     pricing-mode: exponential
@@ -71,7 +70,7 @@ visuals:
     # Uses temporary glowing BlockDisplay entities for player-visible chunk outlines.
     enabled: true
     # How long temporary chunk borders remain visible. Set to 0 to keep them until cleared or replaced.
-    duration-ticks: 0
+    duration-ticks: 100
     # Thickness of each display-entity line segment.
     thickness: 0.08
     # Display entity view range in blocks.
