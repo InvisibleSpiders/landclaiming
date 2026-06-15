@@ -1,5 +1,6 @@
 package com.invisiblespiders.havenclaims.plugin.tool;
 
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeToolRegistry;
 import java.util.List;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;
@@ -17,6 +18,7 @@ public class ClaimToolService {
 
     private final NamespacedKey currentChargesKey;
     private final NamespacedKey maxChargesKey;
+    private ClaimModeToolRegistry claimModeToolRegistry;
 
     public ClaimToolService(Plugin plugin) {
         Objects.requireNonNull(plugin, "plugin");
@@ -32,6 +34,17 @@ public class ClaimToolService {
 
     public ItemStack createClaimTool() {
         return createClaimTool(DEFAULT_MAX_CHARGES);
+    }
+
+    public void setClaimModeToolRegistry(ClaimModeToolRegistry claimModeToolRegistry) {
+        this.claimModeToolRegistry = claimModeToolRegistry;
+    }
+
+    public ItemStack createClaimModeTool() {
+        if (claimModeToolRegistry == null) {
+            return createClaimTool(1);
+        }
+        return claimModeToolRegistry.createItem("claim");
     }
 
     public ItemStack createClaimTool(int maxCharges) {
@@ -93,6 +106,11 @@ public class ClaimToolService {
     }
 
     public boolean isClaimTool(ItemStack itemStack) {
+        if (claimModeToolRegistry != null && claimModeToolRegistry.resolve(itemStack)
+                .map(tool -> tool.id().equals("claim"))
+                .orElse(false)) {
+            return true;
+        }
         if (itemStack == null || !itemStack.hasItemMeta()) {
             return false;
         }

@@ -7,7 +7,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeTool;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeToolRegistry;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -37,6 +40,22 @@ class ClaimToolServiceTest {
         assertThat(service.currentCharges(tool)).isEqualTo(2);
     }
 
+    @Test
+    void recognizesClaimModeClaimTool() {
+        ClaimToolService service = new ClaimToolService("havenclaims");
+        ClaimModeToolRegistry registry = new ClaimModeToolRegistry(
+                new NamespacedKey("havenclaims", "claim_mode_tool"),
+                List.of(
+                        new ClaimModeTool("claim", 0, () -> toolWithClaimModeId("claim"), true, "", (player, event) -> {}),
+                        new ClaimModeTool("menu", 7, () -> toolWithClaimModeId("menu"), true, "", (player, event) -> {})
+                )
+        );
+        service.setClaimModeToolRegistry(registry);
+
+        assertThat(service.isClaimTool(registry.createItem("claim"))).isTrue();
+        assertThat(service.isClaimTool(registry.createItem("menu"))).isFalse();
+    }
+
     private static ItemStack toolWithCharges(int currentCharges, int maxCharges) {
         ItemStack itemStack = mock(ItemStack.class);
         ItemMeta itemMeta = mock(ItemMeta.class);
@@ -56,6 +75,24 @@ class ClaimToolServiceTest {
             values.put(invocation.getArgument(0), invocation.getArgument(2));
             return null;
         }).when(persistentDataContainer).set(any(NamespacedKey.class), eq(PersistentDataType.INTEGER), any(Integer.class));
+        return itemStack;
+    }
+
+    private static ItemStack toolWithClaimModeId(String id) {
+        ItemStack itemStack = mock(ItemStack.class);
+        ItemMeta itemMeta = mock(ItemMeta.class);
+        PersistentDataContainer persistentDataContainer = mock(PersistentDataContainer.class);
+        Map<NamespacedKey, String> values = new HashMap<>();
+
+        when(itemStack.hasItemMeta()).thenReturn(true);
+        when(itemStack.getItemMeta()).thenReturn(itemMeta);
+        when(itemMeta.getPersistentDataContainer()).thenReturn(persistentDataContainer);
+        when(persistentDataContainer.get(any(NamespacedKey.class), eq(PersistentDataType.STRING)))
+                .thenAnswer(invocation -> values.get(invocation.getArgument(0)));
+        doAnswer(invocation -> {
+            values.put(invocation.getArgument(0), invocation.getArgument(2));
+            return null;
+        }).when(persistentDataContainer).set(any(NamespacedKey.class), eq(PersistentDataType.STRING), eq(id));
         return itemStack;
     }
 }
