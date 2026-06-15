@@ -104,7 +104,7 @@ shortcuts:
     cancel-item-swap: true
 
 selection:
-  # Clears a pending selection when the player switches away from the claim tool.
+  # Clears a pending selection when the player switches away from the claim mode selection tool.
   clear-on-tool-switch: true
   double-crouch-clear:
     # Clears a pending selection when the player crouches twice within the configured window.

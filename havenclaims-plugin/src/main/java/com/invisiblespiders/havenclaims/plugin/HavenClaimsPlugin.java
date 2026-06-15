@@ -41,7 +41,6 @@ import com.invisiblespiders.havenclaims.plugin.message.MessageConfigurationLoade
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
 import com.invisiblespiders.havenclaims.plugin.permission.PermissionBankService;
 import com.invisiblespiders.havenclaims.plugin.protection.ProtectionService;
-import com.invisiblespiders.havenclaims.plugin.recipe.ClaimToolRecipeService;
 import com.invisiblespiders.havenclaims.plugin.selection.DoubleCrouchClearService;
 import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
@@ -107,8 +106,6 @@ public final class HavenClaimsPlugin extends JavaPlugin
         saveDefaultConfig();
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("permissions.yml");
-        saveResourceIfMissing("tool.yml");
-        saveResourceIfMissing("recipes.yml");
 
         ClaimService claimService = new ClaimService();
         ClaimToolService claimToolService = new ClaimToolService(this);
@@ -179,11 +176,11 @@ public final class HavenClaimsPlugin extends JavaPlugin
         entityControlService = createEntityControlService(claimIndex);
         havenClaimsApi = new BukkitHavenClaimsApi(claimRepository, claimIndex, protectionService);
         getServer().getServicesManager().register(HavenClaimsApi.class, havenClaimsApi, this, ServicePriority.Normal);
-        new ClaimToolRecipeService(this, claimToolService).register(loadYamlResource("recipes.yml"));
 
         claimToolListener = new ClaimToolListener(
                 claimToolService,
                 selectionService,
+                null,
                 doubleCrouchClearService,
                 chunkBorderVisualService,
                 claimBorderColorService,
@@ -202,6 +199,7 @@ public final class HavenClaimsPlugin extends JavaPlugin
                 claimModeRecoveryStore,
                 Component.text("Claim mode")
         );
+        claimToolListener.setClaimModeService(claimModeService);
         claimToolService.setClaimModeToolRegistry(claimModeToolRegistry);
         getServer().getPluginManager().registerEvents(claimToolListener, this);
         getServer().getPluginManager().registerEvents(

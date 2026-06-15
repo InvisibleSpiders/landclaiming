@@ -27,9 +27,6 @@ permissions:
   havenclaims.gui:
     description: Allows opening claim menus.
     default: true
-  havenclaims.tool.use:
-    description: Allows using the claim tool.
-    default: true
   havenclaims.member.manage:
     description: Allows managing claim members.
     default: true

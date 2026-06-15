@@ -70,11 +70,9 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimsCommand implements CommandExecutor, TabCompleter {
-    private static final String CLAIM_TOOL_PERMISSION = "havenclaims.tool.use";
     private static final String CLAIM_CREATE_PERMISSION = "havenclaims.claim";
     private static final String CLAIM_MENU_PERMISSION = "havenclaims.gui";
     private static final String CLAIM_DENY_PERMISSION = "havenclaims.deny.manage";
@@ -82,7 +80,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final String CLAIM_LIMIT_BYPASS_PERMISSION = "havenclaims.bypass.claim-limit";
     private static final String CLAIM_BUFFER_BYPASS_PERMISSION = "havenclaims.bypass.claim-buffer";
     private static final List<String> ROOT_SUGGESTIONS = List.of(
-            "tool",
             "mode",
             "create",
             "cost",
@@ -108,7 +105,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final List<String> ADMIN_USERCLAIM_FLAG_SUGGESTIONS = List.of("list", "set", "cycle");
     private static final List<String> ADMIN_USERCLAIM_MEMBER_SUGGESTIONS = List.of("list", "add", "remove");
 
-    private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
     private final ClaimCreationService claimCreationService;
     private final ClaimIndex claimIndex;
@@ -163,7 +159,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             Supplier<ReloadResult> reloadAction,
             AdminClaimBrowserService adminClaimBrowserService
     ) {
-        this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
+        Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
         this.claimCreationService = claimCreationService;
         this.claimIndex = claimIndex;
@@ -199,9 +195,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         if (args.length >= 1 && args[0].equalsIgnoreCase("mode")) {
             return executeClaimMode(player, args);
-        }
-        if (args.length == 1 && args[0].equalsIgnoreCase("tool")) {
-            return giveTool(player);
         }
         if (args.length == 0) {
             return openClaimDashboard(player);
@@ -1848,17 +1841,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         )).clickEvent(ClickEvent.runCommand(command)));
     }
 
-    private boolean giveTool(Player player) {
-        if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
-            player.sendMessage(message("command.tool.no-permission"));
-            return true;
-        }
-
-        player.getInventory().addItem(claimToolService.createClaimTool());
-        player.sendMessage(message("command.tool.given"));
-        return true;
-    }
-
     private boolean createClaim(Player player, String[] args) {
         String claimName = args.length == 1
                 ? nextDefaultClaimName(player.getUniqueId())
@@ -1890,18 +1872,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
-        ItemStack mainHandItem = player.getInventory().getItemInMainHand();
-        if (!claimToolService.isClaimTool(mainHandItem)) {
-            player.sendMessage(message("claim.hold-tool"));
-            return true;
-        }
-        if (claimToolService.currentCharges(mainHandItem) < chunks.size()) {
-            player.sendMessage(message("claim.not-enough-charges", Map.of(
-                    "needed", String.valueOf(chunks.size()),
-                    "available", String.valueOf(claimToolService.currentCharges(mainHandItem))
-            )));
-            return true;
-        }
 
         ClaimCostQuote quote = claimCostService == null
                 ? new ClaimCostQuote(chunks.size(), 0, chunks.size(), chunks.size(), 0, 0.0D)
@@ -1972,18 +1942,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
-        ItemStack mainHandItem = player.getInventory().getItemInMainHand();
-        if (!claimToolService.isClaimTool(mainHandItem)) {
-            player.sendMessage(message("claim.hold-tool"));
-            return true;
-        }
-        if (claimToolService.currentCharges(mainHandItem) < chunks.size()) {
-            player.sendMessage(message("claim.not-enough-charges", Map.of(
-                    "needed", String.valueOf(chunks.size()),
-                    "available", String.valueOf(claimToolService.currentCharges(mainHandItem))
-            )));
-            return true;
-        }
 
         // Fail-fast validation so we never charge the player for a claim we already know is invalid.
         // createPlayerClaim re-validates under the same call as the write to guard against TOCTOU races.
@@ -2043,7 +2001,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        claimToolService.spendCharges(mainHandItem, chunks.size());
         selectionService.consumeSelection(player.getUniqueId());
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.showSelection(player, chunks, BorderColor.GOLD);
@@ -2291,7 +2248,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("command.help.menu"));
         player.sendMessage(message("command.help.flags"));
         player.sendMessage(message("command.help.viewborder"));
-        player.sendMessage(message("command.help.tool"));
+        player.sendMessage(message("command.help.mode"));
         player.sendMessage(message("command.help.create"));
         player.sendMessage(message("command.help.member"));
         player.sendMessage(message("command.help.deny"));

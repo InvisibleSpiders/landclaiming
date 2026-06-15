@@ -60,8 +60,7 @@ public final class ClaimMenuService {
                 rows,
                 List.of(
                         new ClaimMenuAction(dashboardActionLabel("create"), "/claim create"),
-                        new ClaimMenuAction(dashboardActionLabel("cost"), "/claim cost"),
-                        new ClaimMenuAction(dashboardActionLabel("tool"), "/claim tool")
+                        new ClaimMenuAction(dashboardActionLabel("cost"), "/claim cost")
                 )
         );
     }
@@ -103,7 +102,6 @@ public final class ClaimMenuService {
         return switch (actionKey) {
             case "create" -> "Create Claim";
             case "cost" -> "Claim Cost";
-            case "tool" -> "Claim Tool";
             default -> actionKey;
         };
     }

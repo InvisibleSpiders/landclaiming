@@ -1,6 +1,7 @@
 package com.invisiblespiders.havenclaims.plugin.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -21,23 +22,12 @@ import org.junit.jupiter.api.Test;
 
 class ClaimToolServiceTest {
     @Test
-    void spendsChargesWhenEnoughRemain() {
+    void createClaimModeToolRequiresConfiguredRegistry() {
         ClaimToolService service = new ClaimToolService("havenclaims");
-        ItemStack tool = toolWithCharges(5, 5);
 
-        assertThat(service.currentCharges(tool)).isEqualTo(5);
-        assertThat(service.spendCharges(tool, 3)).isTrue();
-        assertThat(service.currentCharges(tool)).isEqualTo(2);
-    }
-
-    @Test
-    void doesNotSpendChargesWhenNotEnoughRemain() {
-        ClaimToolService service = new ClaimToolService("havenclaims");
-        ItemStack tool = toolWithCharges(2, 2);
-
-        assertThat(service.spendCharges(tool, 3)).isFalse();
-
-        assertThat(service.currentCharges(tool)).isEqualTo(2);
+        assertThatThrownBy(service::createClaimModeTool)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Claim mode tool registry is not configured.");
     }
 
     @Test
@@ -57,7 +47,7 @@ class ClaimToolServiceTest {
     }
 
     @Test
-    void distinguishesChargedAndClaimModeClaimTools() {
+    void claimToolIdentityIsLimitedToClaimModeClaimTool() {
         ClaimToolService service = new ClaimToolService("havenclaims");
         ClaimModeToolRegistry registry = new ClaimModeToolRegistry(
                 new NamespacedKey("havenclaims", "claim_mode_tool"),
@@ -67,42 +57,29 @@ class ClaimToolServiceTest {
                 )
         );
         service.setClaimModeToolRegistry(registry);
-        ItemStack chargedTool = toolWithCharges(5, 5);
+        ItemStack legacyChargedTool = legacyChargedTool();
         ItemStack claimModeClaimTool = registry.createItem("claim");
         ItemStack menuTool = registry.createItem("menu");
 
-        assertThat(service.isClaimTool(chargedTool)).isTrue();
+        assertThat(service.isClaimTool(legacyChargedTool)).isFalse();
         assertThat(service.isClaimTool(claimModeClaimTool)).isTrue();
         assertThat(service.isClaimTool(menuTool)).isFalse();
 
-        assertThat(service.isChargedClaimTool(chargedTool)).isTrue();
-        assertThat(service.isChargedClaimTool(claimModeClaimTool)).isFalse();
-        assertThat(service.isChargedClaimTool(menuTool)).isFalse();
-
-        assertThat(service.isClaimModeClaimTool(chargedTool)).isFalse();
+        assertThat(service.isClaimModeClaimTool(legacyChargedTool)).isFalse();
         assertThat(service.isClaimModeClaimTool(claimModeClaimTool)).isTrue();
         assertThat(service.isClaimModeClaimTool(menuTool)).isFalse();
     }
 
-    private static ItemStack toolWithCharges(int currentCharges, int maxCharges) {
+    private static ItemStack legacyChargedTool() {
         ItemStack itemStack = mock(ItemStack.class);
         ItemMeta itemMeta = mock(ItemMeta.class);
         PersistentDataContainer persistentDataContainer = mock(PersistentDataContainer.class);
-        Map<NamespacedKey, Integer> values = new HashMap<>();
-        values.put(new NamespacedKey("havenclaims", "claim_tool_current_charges"), currentCharges);
-        values.put(new NamespacedKey("havenclaims", "claim_tool_max_charges"), maxCharges);
 
         when(itemStack.hasItemMeta()).thenReturn(true);
         when(itemStack.getItemMeta()).thenReturn(itemMeta);
         when(itemMeta.getPersistentDataContainer()).thenReturn(persistentDataContainer);
-        when(persistentDataContainer.has(any(NamespacedKey.class), eq(PersistentDataType.INTEGER)))
-                .thenAnswer(invocation -> values.containsKey(invocation.getArgument(0)));
-        when(persistentDataContainer.get(any(NamespacedKey.class), eq(PersistentDataType.INTEGER)))
-                .thenAnswer(invocation -> values.get(invocation.getArgument(0)));
-        doAnswer(invocation -> {
-            values.put(invocation.getArgument(0), invocation.getArgument(2));
-            return null;
-        }).when(persistentDataContainer).set(any(NamespacedKey.class), eq(PersistentDataType.INTEGER), any(Integer.class));
+        when(persistentDataContainer.get(any(NamespacedKey.class), eq(PersistentDataType.STRING)))
+                .thenReturn(null);
         return itemStack;
     }
 

@@ -359,7 +359,7 @@ class ClaimModeListenerTest {
         Location location = mock(Location.class);
         when(fixture.player().getLocation()).thenReturn(location);
         when(location.getChunk()).thenReturn(firstChunk, secondChunk);
-        when(fixture.player().hasPermission("havenclaims.tool.use")).thenReturn(true);
+        when(fixture.player().hasPermission("havenclaims.claim")).thenReturn(true);
         when(fixture.player().getEffectivePermissions()).thenReturn(Set.of());
         ItemStack tool = fixture.registry().createItem("claim");
         ClaimModeListener claimModeListener = listener(fixture.service());

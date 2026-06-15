@@ -159,7 +159,7 @@ class ClaimMenuServiceTest {
         assertThat(dashboard.claims()).extracting(ClaimDashboardRow::currentClaim)
                 .containsExactly(true, false);
         assertThat(dashboard.actions()).extracting(ClaimMenuAction::command)
-                .containsExactly("/claim create", "/claim cost", "/claim tool");
+                .containsExactly("/claim create", "/claim cost");
     }
 
     private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
@@ -187,8 +187,7 @@ class ClaimMenuServiceTest {
                 Map.entry("claim.menu.action-labels.delete", "Delete Claim"),
                 Map.entry("claim.dashboard.title", "My Claims"),
                 Map.entry("claim.dashboard.action-labels.create", "Create Claim"),
-                Map.entry("claim.dashboard.action-labels.cost", "Claim Cost"),
-                Map.entry("claim.dashboard.action-labels.tool", "Claim Tool")
+                Map.entry("claim.dashboard.action-labels.cost", "Claim Cost")
         ));
     }
 }

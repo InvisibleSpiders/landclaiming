@@ -69,6 +69,17 @@ class ClaimsCommandPermissionTest {
     }
 
     @Test
+    void rootSuggestionsDoNotIncludeRetiredToolCommand() {
+        ClaimsCommand command = new ClaimsCommand(mock(ClaimToolService.class));
+
+        List<String> suggestions = command.onTabComplete(
+                mock(Player.class), mock(Command.class), "claim", new String[]{""});
+
+        assertThat(suggestions).doesNotContain("tool");
+        assertThat(suggestions).contains("mode");
+    }
+
+    @Test
     void createRequiresClaimPermissionBeforeCheckingSelectionServices() {
         ClaimsCommand command = new ClaimsCommand(
                 mock(ClaimToolService.class),
@@ -136,7 +147,6 @@ class ClaimsCommandPermissionTest {
         when(player.getInventory()).thenReturn(inventory);
         when(inventory.getItemInMainHand()).thenReturn(tool);
         when(toolService.isClaimTool(tool)).thenReturn(true);
-        when(toolService.currentCharges(tool)).thenReturn(10);
         List<Component> messages = captureMessages(player);
         ClaimsCommand command = new ClaimsCommand(
                 toolService,
@@ -166,7 +176,6 @@ class ClaimsCommandPermissionTest {
 
         assertThat(repository.savedClaims).isEmpty();
         assertThat(plain(messages)).containsExactly("This claim exceeds your claim limit.");
-        verify(toolService, never()).spendCharges(any(), any(Integer.class));
     }
 
     @Test
@@ -252,7 +261,6 @@ class ClaimsCommandPermissionTest {
         when(player.getInventory()).thenReturn(inventory);
         when(inventory.getItemInMainHand()).thenReturn(tool);
         when(toolService.isClaimTool(tool)).thenReturn(true);
-        when(toolService.currentCharges(tool)).thenReturn(10);
         List<Component> messages = captureMessages(player);
         ClaimsCommand command = new ClaimsCommand(
                 toolService,
@@ -286,6 +294,63 @@ class ClaimsCommandPermissionTest {
     }
 
     @Test
+    void createDoesNotRequireHeldPermanentClaimToolOrCharges() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService creationService = new ClaimCreationService(
+                repository,
+                claimIndex,
+                new ClaimService(),
+                FlagRegistry.createDefault(),
+                3,
+                3,
+                32
+        );
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        ClaimToolService toolService = mock(ClaimToolService.class);
+        ItemStack normalItem = mock(ItemStack.class);
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("havenclaims.claim")).thenReturn(true);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItemInMainHand()).thenReturn(normalItem);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                toolService,
+                selectionService,
+                creationService,
+                claimIndex,
+                null,
+                null,
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                mock(HavenClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"create", "Home"});
+
+        assertThat(repository.savedClaims).hasSize(1);
+        assertThat(plain(messages)).containsExactly("Claim Home created.");
+        verify(toolService, never()).isClaimTool(any());
+    }
+
+    @Test
     void createWithDialogPreferenceOpensConfirmationWithoutSaving() {
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
@@ -311,7 +376,6 @@ class ClaimsCommandPermissionTest {
         when(player.getInventory()).thenReturn(inventory);
         when(inventory.getItemInMainHand()).thenReturn(tool);
         when(toolService.isClaimTool(tool)).thenReturn(true);
-        when(toolService.currentCharges(tool)).thenReturn(10);
         List<Component> messages = captureMessages(player);
         ClaimsCommand command = new ClaimsCommand(
                 toolService,
@@ -357,6 +421,76 @@ class ClaimsCommandPermissionTest {
     }
 
     @Test
+    void createPreviewDoesNotRequireHeldPermanentClaimToolOrCharges() {
+        UUID ownerId = UUID.randomUUID();
+        UUID worldId = UUID.randomUUID();
+        FakeClaimRepository repository = new FakeClaimRepository();
+        ClaimIndex claimIndex = new ClaimIndex();
+        ClaimCreationService creationService = new ClaimCreationService(
+                repository,
+                claimIndex,
+                new ClaimService(),
+                FlagRegistry.createDefault(),
+                3,
+                3,
+                32
+        );
+        SelectionService selectionService = new SelectionService(new ClaimService());
+        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        ClaimToolService toolService = mock(ClaimToolService.class);
+        ItemStack normalItem = mock(ItemStack.class);
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(ownerId);
+        when(player.hasPermission("havenclaims.claim")).thenReturn(true);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItemInMainHand()).thenReturn(normalItem);
+        List<Component> messages = captureMessages(player);
+        ClaimsCommand command = new ClaimsCommand(
+                toolService,
+                selectionService,
+                creationService,
+                claimIndex,
+                new ClaimCostService(
+                        claimIndex,
+                        new LimitService(5, emptyLimitRepository()),
+                        new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                ),
+                new ClaimPaymentService(new NoopEconomyService()),
+                null,
+                messages(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                new DialogService(true),
+                null,
+                null,
+                null,
+                null,
+                mock(HavenClaimsLimitService.class),
+                null,
+                null
+        );
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"create", "Home"});
+
+        assertThat(repository.savedClaims).isEmpty();
+        assertThat(plain(messages)).containsExactly(
+                "Create claim Home?",
+                "Selection: 1 chunks",
+                "Total after claim: 1 / 5 chunks",
+                "Over limit: 0 chunks",
+                "Cost: free",
+                "Actions:",
+                "- Create Claim (/claim createconfirm Home)",
+                "- Cancel (/claim cancel)"
+        );
+        verify(toolService, never()).isClaimTool(any());
+    }
+
+    @Test
     void createConfirmWithoutNameCreatesNextDefaultClaimName() {
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
@@ -382,7 +516,6 @@ class ClaimsCommandPermissionTest {
         when(player.getInventory()).thenReturn(inventory);
         when(inventory.getItemInMainHand()).thenReturn(tool);
         when(toolService.isClaimTool(tool)).thenReturn(true);
-        when(toolService.currentCharges(tool)).thenReturn(10);
         List<Component> messages = captureMessages(player);
         ClaimsCommand command = new ClaimsCommand(
                 toolService,
@@ -457,8 +590,7 @@ class ClaimsCommandPermissionTest {
                 "- Home (1 chunks) /claim menu " + claim.id(),
                 "Actions:",
                 "- Create Claim (/claim create)",
-                "- Claim Cost (/claim cost)",
-                "- Claim Tool (/claim tool)"
+                "- Claim Cost (/claim cost)"
         );
     }
 
@@ -933,8 +1065,6 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.visual.border-claim", "<green>Showing this claim border."),
                 Map.entry("claim.info.unclaimed", "<yellow>You are not standing in a claim."),
                 Map.entry("claim.selection-required", "<red>Select chunks first."),
-                Map.entry("claim.hold-tool", "<red>Hold the claim tool."),
-                Map.entry("claim.not-enough-charges", "<red>Need <needed>, have <available>."),
                 Map.entry("claim.created", "<green>Claim <claim_name> created."),
                 Map.entry("claim.create-preview.title", "<gold>Create claim <yellow><claim_name></yellow>?"),
                 Map.entry("claim.create-preview.selection", "<gray>Selection: <yellow><selected_chunks></yellow> chunks"),
@@ -958,7 +1088,6 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.dashboard.action", "<gray>- <yellow><label></yellow> (<command>)"),
                 Map.entry("claim.dashboard.action-labels.create", "Create Claim"),
                 Map.entry("claim.dashboard.action-labels.cost", "Claim Cost"),
-                Map.entry("claim.dashboard.action-labels.tool", "Claim Tool"),
                 Map.entry("claim.menu.action-labels.flags", "Flags"),
                 Map.entry("claim.menu.action-labels.members", "Members"),
                 Map.entry("claim.menu.action-labels.info", "Info")
