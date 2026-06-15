@@ -17,4 +17,6 @@ public interface HavenClaimsApi {
     boolean canBuild(Player player, Location location);
 
     boolean canInteract(Player player, Location location, String actionKey);
+
+    boolean canVisitorsEnter(Location location);
 }

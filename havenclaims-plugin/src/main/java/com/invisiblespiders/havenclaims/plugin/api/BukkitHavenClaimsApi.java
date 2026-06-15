@@ -20,6 +20,7 @@ import org.bukkit.entity.Player;
 
 public final class BukkitHavenClaimsApi implements HavenClaimsApi {
     private static final String BYPASS_PERMISSION = "havenclaims.bypass.protection";
+    public static final String TELEPORT_ENTER_ACTION = "teleportlocations.enter";
 
     private final ClaimRepository claimRepository;
     private final ClaimIndex claimIndex;
@@ -78,6 +79,20 @@ public final class BukkitHavenClaimsApi implements HavenClaimsApi {
 
         UUID actorUuid = player == null ? null : player.getUniqueId();
         return protectionService.checkClaimFlag(claim.orElseThrow(), actorUuid, actionKey) == ClaimProtectionResult.ALLOW;
+    }
+
+    @Override
+    public boolean canVisitorsEnter(Location location) {
+        Objects.requireNonNull(location, "location");
+        Optional<Claim> claim = claimIndex.findAt(claimChunk(location));
+        if (claim.isEmpty()) {
+            return false;
+        }
+        return protectionService.checkClaimFlag(
+                claim.orElseThrow(),
+                null,
+                TELEPORT_ENTER_ACTION
+        ) == ClaimProtectionResult.ALLOW;
     }
 
     private boolean hasBypass(Player player, String actionKey) {
