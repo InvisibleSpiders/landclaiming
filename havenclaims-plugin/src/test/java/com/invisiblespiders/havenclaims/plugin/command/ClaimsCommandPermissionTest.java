@@ -2,12 +2,15 @@ package com.invisiblespiders.havenclaims.plugin.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.invisiblespiders.havenclaims.api.limit.HavenClaimsLimitService;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeAction;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeCommand;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationService;
@@ -52,6 +55,19 @@ import org.bukkit.inventory.PlayerInventory;
 import org.junit.jupiter.api.Test;
 
 class ClaimsCommandPermissionTest {
+    @Test
+    void claimModeSubcommandDelegatesToClaimModeCommand() {
+        ClaimModeCommand claimModeCommand = mock(ClaimModeCommand.class);
+        ClaimsCommand command = new ClaimsCommand(mock(ClaimToolService.class));
+        command.setClaimModeCommand(claimModeCommand);
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+
+        command.onCommand(player, mock(Command.class), "claim", new String[]{"mode", "on"});
+
+        verify(claimModeCommand).execute(eq(player), eq(ClaimModeAction.ON));
+    }
+
     @Test
     void createRequiresClaimPermissionBeforeCheckingSelectionServices() {
         ClaimsCommand command = new ClaimsCommand(

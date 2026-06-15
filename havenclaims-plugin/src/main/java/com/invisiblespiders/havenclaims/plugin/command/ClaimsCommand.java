@@ -16,6 +16,8 @@ import com.invisiblespiders.havenclaims.plugin.claim.ClaimValidationResult;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.claim.PendingClaimMerge;
 import com.invisiblespiders.havenclaims.plugin.claim.PendingClaimMergeService;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeAction;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeCommand;
 import com.invisiblespiders.havenclaims.plugin.economy.ClaimPaymentResult;
 import com.invisiblespiders.havenclaims.plugin.economy.ClaimPaymentService;
 import com.invisiblespiders.havenclaims.api.flag.FlagState;
@@ -81,6 +83,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final String CLAIM_BUFFER_BYPASS_PERMISSION = "havenclaims.bypass.claim-buffer";
     private static final List<String> ROOT_SUGGESTIONS = List.of(
             "tool",
+            "mode",
             "create",
             "cost",
             "quote",
@@ -126,6 +129,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final HavenClaimsLimitService claimLimitService;
     private final Supplier<ReloadResult> reloadAction;
     private final AdminClaimBrowserService adminClaimBrowserService;
+    private ClaimModeCommand claimModeCommand;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new HavenClaimsLimitService() {
@@ -182,6 +186,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.adminClaimBrowserService = adminClaimBrowserService;
     }
 
+    public void setClaimModeCommand(ClaimModeCommand claimModeCommand) {
+        this.claimModeCommand = claimModeCommand;
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
@@ -189,6 +197,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length >= 1 && args[0].equalsIgnoreCase("mode")) {
+            return executeClaimMode(player, args);
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("tool")) {
             return giveTool(player);
         }
@@ -286,6 +297,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && subcommand.equals("flag")) {
             return matching(List.of("list", "set", "cycle"), args[1]);
         }
+        if (args.length == 2 && subcommand.equals("mode")) {
+            return matching(List.of("on", "off", "toggle"), args[1]);
+        }
         if (args.length == 2 && subcommand.equals("admin")) {
             return matching(ADMIN_SUGGESTIONS, args[1]);
         }
@@ -332,6 +346,15 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                     .toList(), args[3]);
         }
         return List.of();
+    }
+
+    private boolean executeClaimMode(Player player, String[] args) {
+        if (claimModeCommand == null) {
+            player.sendMessage(message("command.unavailable.claim-creation"));
+            return true;
+        }
+        String[] modeArgs = Arrays.copyOfRange(args, 1, args.length);
+        return claimModeCommand.execute(player, ClaimModeAction.from(modeArgs));
     }
 
     private boolean manageAdminClaims(Player player, String[] args) {
@@ -2264,6 +2287,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(Player player) {
         player.sendMessage(message("command.help.title"));
+        player.sendMessage(message("claim-mode.menu-help"));
         player.sendMessage(message("command.help.menu"));
         player.sendMessage(message("command.help.flags"));
         player.sendMessage(message("command.help.viewborder"));

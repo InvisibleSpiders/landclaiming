@@ -10,6 +10,15 @@ import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMemberService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.claim.PendingClaimMergeService;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeCommand;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeCommandGuard;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeConfig;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeListener;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeRecoveryStore;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeService;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeSessionHistory;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeToolRegistry;
+import com.invisiblespiders.havenclaims.plugin.claimmode.StandardClaimModeTools;
 import com.invisiblespiders.havenclaims.plugin.command.ClaimsCommand;
 import com.invisiblespiders.havenclaims.plugin.entity.EntityControlService;
 import com.invisiblespiders.havenclaims.plugin.economy.ClaimPaymentService;
@@ -65,8 +74,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import javax.sql.DataSource;
+import net.kyori.adventure.text.Component;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.NamespacedKey;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.ServicePriority;
@@ -85,6 +96,8 @@ public final class HavenClaimsPlugin extends JavaPlugin
     private DeniedClaimAccessListener deniedClaimAccessListener;
     private ClaimBoundaryNotificationListener claimBoundaryNotificationListener;
     private ClaimIndex claimIndex;
+    private ClaimModeService claimModeService;
+    private ClaimModeCommandGuard claimModeCommandGuard;
     private HavenDataSource havenDataSource;
     private DialogService dialogService;
 
@@ -99,6 +112,21 @@ public final class HavenClaimsPlugin extends JavaPlugin
         ClaimService claimService = new ClaimService();
         ClaimToolService claimToolService = new ClaimToolService(this);
         messageService = new MessageService(MessageConfigurationLoader.load(loadYamlResource("messages.yml")));
+        ClaimModeConfig claimModeConfig = ClaimModeConfig.from(getConfig());
+        claimModeCommandGuard = new ClaimModeCommandGuard(claimModeConfig);
+        ClaimModeRecoveryStore claimModeRecoveryStore = new ClaimModeRecoveryStore(getDataFolder().toPath());
+        ClaimModeSessionHistory claimModeSessionHistory = new ClaimModeSessionHistory(
+                getDataFolder().toPath(), claimModeConfig.historyPerPlayer());
+        ClaimModeToolRegistry claimModeToolRegistry = StandardClaimModeTools.createRegistry(
+                new NamespacedKey(this, "claim_mode_tool"));
+        claimModeService = new ClaimModeService(
+                claimModeConfig,
+                claimModeToolRegistry,
+                claimModeSessionHistory,
+                claimModeRecoveryStore,
+                Component.text("Claim mode")
+        );
+        claimToolService.setClaimModeToolRegistry(claimModeToolRegistry);
         FlagRegistry flagRegistry = FlagRegistry.createDefault();
         ProtectionService protectionService = new ProtectionService(flagRegistry);
         SelectionService selectionService = new SelectionService(claimService);
@@ -175,6 +203,8 @@ public final class HavenClaimsPlugin extends JavaPlugin
         );
         getServer().getPluginManager().registerEvents(claimToolListener, this);
         getServer().getPluginManager().registerEvents(
+                new ClaimModeListener(claimModeService, claimModeCommandGuard, messageService), this);
+        getServer().getPluginManager().registerEvents(
                 new ProtectionListener(protectionService, claimIndex, messageService),
                 this
         );
@@ -240,6 +270,12 @@ public final class HavenClaimsPlugin extends JavaPlugin
         var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
         claimCommand.setExecutor(claimsCommand);
         claimCommand.setTabCompleter(claimsCommand);
+        ClaimModeCommand claimModeCommand = new ClaimModeCommand(claimModeService, messageService);
+        var claimModePluginCommand = Objects.requireNonNull(
+                getCommand("claimmode"), "claimmode command is not defined in plugin.yml");
+        claimModePluginCommand.setExecutor(claimModeCommand);
+        claimModePluginCommand.setTabCompleter(claimModeCommand);
+        claimsCommand.setClaimModeCommand(claimModeCommand);
 
         getLogger().info("HavenClaims enabled.");
         HavenSuiteRegistry suiteRegistry = HavenAPI.get(HavenSuiteRegistry.class);
@@ -258,6 +294,9 @@ public final class HavenClaimsPlugin extends JavaPlugin
                     getConfig().getInt("limits.default-claim-limit", 10));
             claimCostService.reload(
                     ClaimCostConfig.from(getConfig()));
+            ClaimModeConfig claimModeConfig = ClaimModeConfig.from(getConfig());
+            claimModeService.reload(claimModeConfig);
+            claimModeCommandGuard.reload(claimModeConfig);
             claimCreationService.reload(
                     getConfig().getInt("claiming.player-buffer-distance", 3),
                     getConfig().getInt("claiming.admin-buffer-distance", 3),
@@ -327,6 +366,12 @@ public final class HavenClaimsPlugin extends JavaPlugin
         if (suiteRegistry != null) {
             suiteRegistry.unregister(getName());
         }
+        if (claimModeService != null) {
+            claimModeService.restoreAll(
+                    getServer().getOnlinePlayers(), ClaimModeService.ExitReason.PLUGIN_DISABLE);
+            claimModeService = null;
+        }
+        claimModeCommandGuard = null;
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.clearAll();
             chunkBorderVisualService = null;
