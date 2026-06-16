@@ -42,7 +42,31 @@ class SelectionServiceTest {
         UUID player = UUID.randomUUID();
         service.select(player, new BlockPos(world, 0, 0));
         service.select(player, new BlockPos(world, 5, 5));
-        assertThat(service.pendingSelection(player)).isPresent();
+        assertThat(service.pendingSelection(player))
+                .contains(new ClaimRegion(world, 0, 0, 5, 5));
+    }
+
+    @Test
+    void clearRemovesAllSelectionState() {
+        UUID player = UUID.randomUUID();
+        service.select(player, new BlockPos(world, 0, 0));
+        service.select(player, new BlockPos(world, 5, 5));
+        service.clear(player);
+        assertThat(service.pendingSelection(player)).isEmpty();
+    }
+
+    @Test
+    void clearReturnsFalseWhenNothingToRemove() {
+        assertThat(service.clear(UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    void selectionsAreIsolatedPerPlayer() {
+        UUID player1 = UUID.randomUUID();
+        UUID player2 = UUID.randomUUID();
+        service.select(player1, new BlockPos(world, 0, 0));
+        service.select(player1, new BlockPos(world, 5, 5));
+        assertThat(service.pendingSelection(player2)).isEmpty();
     }
 
     @Test

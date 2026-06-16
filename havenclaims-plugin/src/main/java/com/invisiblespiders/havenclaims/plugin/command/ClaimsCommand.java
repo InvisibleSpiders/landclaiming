@@ -1962,8 +1962,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        List<Claim> mergeTargets = claimCreationService.findMergeTargets(player.getUniqueId(), claimName, region);
-
         ClaimCostQuote quote = null;
         if (claimCostService != null && claimPaymentService != null && !bypassLimit) {
             quote = claimCostService.quotePlayerClaim(player.getUniqueId(), region);
