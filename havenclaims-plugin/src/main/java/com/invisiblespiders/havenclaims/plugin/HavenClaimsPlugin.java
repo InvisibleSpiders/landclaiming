@@ -148,13 +148,13 @@ public final class HavenClaimsPlugin extends JavaPlugin
         );
         getServer().getServicesManager().register(
                 HavenClaimsLimitService.class, limitService, this, ServicePriority.Normal);
-        int confirmTimeoutSeconds = getConfig().getInt("over-limit.confirm-timeout-seconds", 60);
+        int confirmTimeoutSeconds = getConfig().getInt("limits.over-limit.confirm-timeout-seconds", 60);
         OverLimitConfirmService overLimitConfirmService = new OverLimitConfirmService(confirmTimeoutSeconds);
-        int blocksPerInterval = getConfig().getInt("accrual.blocks-per-interval", 10);
-        int intervalSeconds = getConfig().getInt("accrual.interval-seconds", 60);
-        int maxBlocks = getConfig().getInt("accrual.max-blocks", 50000);
-        String afkMode = getConfig().getString("accrual.afk-mode", "reduced");
-        double afkMultiplier = getConfig().getDouble("accrual.rate-multiplier", 0.5);
+        int blocksPerInterval = getConfig().getInt("limits.accrual.blocks-per-interval", 10);
+        int intervalSeconds = getConfig().getInt("limits.accrual.interval-seconds", 60);
+        int maxBlocks = getConfig().getInt("limits.accrual.max-blocks", 50000);
+        String afkMode = getConfig().getString("limits.accrual.afk.mode", "reduced");
+        double afkMultiplier = getConfig().getDouble("limits.accrual.afk.rate-multiplier", 0.5);
         AfkDetector afkDetector = HavenCoreAfkDetector.create();
         blockAccrualService = new BlockAccrualService(
                 limitService, afkDetector, blocksPerInterval, maxBlocks, afkMode, afkMultiplier);
@@ -175,8 +175,8 @@ public final class HavenClaimsPlugin extends JavaPlugin
                 claimIndex,
                 claimService,
                 flagRegistry,
-                getConfig().getInt("claiming.player-buffer-distance", 3),
-                getConfig().getInt("claiming.admin-buffer-distance", 3),
+                getConfig().getInt("claiming.player-buffer-distance", 16),
+                getConfig().getInt("claiming.admin-buffer-distance", 16),
                 getConfig().getInt("claiming.max-name-length", 32)
         );
         ClaimBorderColorService claimBorderColorService = new ClaimBorderColorService(
@@ -316,8 +316,8 @@ public final class HavenClaimsPlugin extends JavaPlugin
             claimModeCommandGuard.reload(claimModeConfig);
             claimModeSessionHistory.reload(claimModeConfig.historyPerPlayer());
             claimCreationService.reload(
-                    getConfig().getInt("claiming.player-buffer-distance", 3),
-                    getConfig().getInt("claiming.admin-buffer-distance", 3),
+                    getConfig().getInt("claiming.player-buffer-distance", 16),
+                    getConfig().getInt("claiming.admin-buffer-distance", 16),
                     getConfig().getInt("claiming.max-name-length", 32));
             doubleCrouchClearService.reload(
                     getConfig().getInt("selection.double-crouch-clear.window-ticks", 80));
