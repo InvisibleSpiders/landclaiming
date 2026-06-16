@@ -19,7 +19,8 @@ class HavenClaimsMigrationResourceTest {
                         "V1__initial_claim_schema.sql",
                         "V2__claim_denied_players.sql",
                         "V3__claim_flag_states.sql",
-                        "V4__claim_player_limits.sql"
+                        "V4__claim_player_limits.sql",
+                        "V5__block_regions.sql"
                 );
     }
 
