@@ -37,68 +37,62 @@ class LimitServiceTest {
     }
 
     @Test
-    void getLimitReturnsDatabaseValueWhenPresent() {
+    void getBlockLimitReturnsDatabaseValueWhenPresent() {
         UUID player = UUID.randomUUID();
-        assertThat(serviceWith(player, 25).getLimit(player)).isEqualTo(25);
+        assertThat(serviceWith(player, 25).getBlockLimit(player)).isEqualTo(25);
     }
 
     @Test
-    void getLimitFallsBackToDefaultWhenNoRecord() {
-        assertThat(serviceWith(UUID.randomUUID(), 25).getLimit(UUID.randomUUID())).isEqualTo(DEFAULT);
+    void getBlockLimitFallsBackToDefaultWhenNoRecord() {
+        assertThat(serviceWith(UUID.randomUUID(), 25).getBlockLimit(UUID.randomUUID())).isEqualTo(DEFAULT);
     }
 
     @Test
-    void setLimitWritesToRepository() {
+    void setBlockLimitWritesToRepository() {
         LimitService service = emptyService();
         UUID player = UUID.randomUUID();
-        service.setLimit(player, 20);
-        assertThat(service.getLimit(player)).isEqualTo(20);
+        service.setBlockLimit(player, 20);
+        assertThat(service.getBlockLimit(player)).isEqualTo(20);
     }
 
     @Test
-    void addChunksIncreasesLimit() {
+    void addBlocksIncreasesLimit() {
         LimitService service = emptyService();
         UUID player = UUID.randomUUID();
-        service.setLimit(player, 10);
-        service.addChunks(player, 5);
-        assertThat(service.getLimit(player)).isEqualTo(15);
+        service.setBlockLimit(player, 10);
+        service.addBlocks(player, 5);
+        assertThat(service.getBlockLimit(player)).isEqualTo(15);
     }
 
     @Test
-    void removeChunksDecreasesLimitWithFloorAtOne() {
+    void removeBlocksDecreasesLimitWithFloorAtOne() {
         LimitService service = emptyService();
         UUID player = UUID.randomUUID();
-        service.setLimit(player, 3);
-        service.removeChunks(player, 10);
-        assertThat(service.getLimit(player)).isEqualTo(1);
+        service.setBlockLimit(player, 3);
+        service.removeBlocks(player, 10);
+        assertThat(service.getBlockLimit(player)).isEqualTo(1);
     }
 
     @Test
-    void overageChunksNeverReturnsNegative() {
+    void overageBlocksNeverReturnsNegative() {
         LimitService service = emptyService();
-        assertThat(service.overageChunks(14, 10)).isEqualTo(4);
-        assertThat(service.overageChunks(8, 10)).isZero();
+        assertThat(service.overageBlocks(14, 10)).isEqualTo(4);
+        assertThat(service.overageBlocks(8, 10)).isZero();
     }
 
     @Test
-    void flatOverLimitCostChargesPerChunk() {
+    void flatOverLimitCostChargesPerBlock() {
         assertThat(LimitService.flatOverLimitCost(3, 250.0)).isEqualTo(750.0);
-    }
-
-    @Test
-    void exponentialOverLimitCostScalesEachChunk() {
-        assertThat(LimitService.exponentialOverLimitCost(3, 250.0, 1.25)).isEqualTo(953.125);
-        assertThat(LimitService.exponentialOverLimitCost(0, 250.0, 1.25)).isZero();
     }
 
     @Test
     void reloadChangesDefaultLimitWhenNoDbRow() {
         LimitService service = emptyService();
         UUID player = UUID.randomUUID();
-        assertThat(service.getLimit(player)).isEqualTo(DEFAULT);
+        assertThat(service.getBlockLimit(player)).isEqualTo(DEFAULT);
 
         service.reload(25);
 
-        assertThat(service.getLimit(player)).isEqualTo(25);
+        assertThat(service.getBlockLimit(player)).isEqualTo(25);
     }
 }

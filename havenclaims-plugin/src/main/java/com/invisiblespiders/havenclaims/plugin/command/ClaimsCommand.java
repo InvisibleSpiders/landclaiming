@@ -129,10 +129,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new HavenClaimsLimitService() {
-            @Override public int getLimit(java.util.UUID playerId) { return 0; }
-            @Override public void setLimit(java.util.UUID playerId, int limit) {}
-            @Override public void addChunks(java.util.UUID playerId, int chunks) {}
-            @Override public void removeChunks(java.util.UUID playerId, int chunks) {}
+            @Override public int getBlockLimit(java.util.UUID playerId) { return 0; }
+            @Override public void setBlockLimit(java.util.UUID playerId, int limit) {}
+            @Override public void addBlocks(java.util.UUID playerId, int blocks) {}
+            @Override public void removeBlocks(java.util.UUID playerId, int blocks) {}
         }, null, null);
     }
 
@@ -421,7 +421,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(message("admin.limit.player-not-found", Map.of("player", args[3])));
                 return true;
             }
-            int limit = claimLimitService.getLimit(targetId);
+            int limit = claimLimitService.getBlockLimit(targetId);
             player.sendMessage(message("admin.limit.get", Map.of(
                     "player", args[3],
                     "amount", String.valueOf(limit),
@@ -447,23 +447,23 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         switch (limitAction) {
             case "set" -> {
-                claimLimitService.setLimit(targetId, amount);
+                claimLimitService.setBlockLimit(targetId, amount);
                 player.sendMessage(message("admin.limit.set", Map.of(
                         "player", args[3], "amount", String.valueOf(amount))));
             }
             case "add" -> {
-                claimLimitService.addChunks(targetId, amount);
+                claimLimitService.addBlocks(targetId, amount);
                 player.sendMessage(message("admin.limit.added", Map.of(
                         "player", args[3],
                         "amount", String.valueOf(amount),
-                        "new_limit", String.valueOf(claimLimitService.getLimit(targetId)))));
+                        "new_limit", String.valueOf(claimLimitService.getBlockLimit(targetId)))));
             }
             case "remove" -> {
-                claimLimitService.removeChunks(targetId, amount);
+                claimLimitService.removeBlocks(targetId, amount);
                 player.sendMessage(message("admin.limit.removed", Map.of(
                         "player", args[3],
                         "amount", String.valueOf(amount),
-                        "new_limit", String.valueOf(claimLimitService.getLimit(targetId)))));
+                        "new_limit", String.valueOf(claimLimitService.getBlockLimit(targetId)))));
             }
             default -> player.sendMessage(message("admin.limit.usage"));
         }

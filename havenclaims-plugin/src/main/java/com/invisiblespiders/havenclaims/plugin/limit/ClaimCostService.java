@@ -32,7 +32,7 @@ public final class ClaimCostService {
 
     public double computeDeletionRefund(UUID ownerId, int chunksBeingRemoved) {
         Objects.requireNonNull(ownerId, "ownerId");
-        int allowedChunks = limitService.getLimit(ownerId);
+        int allowedChunks = limitService.getBlockLimit(ownerId);
         int existingTotal = claimIndex.findAll().stream()
                 .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
                 .mapToInt(c -> c.claimChunks().size())
@@ -47,13 +47,13 @@ public final class ClaimCostService {
         Objects.requireNonNull(ownerId, "ownerId");
         Objects.requireNonNull(selectedChunks, "selectedChunks");
 
-        int allowedChunks = limitService.getLimit(ownerId);
+        int allowedChunks = limitService.getBlockLimit(ownerId);
         int existingChunks = claimIndex.findAll().stream()
                 .filter(claim -> claim.owner() == OwnerType.PLAYER && ownerId.equals(claim.ownerUuid()))
                 .mapToInt(claim -> claim.claimChunks().size())
                 .sum();
         int proposedTotalChunks = existingChunks + selectedChunks.size();
-        int overageChunks = limitService.overageChunks(proposedTotalChunks, allowedChunks);
+        int overageChunks = limitService.overageBlocks(proposedTotalChunks, allowedChunks);
         return new ClaimCostQuote(
                 allowedChunks,
                 existingChunks,

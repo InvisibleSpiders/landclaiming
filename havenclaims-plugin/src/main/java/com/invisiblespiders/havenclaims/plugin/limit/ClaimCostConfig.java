@@ -25,12 +25,22 @@ public record ClaimCostConfig(
         }
         return switch (pricingMode) {
             case FLAT -> LimitService.flatOverLimitCost(overageChunks, flatCostPerChunk);
-            case EXPONENTIAL -> LimitService.exponentialOverLimitCost(
-                    overageChunks,
-                    exponentialBaseCost,
-                    exponentialMultiplier
-            );
+            case EXPONENTIAL -> exponentialOverLimitCost(overageChunks, exponentialBaseCost, exponentialMultiplier);
         };
+    }
+
+    private static double exponentialOverLimitCost(int overageChunks, double baseCost, double multiplier) {
+        int n = Math.max(0, overageChunks);
+        double base = Math.max(0.0, baseCost);
+        double mult = Math.max(0.0, multiplier);
+        double total = 0.0;
+        for (int i = 0; i < n; i++) {
+            total += base * Math.pow(mult, i);
+            if (total >= Double.MAX_VALUE) {
+                return Double.MAX_VALUE;
+            }
+        }
+        return total;
     }
 
     public enum PricingMode {
