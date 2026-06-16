@@ -265,7 +265,8 @@ public final class HavenClaimsPlugin extends JavaPlugin
                         adminClaimService,
                         limitService,
                         this::performReload,
-                        adminClaimBrowserService
+                        adminClaimBrowserService,
+                        null
                 );
         var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
         claimCommand.setExecutor(claimsCommand);

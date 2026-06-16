@@ -104,6 +104,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
         Player player = mock(Player.class);
@@ -169,6 +170,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 limitService,
                 null,
+                null,
                 null
         );
 
@@ -216,6 +218,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 limitService,
+                null,
                 null,
                 null
         );
@@ -282,6 +285,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -339,6 +343,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -402,6 +407,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -473,6 +479,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -541,6 +548,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -582,6 +590,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -647,6 +656,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -711,6 +721,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -765,6 +776,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -839,6 +851,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -904,6 +917,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -1035,6 +1049,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -1172,6 +1187,7 @@ class ClaimsCommandPermissionTest {
                 new com.invisiblespiders.havenclaims.plugin.admin.AdminClaimService(
                         repository, claimIndex, FlagRegistry.createDefault(), 32),
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );

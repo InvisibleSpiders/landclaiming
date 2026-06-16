@@ -29,6 +29,8 @@ import com.invisiblespiders.havenclaims.api.limit.HavenClaimsLimitService;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostMessageService;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostQuote;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostService;
+import com.invisiblespiders.havenclaims.plugin.limit.OverLimitConfirmService;
+import com.invisiblespiders.havenclaims.plugin.limit.PendingOverLimitPurchase;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
 import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
 import com.invisiblespiders.havenclaims.plugin.tool.ClaimToolService;
@@ -98,6 +100,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "deleteconfirm",
             "admin",
             "cancel",
+            "confirm-purchase",
             "info"
     );
     private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit", "reload", "browse");
@@ -127,6 +130,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final Supplier<ReloadResult> reloadAction;
     private final AdminClaimBrowserService adminClaimBrowserService;
     private ClaimModeCommand claimModeCommand;
+    private final OverLimitConfirmService overLimitConfirmService;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new HavenClaimsLimitService() {
@@ -134,7 +138,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             @Override public void setBlockLimit(java.util.UUID playerId, int limit) {}
             @Override public void addBlocks(java.util.UUID playerId, int blocks) {}
             @Override public void removeBlocks(java.util.UUID playerId, int blocks) {}
-        }, null, null);
+        }, null, null, null);
     }
 
     public ClaimsCommand(
@@ -158,7 +162,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             AdminClaimService adminClaimService,
             HavenClaimsLimitService claimLimitService,
             Supplier<ReloadResult> reloadAction,
-            AdminClaimBrowserService adminClaimBrowserService
+            AdminClaimBrowserService adminClaimBrowserService,
+            OverLimitConfirmService overLimitConfirmService
     ) {
         Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
@@ -181,6 +186,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.claimLimitService = Objects.requireNonNull(claimLimitService, "claimLimitService");
         this.reloadAction = reloadAction;
         this.adminClaimBrowserService = adminClaimBrowserService;
+        this.overLimitConfirmService = overLimitConfirmService;
     }
 
     public void setClaimModeCommand(ClaimModeCommand claimModeCommand) {
@@ -260,6 +266,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("cancel")) {
             return cancelSelection(player);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("confirm-purchase")) {
+            return confirmOverLimitPurchase(player);
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("info")) {
             return showInfo(player);
@@ -1844,6 +1853,49 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         )).clickEvent(ClickEvent.runCommand(command)));
     }
 
+    private boolean confirmOverLimitPurchase(Player player) {
+        if (overLimitConfirmService == null) {
+            player.sendMessage(message("command.unavailable.claim-creation"));
+            return true;
+        }
+        Optional<PendingOverLimitPurchase> pendingOpt = overLimitConfirmService.consume(player.getUniqueId());
+        if (pendingOpt.isEmpty()) {
+            player.sendMessage(message("claim.over-limit-expired"));
+            return true;
+        }
+        PendingOverLimitPurchase purchase = pendingOpt.get();
+
+        if (claimPaymentService != null && purchase.cost() > 0) {
+            ClaimCostQuote chargeQuote = new ClaimCostQuote(0, 0, 0, 0, 0, purchase.cost());
+            ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), chargeQuote);
+            if (!paymentResult.allowed()) {
+                player.sendMessage(claimCreateDenied(paymentResult.messageKey()));
+                return true;
+            }
+        }
+
+        boolean bypass = player.hasPermission(CLAIM_BUFFER_BYPASS_PERMISSION);
+        ClaimValidationResult result = claimCreationService.createPlayerClaim(
+                player.getUniqueId(), purchase.claimName(), purchase.region(), bypass);
+        if (!result.isAllowed()) {
+            if (claimPaymentService != null && purchase.cost() > 0) {
+                ClaimCostQuote refundQuote = new ClaimCostQuote(0, 0, 0, 0, 0, purchase.cost());
+                if (!claimPaymentService.refund(player.getUniqueId(), refundQuote)) {
+                    player.sendMessage(message("claim.refund-failed", Map.of(
+                            "cost", claimPaymentService.format(purchase.cost()))));
+                }
+            }
+            player.sendMessage(message(result.messageKey().orElse("claims.denied")));
+            return true;
+        }
+
+        selectionService.consumeSelection(player.getUniqueId());
+        if (chunkBorderVisualService != null) chunkBorderVisualService.clear(player.getUniqueId());
+        player.sendMessage(message("claim.over-limit-confirmed", Map.of(
+                "cost", String.format("%.2f", purchase.cost()))));
+        return true;
+    }
+
     private boolean createClaim(Player player, String[] args) {
         String claimName = args.length == 1
                 ? nextDefaultClaimName(player.getUniqueId())
@@ -1968,6 +2020,27 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             if (quote.overageBlocks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
                 showBorder(player, region, BorderColor.AQUA);
                 player.sendMessage(message("claim.over-limit-disabled"));
+                return true;
+            }
+            if (quote.overageBlocks() > 0 && !player.hasPermission(CLAIM_LIMIT_BYPASS_PERMISSION)) {
+                if (!claimCostService.isPaidOverLimitEnabled() || overLimitConfirmService == null) {
+                    player.sendMessage(message("claim.over-limit-denied"));
+                    return true;
+                }
+                overLimitConfirmService.store(player.getUniqueId(), region, claimName.trim(), quote.cost());
+                Component yesButton = Component.text("[YES]")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.GREEN)
+                        .clickEvent(ClickEvent.runCommand("/claim confirm-purchase"));
+                Component noButton = Component.text("[NO]")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.RED)
+                        .clickEvent(ClickEvent.runCommand("/claim cancel"));
+                Component prompt = message("claim.over-limit-prompt", Map.of(
+                        "shortage", String.valueOf(quote.overageBlocks())
+                )).append(Component.space())
+                  .append(yesButton)
+                  .append(Component.space())
+                  .append(noButton);
+                player.sendMessage(prompt);
                 return true;
             }
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
