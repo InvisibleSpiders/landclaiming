@@ -69,11 +69,6 @@ public record Claim(
         return region.overlappingChunks();
     }
 
-    /** Backward-compat shim — removed in Task 14. */
-    public Set<ClaimChunk> claimChunks() {
-        return overlappingChunks();
-    }
-
     @Override
     public String ownerType() {
         return owner.name();

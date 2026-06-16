@@ -171,7 +171,7 @@ public final class AdminClaimBrowserService {
             admin.sendMessage(Component.text("World not loaded.").color(NamedTextColor.RED));
             return;
         }
-        ClaimChunk first = claim.claimChunks().iterator().next();
+        ClaimChunk first = claim.overlappingChunks().iterator().next();
         int blockX = first.chunkX() * 16 + 8;
         int blockZ = first.chunkZ() * 16 + 8;
         int blockY = world.getHighestBlockYAt(blockX, blockZ) + 1;
@@ -187,7 +187,7 @@ public final class AdminClaimBrowserService {
         World world = Bukkit.getWorld(claim.worldId());
         if (world != null) worldName = world.getName();
         meta.lore(List.of(
-                Component.text("Chunks: " + claim.claimChunks().size())
+                Component.text("Chunks: " + claim.overlappingChunks().size())
                         .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("World: " + worldName)
                         .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),

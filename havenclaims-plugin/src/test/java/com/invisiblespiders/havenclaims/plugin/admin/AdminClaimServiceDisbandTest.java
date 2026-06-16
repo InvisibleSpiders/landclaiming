@@ -80,7 +80,7 @@ class AdminClaimServiceDisbandTest {
     // Test 3: disbandWithRefundCallsEconomyDeposit
     // Single claim: chunk (0,0) → [0,0] to [15,15] = 256 blocks
     // limit = 200 blocks → overage = 56 → refund = 56 * 100.0 = 5600.0
-    // adminService passes claim.claimChunks().size() (=1) to computeDeletionRefund
+    // adminService passes claim.overlappingChunks().size() (=1) to computeDeletionRefund
     // computeDeletionRefund: existingTotal (from region.area()=256), blocksBeingRemoved=1,
     //   afterDeletion=255, overageBefore=max(0,256-200)=56, overageAfter=max(0,255-200)=55
     //   cost difference = 56*100 - 55*100 = 100.0
@@ -213,7 +213,7 @@ class AdminClaimServiceDisbandTest {
         @Override
         public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
             return claims.stream()
-                    .filter(c -> c.claimChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
+                    .filter(c -> c.overlappingChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
                     .findFirst();
         }
 

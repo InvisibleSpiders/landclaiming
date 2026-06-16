@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -129,40 +128,6 @@ public final class ClaimCreationService {
     /** Merge targets always empty in Phase 1. */
     public List<Claim> findMergeTargets(UUID ownerUuid, String name, ClaimRegion region) {
         return List.of();
-    }
-
-    /** Backward-compat shim — removed in Task 14. */
-    public ClaimValidationResult createPlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks,
-            List<Claim> mergeTargets, boolean bypassBuffer) {
-        return createPlayerClaim(ownerUuid, name, chunksToRegion(chunks), bypassBuffer);
-    }
-
-    /** Backward-compat shim for callers that pass Set<ClaimChunk> — removed in Task 14. */
-    public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
-        return validatePlayerClaim(ownerUuid, name, chunksToRegion(chunks), false);
-    }
-
-    /** Backward-compat shim for callers that pass Set<ClaimChunk> — removed in Task 14. */
-    public ClaimValidationResult validatePlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks, boolean bypassBuffer) {
-        return validatePlayerClaim(ownerUuid, name, chunksToRegion(chunks), bypassBuffer);
-    }
-
-    /** Backward-compat shim for callers that pass Set<ClaimChunk> — removed in Task 14. */
-    public List<Claim> findMergeTargets(UUID ownerUuid, String name, Set<ClaimChunk> chunks) {
-        return List.of();
-    }
-
-    // Bounding-box approximation — callers must only pass rectangular chunk sets.
-    private static ClaimRegion chunksToRegion(Set<ClaimChunk> chunks) {
-        if (chunks == null || chunks.isEmpty()) {
-            throw new IllegalArgumentException("chunks must not be null or empty");
-        }
-        UUID worldId = chunks.iterator().next().worldId();
-        int minX = chunks.stream().mapToInt(c -> c.chunkX() * 16).min().getAsInt();
-        int minZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16).min().getAsInt();
-        int maxX = chunks.stream().mapToInt(c -> c.chunkX() * 16 + 15).max().getAsInt();
-        int maxZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16 + 15).max().getAsInt();
-        return new ClaimRegion(worldId, minX, minZ, maxX, maxZ);
     }
 
     private Map<String, FlagState> defaultFlags() {

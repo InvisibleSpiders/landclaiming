@@ -561,7 +561,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         claims.forEach(claim -> player.sendMessage(message("admin.userclaims.list-entry", Map.of(
                 "claim_name", claim.name(),
                 "claim_id", claim.id().toString(),
-                "chunk_count", String.valueOf(claim.claimChunks().size())
+                "chunk_count", String.valueOf(claim.overlappingChunks().size())
         ))));
         return true;
     }
@@ -584,7 +584,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 "owner", foundClaim.ownerUuid() == null ? "unknown" : playerName(player, foundClaim.ownerUuid())
         )));
         player.sendMessage(message("admin.userclaims.view-chunks", Map.of(
-                "chunk_count", String.valueOf(foundClaim.claimChunks().size())
+                "chunk_count", String.valueOf(foundClaim.overlappingChunks().size())
         )));
         return true;
     }
@@ -1000,7 +1000,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("admin.claim.created", Map.of(
                 "claim_name", result.claim().name(),
                 "claim_id", result.claim().id().toString(),
-                "chunk_count", String.valueOf(result.claim().claimChunks().size())
+                "chunk_count", String.valueOf(result.claim().overlappingChunks().size())
         )));
         return true;
     }
@@ -1021,7 +1021,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         adminClaims.forEach(claim -> player.sendMessage(message("admin.claim.list-entry", Map.of(
                 "claim_name", claim.name(),
                 "claim_id", claim.id().toString(),
-                "chunk_count", String.valueOf(claim.claimChunks().size())
+                "chunk_count", String.valueOf(claim.overlappingChunks().size())
         ))));
         return true;
     }
@@ -1087,7 +1087,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private Optional<Location> teleportTarget(Player player, Claim claim) {
-        return claim.claimChunks().stream()
+        return claim.overlappingChunks().stream()
                 .sorted(java.util.Comparator
                         .comparingInt(ClaimChunk::chunkX)
                         .thenComparingInt(ClaimChunk::chunkZ))
@@ -1129,7 +1129,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isPresent()) {
-            chunkBorderVisualService.showSelection(player, claim.orElseThrow().claimChunks(), BorderColor.GOLD);
+            chunkBorderVisualService.showSelection(player, claim.orElseThrow().overlappingChunks(), BorderColor.GOLD);
             player.sendMessage(message("claim.visual.border-claim"));
             return true;
         }
@@ -1155,7 +1155,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (claim.isEmpty()) {
             return true;
         }
-        chunkBorderVisualService.showSelection(player, claim.orElseThrow().claimChunks(), BorderColor.GOLD);
+        chunkBorderVisualService.showSelection(player, claim.orElseThrow().overlappingChunks(), BorderColor.GOLD);
         player.sendMessage(message("claim.visual.border-claim"));
         return true;
     }
@@ -2215,7 +2215,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 claim.id(),
                 claim.name(),
                 claim.owner().name(),
-                claim.claimChunks().size(),
+                claim.overlappingChunks().size(),
                 claim.members().size(),
                 claim.deniedPlayers().size(),
                 claim.flags().size(),
@@ -2234,7 +2234,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         player.sendMessage(message("claim.info.name", Map.of("claim_name", claim.name())));
         player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", claim.owner().name())));
-        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(claim.claimChunks().size()))));
+        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(claim.overlappingChunks().size()))));
         player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(claim.ownerUuid())))));
     }
 

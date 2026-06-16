@@ -178,7 +178,7 @@ class ClaimBorderColorServiceTest {
         @Override
         public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
             return claims.stream()
-                    .filter(claim -> claim.claimChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
+                    .filter(claim -> claim.overlappingChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
                     .findFirst();
         }
 

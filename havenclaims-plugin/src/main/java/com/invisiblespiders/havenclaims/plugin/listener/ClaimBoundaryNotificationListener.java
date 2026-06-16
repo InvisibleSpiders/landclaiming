@@ -120,7 +120,7 @@ public final class ClaimBoundaryNotificationListener implements Listener {
         return Map.of(
                 "claim_name", claim.name(),
                 "owner_type", claim.owner().name().toLowerCase(),
-                "chunk_count", String.valueOf(claim.claimChunks().size())
+                "chunk_count", String.valueOf(claim.overlappingChunks().size())
         );
     }
 

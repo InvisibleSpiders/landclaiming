@@ -52,7 +52,7 @@ class AdminClaimServiceTest {
         assertThat(created.owner()).isEqualTo(OwnerType.ADMIN);
         assertThat(created.ownerUuid()).isNull();
         assertThat(created.flags()).containsEntry("build", FlagState.VISITORS).containsEntry("fluid_flow", FlagState.OFF);
-        assertThat(created.claimChunks()).containsExactlyInAnyOrderElementsOf(chunks);
+        assertThat(created.overlappingChunks()).containsExactlyInAnyOrderElementsOf(chunks);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 0, 1))).contains(created);
     }
 
@@ -171,7 +171,7 @@ class AdminClaimServiceTest {
         Claim transferred = result.claim();
         assertThat(transferred.id()).isEqualTo(playerClaim.id());
         assertThat(transferred.ownerUuid()).isEqualTo(newOwnerId);
-        assertThat(transferred.claimChunks()).isEqualTo(playerClaim.claimChunks());
+        assertThat(transferred.overlappingChunks()).isEqualTo(playerClaim.overlappingChunks());
         assertThat(repository.findClaimById(playerClaim.id())).contains(transferred);
         assertThat(claimIndex.findAt(new ClaimChunk(worldId, 1, 0))).contains(transferred);
     }
@@ -252,7 +252,7 @@ class AdminClaimServiceTest {
         @Override
         public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
             return claims.stream()
-                    .filter(claim -> claim.claimChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
+                    .filter(claim -> claim.overlappingChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
                     .findFirst();
         }
 

@@ -1056,7 +1056,7 @@ class ClaimsCommandPermissionTest {
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{"viewborder", claim.id().toString()});
 
-        verify(visualService).showSelection(player, claim.claimChunks(), BorderColor.GOLD);
+        verify(visualService).showSelection(player, claim.overlappingChunks(), BorderColor.GOLD);
         assertThat(plain(messages)).containsExactly("Showing this claim border.");
     }
 

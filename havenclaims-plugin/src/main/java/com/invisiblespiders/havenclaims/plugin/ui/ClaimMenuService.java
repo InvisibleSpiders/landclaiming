@@ -24,7 +24,7 @@ public final class ClaimMenuService {
         return new ClaimMenu(
                 claim.name(),
                 claim.owner().name(),
-                claim.claimChunks().size(),
+                claim.overlappingChunks().size(),
                 claim.members().size(),
                 claim.flags().size(),
                 viewerId.equals(claim.ownerUuid()),
@@ -49,7 +49,7 @@ public final class ClaimMenuService {
                 .map(claim -> new ClaimDashboardRow(
                         claim.id(),
                         claim.name(),
-                        claim.claimChunks().size(),
+                        claim.overlappingChunks().size(),
                         currentClaim.map(current -> current.id().equals(claim.id())).orElse(false),
                         "/claim menu " + claim.id()
                 ))

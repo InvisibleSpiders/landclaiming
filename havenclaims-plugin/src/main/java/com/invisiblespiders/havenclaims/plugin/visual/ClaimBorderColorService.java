@@ -52,10 +52,11 @@ public final class ClaimBorderColorService {
         Objects.requireNonNull(permissions, "permissions");
 
         String validationName = claimName.filter(name -> !name.isBlank()).orElse(PREVIEW_CLAIM_NAME);
+        ClaimRegion region = chunksAsRegion(chunks);
         ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(
                 ownerId,
                 validationName,
-                chunks,
+                region,
                 permissions.contains("havenclaims.bypass.claim-buffer")
         );
         if (!validationResult.isAllowed()) {
@@ -63,13 +64,13 @@ public final class ClaimBorderColorService {
         }
 
         if (claimName.filter(name -> !name.isBlank())
-                .map(name -> !claimCreationService.findMergeTargets(ownerId, name, chunks).isEmpty())
+                .map(name -> !claimCreationService.findMergeTargets(ownerId, name, region).isEmpty())
                 .orElseGet(() -> bordersOwnerClaim(ownerId, chunks))) {
             return BorderColor.YELLOW;
         }
 
         if (claimCostService != null && !permissions.contains("havenclaims.bypass.claim-limit")) {
-            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, chunksAsRegion(chunks));
+            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, region);
             if (quote.cost() > 0.0) {
                 return BorderColor.AQUA;
             }
@@ -96,7 +97,7 @@ public final class ClaimBorderColorService {
     }
 
     private boolean bordersClaim(ClaimChunk proposedChunk, Claim claim) {
-        return claim.claimChunks().stream().anyMatch(existingChunk ->
+        return claim.overlappingChunks().stream().anyMatch(existingChunk ->
                 proposedChunk.worldId().equals(existingChunk.worldId())
                         && Math.abs(proposedChunk.chunkX() - existingChunk.chunkX())
                         + Math.abs(proposedChunk.chunkZ() - existingChunk.chunkZ()) == 1

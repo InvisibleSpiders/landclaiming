@@ -78,16 +78,10 @@ class ClaimTest {
     void chunkViewsCannotBeModified() {
         Claim c = claim(region);
 
-        assertThatThrownBy(() -> c.claimChunks().add(new ClaimChunk(world, 99, 99)))
+        assertThatThrownBy(() -> c.overlappingChunks().add(new ClaimChunk(world, 99, 99)))
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> c.chunks().add(new ClaimChunkView(world, 99, 99)))
                 .isInstanceOf(UnsupportedOperationException.class);
-    }
-
-    @Test
-    void claimChunksShimDelegatesToOverlappingChunks() {
-        Claim c = claim(region);
-        assertThat(c.claimChunks()).isEqualTo(c.overlappingChunks());
     }
 
     private Claim claim(ClaimRegion r) {
