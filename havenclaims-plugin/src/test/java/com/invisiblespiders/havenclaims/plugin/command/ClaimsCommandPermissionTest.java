@@ -136,7 +136,7 @@ class ClaimsCommandPermissionTest {
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
                 limitService,
-                new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                new ClaimCostConfig(false, 100.0, 60)
         );
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
@@ -192,7 +192,7 @@ class ClaimsCommandPermissionTest {
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
                 limitService,
-                new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                new ClaimCostConfig(false, 100.0, 60)
         );
         Player player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(ownerId);
@@ -225,9 +225,9 @@ class ClaimsCommandPermissionTest {
         command.onCommand(player, mock(Command.class), "claim", new String[]{"cost"});
 
         assertThat(plain(messages)).containsExactly(
-                "Selection: 2 chunks",
-                "Current total after claim: 2 / 1 chunks",
-                "Over limit: 1 chunks",
+                "Selection: 512 blocks",
+                "Current total after claim: 512 / 1 blocks",
+                "Over limit: 511 blocks",
                 "Cost: not available"
         );
     }
@@ -384,8 +384,8 @@ class ClaimsCommandPermissionTest {
                 claimIndex,
                 new ClaimCostService(
                         claimIndex,
-                        new LimitService(5, emptyLimitRepository()),
-                        new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                        new LimitService(1000, emptyLimitRepository()),
+                        new ClaimCostConfig(false, 100.0, 60)
                 ),
                 new ClaimPaymentService(new NoopEconomyService()),
                 null,
@@ -410,9 +410,9 @@ class ClaimsCommandPermissionTest {
         assertThat(repository.savedClaims).isEmpty();
         assertThat(plain(messages)).containsExactly(
                 "Create claim Claim 1?",
-                "Selection: 1 chunks",
-                "Total after claim: 1 / 5 chunks",
-                "Over limit: 0 chunks",
+                "Selection: 256 blocks",
+                "Total after claim: 256 / 1000 blocks",
+                "Over limit: 0 blocks",
                 "Cost: free",
                 "Actions:",
                 "- Create Claim (/claim createconfirm Claim 1)",
@@ -453,8 +453,8 @@ class ClaimsCommandPermissionTest {
                 claimIndex,
                 new ClaimCostService(
                         claimIndex,
-                        new LimitService(5, emptyLimitRepository()),
-                        new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                        new LimitService(1000, emptyLimitRepository()),
+                        new ClaimCostConfig(false, 100.0, 60)
                 ),
                 new ClaimPaymentService(new NoopEconomyService()),
                 null,
@@ -479,9 +479,9 @@ class ClaimsCommandPermissionTest {
         assertThat(repository.savedClaims).isEmpty();
         assertThat(plain(messages)).containsExactly(
                 "Create claim Home?",
-                "Selection: 1 chunks",
-                "Total after claim: 1 / 5 chunks",
-                "Over limit: 0 chunks",
+                "Selection: 256 blocks",
+                "Total after claim: 256 / 1000 blocks",
+                "Over limit: 0 blocks",
                 "Cost: free",
                 "Actions:",
                 "- Create Claim (/claim createconfirm Home)",
@@ -1051,9 +1051,9 @@ class ClaimsCommandPermissionTest {
         return new MessageService(Map.ofEntries(
                 Map.entry("command.claim.no-permission", "<red>You do not have permission to create claims."),
                 Map.entry("claim.over-limit-disabled", "<red>This claim exceeds your claim limit."),
-                Map.entry("claim.cost-preview.selection", "<gray>Selection: <yellow><selected_chunks></yellow> chunks"),
-                Map.entry("claim.cost-preview.current-total", "<gray>Current total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"),
-                Map.entry("claim.cost-preview.over-limit", "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"),
+                Map.entry("claim.cost-preview.selection", "<gray>Selection: <yellow><selected_blocks></yellow> blocks"),
+                Map.entry("claim.cost-preview.current-total", "<gray>Current total after claim: <yellow><proposed_total_blocks></yellow> / <yellow><allowed_blocks></yellow> blocks"),
+                Map.entry("claim.cost-preview.over-limit", "<gray>Over limit: <yellow><overage_blocks></yellow> blocks"),
                 Map.entry("claim.cost-preview.cost", "<gray>Cost: <green><cost></green>"),
                 Map.entry("claim.cost-preview.free", "free"),
                 Map.entry("claim.cost-preview.unavailable", "not available"),
@@ -1067,9 +1067,9 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.selection-required", "<red>Select chunks first."),
                 Map.entry("claim.created", "<green>Claim <claim_name> created."),
                 Map.entry("claim.create-preview.title", "<gold>Create claim <yellow><claim_name></yellow>?"),
-                Map.entry("claim.create-preview.selection", "<gray>Selection: <yellow><selected_chunks></yellow> chunks"),
-                Map.entry("claim.create-preview.current-total", "<gray>Total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"),
-                Map.entry("claim.create-preview.over-limit", "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"),
+                Map.entry("claim.create-preview.selection", "<gray>Selection: <yellow><selected_blocks></yellow> blocks"),
+                Map.entry("claim.create-preview.current-total", "<gray>Total after claim: <yellow><proposed_total_blocks></yellow> / <yellow><allowed_blocks></yellow> blocks"),
+                Map.entry("claim.create-preview.over-limit", "<gray>Over limit: <yellow><overage_blocks></yellow> blocks"),
                 Map.entry("claim.create-preview.cost", "<gray>Cost: <green><cost></green>"),
                 Map.entry("claim.create-preview.actions-header", "<gold>Actions:"),
                 Map.entry("claim.create-preview.action", "<gray>- <yellow><label></yellow> (<command>)"),

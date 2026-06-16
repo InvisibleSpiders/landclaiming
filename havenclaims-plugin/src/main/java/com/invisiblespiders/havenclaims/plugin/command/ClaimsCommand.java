@@ -8,6 +8,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimDenyResult;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimDenyService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMemberResult;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMemberService;
@@ -1731,7 +1732,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = claimCostService.quotePlayerClaim(
                 player.getUniqueId(),
-                pendingSelection.orElseThrow()
+                selectionAsRegion(pendingSelection.orElseThrow())
         );
         ClaimCostMessageService.preview(
                 quote,
@@ -1875,16 +1876,16 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = claimCostService == null
                 ? new ClaimCostQuote(chunks.size(), 0, chunks.size(), chunks.size(), 0, 0.0D)
-                : claimCostService.quotePlayerClaim(player.getUniqueId(), chunks);
+                : claimCostService.quotePlayerClaim(player.getUniqueId(), selectionAsRegion(chunks));
         String cost = createPreviewCostText(quote);
         dialogService.openClaimCreatePreview(
                 player,
                 new ClaimCreatePreview(
                         claimName,
-                        quote.selectedChunks(),
-                        quote.proposedTotalChunks(),
-                        quote.allowedChunks(),
-                        quote.overageChunks(),
+                        quote.selectedBlocks(),
+                        quote.proposedTotalBlocks(),
+                        quote.allowedBlocks(),
+                        quote.overageBlocks(),
                         cost,
                         new ClaimMenuAction(actionLabel("confirm-create", "Create Claim"),
                                 "/claim createconfirm " + claimName),
@@ -1896,7 +1897,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     }
 
     private String createPreviewCostText(ClaimCostQuote quote) {
-        if (claimCostService != null && quote.overageChunks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
+        if (claimCostService != null && quote.overageBlocks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
             return messageService.renderPlainOrDefault("claim.cost-preview.unavailable", Map.of(), "not available");
         }
         if (quote.cost() <= 0.0D) {
@@ -1967,8 +1968,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = null;
         if (claimCostService != null && claimPaymentService != null && !bypassLimit) {
-            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), chunks);
-            if (quote.overageChunks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
+            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), selectionAsRegion(chunks));
+            if (quote.overageBlocks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
                 showBorder(player, chunks, BorderColor.AQUA);
                 player.sendMessage(message("claim.over-limit-disabled"));
                 return true;
@@ -2016,6 +2017,15 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.showSelection(player, chunks, color);
         }
+    }
+
+    private ClaimRegion selectionAsRegion(Set<ClaimChunk> chunks) {
+        UUID worldId = chunks.iterator().next().worldId();
+        int minX = chunks.stream().mapToInt(c -> c.chunkX() * 16).min().getAsInt();
+        int minZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16).min().getAsInt();
+        int maxX = chunks.stream().mapToInt(c -> c.chunkX() * 16 + 15).max().getAsInt();
+        int maxZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16 + 15).max().getAsInt();
+        return new ClaimRegion(worldId, minX, minZ, maxX, maxZ);
     }
 
     private boolean confirmPendingMerge(Player player) {

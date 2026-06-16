@@ -15,14 +15,13 @@ limits:
   # Used when a player has no database-backed claim limit override.
   default-claim-limit: 10
   over-limit:
-    # Allows economy payments for chunks above the player's claim limit.
+    # Allows economy payments for blocks above the player's claim limit.
     # When disabled, over-limit claims are denied unless the player has havenclaims.bypass.claim-limit.
     enabled: true
-    # Options: flat, exponential.
-    pricing-mode: exponential
-    flat-cost-per-chunk: 250.0
-    exponential-base-cost: 250.0
-    exponential-multiplier: 1.25
+    # Cost per block beyond the player's limit.
+    flat-cost-per-block: 0.10
+    # Seconds before a pending over-limit purchase confirmation expires.
+    confirm-timeout-seconds: 60
 
 ui:
   # Prefer Paper Dialog API menus where the current server supports them.

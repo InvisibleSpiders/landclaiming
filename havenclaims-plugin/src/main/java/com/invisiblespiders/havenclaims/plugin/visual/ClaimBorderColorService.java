@@ -4,6 +4,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimValidationResult;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostQuote;
@@ -68,7 +69,7 @@ public final class ClaimBorderColorService {
         }
 
         if (claimCostService != null && !permissions.contains("havenclaims.bypass.claim-limit")) {
-            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, chunks);
+            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, chunksAsRegion(chunks));
             if (quote.cost() > 0.0) {
                 return BorderColor.AQUA;
             }
@@ -82,6 +83,15 @@ public final class ClaimBorderColorService {
                 .filter(claim -> claim.owner() == OwnerType.PLAYER)
                 .filter(claim -> ownerId.equals(claim.ownerUuid()))
                 .anyMatch(claim -> chunks.stream().anyMatch(chunk -> bordersClaim(chunk, claim)));
+    }
+
+    private static ClaimRegion chunksAsRegion(Set<ClaimChunk> chunks) {
+        UUID worldId = chunks.iterator().next().worldId();
+        int minX = chunks.stream().mapToInt(c -> c.chunkX() * 16).min().getAsInt();
+        int minZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16).min().getAsInt();
+        int maxX = chunks.stream().mapToInt(c -> c.chunkX() * 16 + 15).max().getAsInt();
+        int maxZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16 + 15).max().getAsInt();
+        return new ClaimRegion(worldId, minX, minZ, maxX, maxZ);
     }
 
     private boolean bordersClaim(ClaimChunk proposedChunk, Claim claim) {

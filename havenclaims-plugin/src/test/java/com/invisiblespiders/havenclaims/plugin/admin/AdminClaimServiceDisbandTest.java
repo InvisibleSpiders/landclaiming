@@ -174,10 +174,8 @@ class AdminClaimServiceDisbandTest {
         });
         ClaimCostConfig costConfig = new ClaimCostConfig(
                 true,
-                ClaimCostConfig.PricingMode.FLAT,
                 flatCostPerChunk,
-                0.0,
-                1.0
+                60
         );
         return new ClaimCostService(index, limitService, costConfig);
     }

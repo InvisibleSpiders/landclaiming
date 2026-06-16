@@ -1,10 +1,9 @@
 package com.invisiblespiders.havenclaims.plugin.limit;
 
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 public final class ClaimCostService {
@@ -12,11 +11,7 @@ public final class ClaimCostService {
     private final LimitService limitService;
     private ClaimCostConfig claimCostConfig;
 
-    public ClaimCostService(
-            ClaimIndex claimIndex,
-            LimitService limitService,
-            ClaimCostConfig claimCostConfig
-    ) {
+    public ClaimCostService(ClaimIndex claimIndex, LimitService limitService, ClaimCostConfig claimCostConfig) {
         this.claimIndex = Objects.requireNonNull(claimIndex, "claimIndex");
         this.limitService = Objects.requireNonNull(limitService, "limitService");
         this.claimCostConfig = Objects.requireNonNull(claimCostConfig, "claimCostConfig");
@@ -30,37 +25,37 @@ public final class ClaimCostService {
         return claimCostConfig.overLimitEnabled();
     }
 
-    public double computeDeletionRefund(UUID ownerId, int chunksBeingRemoved) {
+    public int confirmTimeoutSeconds() {
+        return claimCostConfig.confirmTimeoutSeconds();
+    }
+
+    public ClaimCostQuote quotePlayerClaim(UUID ownerId, ClaimRegion selectedRegion) {
         Objects.requireNonNull(ownerId, "ownerId");
-        int allowedChunks = limitService.getBlockLimit(ownerId);
+        Objects.requireNonNull(selectedRegion, "selectedRegion");
+
+        int allowedBlocks = limitService.getBlockLimit(ownerId);
+        // Uses claimChunks().size() as stand-in until Task 6 adds region().area()
+        int existingBlocks = claimIndex.findAll().stream()
+                .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
+                .mapToInt(c -> c.claimChunks().size())
+                .sum();
+        int selectedBlocks = selectedRegion.area();
+        int proposedTotalBlocks = existingBlocks + selectedBlocks;
+        int overageBlocks = limitService.overageBlocks(proposedTotalBlocks, allowedBlocks);
+        return new ClaimCostQuote(allowedBlocks, existingBlocks, selectedBlocks,
+                proposedTotalBlocks, overageBlocks, claimCostConfig.priceOverage(overageBlocks));
+    }
+
+    public double computeDeletionRefund(UUID ownerId, int blocksBeingRemoved) {
+        Objects.requireNonNull(ownerId, "ownerId");
+        int allowedBlocks = limitService.getBlockLimit(ownerId);
         int existingTotal = claimIndex.findAll().stream()
                 .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
                 .mapToInt(c -> c.claimChunks().size())
                 .sum();
-        int afterDeletion = existingTotal - chunksBeingRemoved;
-        double costBefore = claimCostConfig.priceOverage(Math.max(0, existingTotal - allowedChunks));
-        double costAfter  = claimCostConfig.priceOverage(Math.max(0, afterDeletion  - allowedChunks));
+        int afterDeletion = existingTotal - blocksBeingRemoved;
+        double costBefore = claimCostConfig.priceOverage(Math.max(0, existingTotal - allowedBlocks));
+        double costAfter  = claimCostConfig.priceOverage(Math.max(0, afterDeletion  - allowedBlocks));
         return Math.max(0.0, costBefore - costAfter);
-    }
-
-    public ClaimCostQuote quotePlayerClaim(UUID ownerId, Set<ClaimChunk> selectedChunks) {
-        Objects.requireNonNull(ownerId, "ownerId");
-        Objects.requireNonNull(selectedChunks, "selectedChunks");
-
-        int allowedChunks = limitService.getBlockLimit(ownerId);
-        int existingChunks = claimIndex.findAll().stream()
-                .filter(claim -> claim.owner() == OwnerType.PLAYER && ownerId.equals(claim.ownerUuid()))
-                .mapToInt(claim -> claim.claimChunks().size())
-                .sum();
-        int proposedTotalChunks = existingChunks + selectedChunks.size();
-        int overageChunks = limitService.overageBlocks(proposedTotalChunks, allowedChunks);
-        return new ClaimCostQuote(
-                allowedChunks,
-                existingChunks,
-                selectedChunks.size(),
-                proposedTotalChunks,
-                overageChunks,
-                claimCostConfig.priceOverage(overageChunks)
-        );
     }
 }

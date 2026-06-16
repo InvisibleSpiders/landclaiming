@@ -90,7 +90,8 @@ class ClaimBorderColorServiceTest {
 
     @Test
     void greenWhenSelectionIsClaimableWithoutMergeOrCost() {
-        TestContext context = TestContext.create(10, Map.of());
+        // 1 chunk = 256 blocks; limit must be >= 256 so no over-limit cost is applied
+        TestContext context = TestContext.create(256, Map.of());
 
         BorderColor color = context.service.colorForPlayerSelection(
                 context.ownerId,
@@ -135,7 +136,7 @@ class ClaimBorderColorServiceTest {
                         @Override public void setLimit(UUID id, int limit) {}
                         @Override public void updateLimit(UUID id, int defaultLimit, java.util.function.IntUnaryOperator op) {}
                     }),
-                    new ClaimCostConfig(true, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                    new ClaimCostConfig(true, 100.0, 60)
             );
             service = new ClaimBorderColorService(claimCreationService, claimIndex, claimCostService);
         }
