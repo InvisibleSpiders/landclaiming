@@ -969,24 +969,24 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        Optional<ClaimRegion> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isEmpty()) {
             player.sendMessage(message("claim.selection-required"));
             return true;
         }
 
         String claimName = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
-        Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
-        AdminClaimResult result = adminClaimService.createAdminClaim(claimName, chunks);
+        ClaimRegion region = pendingSelection.orElseThrow();
+        AdminClaimResult result = adminClaimService.createAdminClaim(claimName, region.overlappingChunks());
         if (!result.allowed()) {
-            showBorder(player, chunks, BorderColor.RED);
+            showBorder(player, region, BorderColor.RED);
             player.sendMessage(message(result.messageKey()));
             return true;
         }
 
         selectionService.consumeSelection(player.getUniqueId());
         if (chunkBorderVisualService != null) {
-            chunkBorderVisualService.showSelection(player, chunks, BorderColor.GOLD);
+            chunkBorderVisualService.showSelection(player, region, BorderColor.GOLD);
         }
         player.sendMessage(message("admin.claim.created", Map.of(
                 "claim_name", result.claim().name(),
@@ -1108,11 +1108,11 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Optional<Set<ClaimChunk>> pendingSelection = selectionService == null
+        Optional<ClaimRegion> pendingSelection = selectionService == null
                 ? Optional.empty()
                 : selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isPresent()) {
-            BorderColor color = previewColor(player, pendingSelection.orElseThrow(), Optional.empty());
+            BorderColor color = BorderColor.GREEN;
             chunkBorderVisualService.showSelection(player, pendingSelection.orElseThrow(), color);
             player.sendMessage(message("claim.visual.border-selection", Map.of("color", color.messageName())));
             return true;
@@ -1724,7 +1724,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        Optional<ClaimRegion> pendingSelection = selectionService == null
+                ? Optional.empty()
+                : selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isEmpty()) {
             player.sendMessage(message("claim.selection-required"));
             return true;
@@ -1732,7 +1734,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         ClaimCostQuote quote = claimCostService.quotePlayerClaim(
                 player.getUniqueId(),
-                selectionAsRegion(pendingSelection.orElseThrow())
+                pendingSelection.orElseThrow()
         );
         ClaimCostMessageService.preview(
                 quote,
@@ -1867,16 +1869,18 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (!isClaimCreationAvailable(player)) {
             return true;
         }
-        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        Optional<ClaimRegion> pendingSelection = selectionService == null
+                ? Optional.empty()
+                : selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isEmpty()) {
             player.sendMessage(message("claim.selection-required"));
             return true;
         }
-        Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
+        ClaimRegion region = pendingSelection.orElseThrow();
 
         ClaimCostQuote quote = claimCostService == null
-                ? new ClaimCostQuote(chunks.size(), 0, chunks.size(), chunks.size(), 0, 0.0D)
-                : claimCostService.quotePlayerClaim(player.getUniqueId(), selectionAsRegion(chunks));
+                ? new ClaimCostQuote(region.area(), 0, region.area(), region.area(), 0, 0.0D)
+                : claimCostService.quotePlayerClaim(player.getUniqueId(), region);
         String cost = createPreviewCostText(quote);
         dialogService.openClaimCreatePreview(
                 player,
@@ -1936,47 +1940,41 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
+        Optional<ClaimRegion> pendingSelection = selectionService == null
+                ? Optional.empty()
+                : selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isEmpty()) {
             player.sendMessage(message("claim.selection-required"));
             return true;
         }
 
-        Set<ClaimChunk> chunks = pendingSelection.orElseThrow();
+        ClaimRegion region = pendingSelection.orElseThrow();
 
         // Fail-fast validation so we never charge the player for a claim we already know is invalid.
         // createPlayerClaim re-validates under the same call as the write to guard against TOCTOU races.
         boolean bypassBuffer = player.hasPermission(CLAIM_BUFFER_BYPASS_PERMISSION);
         boolean bypassLimit = player.hasPermission(CLAIM_LIMIT_BYPASS_PERMISSION);
         ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(
-                player.getUniqueId(), claimName, chunks, bypassBuffer);
+                player.getUniqueId(), claimName, region, bypassBuffer);
         if (!validationResult.isAllowed()) {
-            showBorder(player, chunks, BorderColor.RED);
+            showBorder(player, region, BorderColor.RED);
             player.sendMessage(claimCreateDenied(validationResult.messageKey().orElse("claims.denied")));
             return true;
         }
 
-        List<Claim> mergeTargets = claimCreationService.findMergeTargets(player.getUniqueId(), claimName, chunks);
-        if (!mergeTargets.isEmpty() && !mergeConfirmed) {
-            if (pendingClaimMergeService != null) {
-                pendingClaimMergeService.put(player.getUniqueId(), claimName, chunks);
-            }
-            showBorder(player, chunks, BorderColor.YELLOW);
-            sendMergeConfirmation(player, claimName, mergeTargets.size());
-            return true;
-        }
+        List<Claim> mergeTargets = claimCreationService.findMergeTargets(player.getUniqueId(), claimName, region);
 
         ClaimCostQuote quote = null;
         if (claimCostService != null && claimPaymentService != null && !bypassLimit) {
-            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), selectionAsRegion(chunks));
+            quote = claimCostService.quotePlayerClaim(player.getUniqueId(), region);
             if (quote.overageBlocks() > 0 && !claimCostService.isPaidOverLimitEnabled()) {
-                showBorder(player, chunks, BorderColor.AQUA);
+                showBorder(player, region, BorderColor.AQUA);
                 player.sendMessage(message("claim.over-limit-disabled"));
                 return true;
             }
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), quote);
             if (!paymentResult.allowed()) {
-                showBorder(player, chunks, BorderColor.AQUA);
+                showBorder(player, region, BorderColor.AQUA);
                 player.sendMessage(claimCreateDenied(paymentResult.messageKey()));
                 return true;
             }
@@ -1987,9 +1985,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        // Pass the already-computed mergeTargets to avoid a redundant index scan inside createPlayerClaim.
         ClaimValidationResult result = claimCreationService.createPlayerClaim(
-                player.getUniqueId(), claimName, chunks, mergeTargets, bypassBuffer);
+                player.getUniqueId(), claimName, region, bypassBuffer);
         if (!result.isAllowed()) {
             // Refund the payment — the creation failed (e.g. concurrent overlap) after we charged.
             if (quote != null && claimPaymentService != null && quote.cost() > 0.0
@@ -2004,11 +2001,11 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         selectionService.consumeSelection(player.getUniqueId());
         if (chunkBorderVisualService != null) {
-            chunkBorderVisualService.showSelection(player, chunks, BorderColor.GOLD);
+            chunkBorderVisualService.showSelection(player, region, BorderColor.GOLD);
         }
         player.sendMessage(message("claim.created", Map.of(
                 "claim_name", claimName.trim(),
-                "chunk_count", String.valueOf(chunks.size())
+                "block_count", String.valueOf(region.area())
         )));
         return true;
     }
@@ -2019,14 +2016,10 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private ClaimRegion selectionAsRegion(Set<ClaimChunk> chunks) {
-        if (chunks.isEmpty()) throw new IllegalArgumentException("chunks cannot be empty");
-        UUID worldId = chunks.iterator().next().worldId();
-        int minX = chunks.stream().mapToInt(c -> c.chunkX() * 16).min().getAsInt();
-        int minZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16).min().getAsInt();
-        int maxX = chunks.stream().mapToInt(c -> c.chunkX() * 16 + 15).max().getAsInt();
-        int maxZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16 + 15).max().getAsInt();
-        return new ClaimRegion(worldId, minX, minZ, maxX, maxZ);
+    private void showBorder(Player player, ClaimRegion region, BorderColor color) {
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.showSelection(player, region, color);
+        }
     }
 
     private boolean confirmPendingMerge(Player player) {
@@ -2042,12 +2035,6 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         Optional<PendingClaimMerge> pendingMerge = pendingClaimMergeService.consume(player.getUniqueId());
         if (pendingMerge.isEmpty()) {
             player.sendMessage(message("claim.merge.none-pending"));
-            return true;
-        }
-
-        Optional<Set<ClaimChunk>> pendingSelection = selectionService.pendingSelection(player.getUniqueId());
-        if (pendingSelection.isEmpty() || !pendingSelection.orElseThrow().equals(pendingMerge.orElseThrow().chunks())) {
-            player.sendMessage(message("claim.merge.selection-changed"));
             return true;
         }
 

@@ -119,44 +119,30 @@ public class ClaimToolListener implements Listener {
             return;
         }
 
-        Chunk chunk = selectionChunk(event.getClickedBlock(), player.getLocation().getChunk());
-        ClaimChunk selectedChunk = new ClaimChunk(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
-        Optional<Claim> clickedClaim = claimAt(selectedChunk);
-        if (clickedClaim.isPresent() && !isOwnerClaim(player, clickedClaim.orElseThrow())) {
-            showBorder(player, Set.of(selectedChunk), BorderColor.RED);
-            player.sendMessage(message("claim.tool.point-claimed-other"));
-            return;
-        }
-        if (clickedClaim.isPresent()) {
-            player.sendMessage(message("claim.tool.point-claimed-own"));
+        Block clickedBlock = event.getClickedBlock();
+        if (clickedBlock == null) {
+            clickedBlock = player.getLocation().getBlock();
         }
 
-        selectionService.select(player, chunk).ifPresentOrElse(
-                chunks -> {
-                    Set<ClaimChunk> normalizedChunks = normalizeSelection(player, chunks);
-                    if (normalizedChunks.isEmpty()) {
-                        selectionService.replacePendingSelection(player.getUniqueId(), Set.of());
-                        clickedClaim.ifPresent(claim -> showBorder(player, claim.claimChunks(), BorderColor.GOLD));
-                        player.sendMessage(message("claim.tool.selection-only-existing"));
-                        return;
-                    }
-                    if (!normalizedChunks.equals(chunks)) {
-                        selectionService.replacePendingSelection(player.getUniqueId(), normalizedChunks);
-                        player.sendMessage(message("claim.tool.selection-existing-trimmed"));
-                    }
-                    showBorder(player, normalizedChunks, previewColor(player, normalizedChunks));
-                    sendSelectionComplete(player, normalizedChunks);
+        selectionService.select(player, clickedBlock).ifPresentOrElse(
+                region -> {
+                    showRegionBorder(player, region, BorderColor.GREEN);
+                    sendSelectionComplete(player, region);
                 },
-                () -> {
-                    Set<ClaimChunk> chunks = Set.of(selectedChunk);
-                    if (clickedClaim.isPresent()) {
-                        showBorder(player, clickedClaim.orElseThrow().claimChunks(), BorderColor.GOLD);
-                    } else {
-                        showBorder(player, chunks, previewColor(player, chunks));
-                    }
-                    player.sendMessage(message("claim.tool.first-corner-selected"));
-                }
+                () -> player.sendMessage(message("claim.tool.first-corner-selected"))
         );
+    }
+
+    private void sendSelectionComplete(Player player, com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion region) {
+        player.sendMessage(message("claim.tool.selection-complete", java.util.Map.of(
+                "area", String.valueOf(region.area())
+        )));
+    }
+
+    private void showRegionBorder(Player player, com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion region, BorderColor color) {
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.showSelection(player, region, color);
+        }
     }
 
     @EventHandler(ignoreCancelled = true)

@@ -30,6 +30,7 @@ import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostService;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimLimitRepository;
 import com.invisiblespiders.havenclaims.plugin.limit.LimitService;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
+import com.invisiblespiders.havenclaims.plugin.selection.BlockPos;
 import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import com.invisiblespiders.havenclaims.plugin.tool.ClaimToolService;
@@ -129,10 +130,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(
-                new ClaimChunk(worldId, 0, 0),
-                new ClaimChunk(worldId, 1, 0)
-        ));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 31, 15));
         LimitService limitService = new LimitService(1, emptyLimitRepository());
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
@@ -185,10 +184,8 @@ class ClaimsCommandPermissionTest {
         UUID worldId = UUID.randomUUID();
         ClaimIndex claimIndex = new ClaimIndex();
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(
-                new ClaimChunk(worldId, 0, 0),
-                new ClaimChunk(worldId, 1, 0)
-        ));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 31, 15));
         LimitService limitService = new LimitService(1, emptyLimitRepository());
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
@@ -252,7 +249,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -310,7 +308,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack normalItem = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -367,7 +366,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -437,7 +437,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack normalItem = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -507,7 +508,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);

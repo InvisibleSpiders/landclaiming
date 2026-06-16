@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeService;
 import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
@@ -113,7 +113,7 @@ class ClaimToolListenerTest {
         assertThat(first.isCancelled()).isTrue();
         assertThat(second.isCancelled()).isTrue();
         assertThat(selectionService.pendingSelection(playerId))
-                .contains(Set.of(new ClaimChunk(worldId, 1, 0), new ClaimChunk(worldId, 2, 0)));
+                .contains(new ClaimRegion(worldId, 16, 0, 32, 0));
     }
 
     private static PlayerInteractEvent interact(Player player, ItemStack item, Block block) {
@@ -139,7 +139,13 @@ class ClaimToolListenerTest {
 
     private static Block block(Chunk chunk) {
         Block block = mock(Block.class);
+        World world = chunk.getWorld();
+        int blockX = chunk.getX() * 16;
+        int blockZ = chunk.getZ() * 16;
         when(block.getChunk()).thenReturn(chunk);
+        when(block.getWorld()).thenReturn(world);
+        when(block.getX()).thenReturn(blockX);
+        when(block.getZ()).thenReturn(blockZ);
         return block;
     }
 
