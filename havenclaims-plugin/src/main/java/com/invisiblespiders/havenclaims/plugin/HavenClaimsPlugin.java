@@ -26,10 +26,14 @@ import com.invisiblespiders.havenclaims.plugin.economy.HavenEconomyServiceAdapte
 import com.invisiblespiders.havenclaims.plugin.economy.NoopEconomyService;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.flag.ClaimFlagService;
+import com.invisiblespiders.havenclaims.plugin.accrual.AfkDetector;
+import com.invisiblespiders.havenclaims.plugin.accrual.BlockAccrualService;
+import com.invisiblespiders.havenclaims.plugin.accrual.HavenCoreAfkDetector;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostConfig;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostService;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimLimitRepository;
 import com.invisiblespiders.havenclaims.plugin.limit.LimitService;
+import com.invisiblespiders.havenclaims.plugin.limit.OverLimitConfirmService;
 import com.invisiblespiders.havenclaims.plugin.limit.SqlClaimLimitRepository;
 import com.invisiblespiders.havenclaims.plugin.listener.AdminClaimBrowserListener;
 import com.invisiblespiders.havenclaims.plugin.listener.ClaimToolListener;
@@ -100,6 +104,7 @@ public final class HavenClaimsPlugin extends JavaPlugin
     private ClaimModeSessionHistory claimModeSessionHistory;
     private HavenDataSource havenDataSource;
     private DialogService dialogService;
+    private BlockAccrualService blockAccrualService;
 
     @Override
     public void onEnable() {
@@ -138,11 +143,22 @@ public final class HavenClaimsPlugin extends JavaPlugin
         registerConfiguredPermissions(permissionBankService, permissionsConfiguration, "bypass", PermissionDefault.OP);
         ClaimLimitRepository claimLimitRepository = new SqlClaimLimitRepository(dataSource);
         limitService = new LimitService(
-                getConfig().getInt("limits.default-claim-limit", 10),
+                getConfig().getInt("limits.starting-claim-blocks", 500),
                 claimLimitRepository
         );
         getServer().getServicesManager().register(
                 HavenClaimsLimitService.class, limitService, this, ServicePriority.Normal);
+        int confirmTimeoutSeconds = getConfig().getInt("over-limit.confirm-timeout-seconds", 60);
+        OverLimitConfirmService overLimitConfirmService = new OverLimitConfirmService(confirmTimeoutSeconds);
+        int blocksPerInterval = getConfig().getInt("accrual.blocks-per-interval", 10);
+        int intervalSeconds = getConfig().getInt("accrual.interval-seconds", 60);
+        int maxBlocks = getConfig().getInt("accrual.max-blocks", 50000);
+        String afkMode = getConfig().getString("accrual.afk-mode", "reduced");
+        double afkMultiplier = getConfig().getDouble("accrual.rate-multiplier", 0.5);
+        AfkDetector afkDetector = HavenCoreAfkDetector.create();
+        blockAccrualService = new BlockAccrualService(
+                limitService, afkDetector, blocksPerInterval, maxBlocks, afkMode, afkMultiplier);
+        blockAccrualService.start(this, (long) intervalSeconds * 20L);
         claimCostService = new ClaimCostService(
                 claimIndex,
                 limitService,
@@ -266,7 +282,7 @@ public final class HavenClaimsPlugin extends JavaPlugin
                         limitService,
                         this::performReload,
                         adminClaimBrowserService,
-                        null
+                        overLimitConfirmService
                 );
         var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
         claimCommand.setExecutor(claimsCommand);
@@ -292,7 +308,7 @@ public final class HavenClaimsPlugin extends JavaPlugin
                     MessageConfigurationLoader.load(
                             loadYamlResource("messages.yml")));
             limitService.reload(
-                    getConfig().getInt("limits.default-claim-limit", 10));
+                    getConfig().getInt("limits.starting-claim-blocks", 500));
             claimCostService.reload(
                     ClaimCostConfig.from(getConfig()));
             ClaimModeConfig claimModeConfig = ClaimModeConfig.from(getConfig());
@@ -379,6 +395,10 @@ public final class HavenClaimsPlugin extends JavaPlugin
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.clearAll();
             chunkBorderVisualService = null;
+        }
+        if (blockAccrualService != null) {
+            blockAccrualService.stop();
+            blockAccrualService = null;
         }
         if (entityControlService != null) {
             entityControlService.stop();
