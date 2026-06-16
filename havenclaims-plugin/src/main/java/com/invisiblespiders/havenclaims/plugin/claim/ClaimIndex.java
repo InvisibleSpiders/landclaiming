@@ -19,7 +19,7 @@ public final class ClaimIndex {
 
     public void add(Claim claim) {
         Objects.requireNonNull(claim, "claim");
-        for (ClaimChunk chunk : claim.claimChunks()) {
+        for (ClaimChunk chunk : claim.overlappingChunks()) {
             byChunk.put(chunk, claim);
         }
     }

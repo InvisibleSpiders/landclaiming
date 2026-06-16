@@ -15,8 +15,7 @@ public record Claim(
         String name,
         OwnerType owner,
         UUID ownerUuid,
-        UUID worldId,
-        Set<ClaimChunk> claimChunks,
+        ClaimRegion region,
         Map<String, FlagState> flags,
         Set<ClaimMember> members,
         Set<UUID> deniedPlayers,
@@ -27,8 +26,7 @@ public record Claim(
         id = Objects.requireNonNull(id, "id");
         name = Objects.requireNonNull(name, "name");
         owner = Objects.requireNonNull(owner, "owner");
-        worldId = Objects.requireNonNull(worldId, "worldId");
-        claimChunks = Set.copyOf(Objects.requireNonNull(claimChunks, "claimChunks"));
+        region = Objects.requireNonNull(region, "region");
         flags = Map.copyOf(Objects.requireNonNull(flags, "flags"));
         members = Set.copyOf(Objects.requireNonNull(members, "members"));
         deniedPlayers = Set.copyOf(Objects.requireNonNull(deniedPlayers, "deniedPlayers"));
@@ -41,14 +39,13 @@ public record Claim(
             String name,
             OwnerType owner,
             UUID ownerUuid,
-            UUID worldId,
-            Set<ClaimChunk> claimChunks,
+            ClaimRegion region,
             Map<String, FlagState> flags,
             Set<ClaimMember> members,
             Instant createdAt,
             Instant updatedAt
     ) {
-        this(id, name, owner, ownerUuid, worldId, claimChunks, flags, members, Set.of(), createdAt, updatedAt);
+        this(id, name, owner, ownerUuid, region, flags, members, Set.of(), createdAt, updatedAt);
     }
 
     public Claim(
@@ -56,13 +53,25 @@ public record Claim(
             String name,
             OwnerType owner,
             UUID ownerUuid,
-            UUID worldId,
-            Set<ClaimChunk> claimChunks,
+            ClaimRegion region,
             Map<String, FlagState> flags,
             Instant createdAt,
             Instant updatedAt
     ) {
-        this(id, name, owner, ownerUuid, worldId, claimChunks, flags, Set.of(), Set.of(), createdAt, updatedAt);
+        this(id, name, owner, ownerUuid, region, flags, Set.of(), Set.of(), createdAt, updatedAt);
+    }
+
+    public UUID worldId() {
+        return region.worldId();
+    }
+
+    public Set<ClaimChunk> overlappingChunks() {
+        return region.overlappingChunks();
+    }
+
+    /** Backward-compat shim — removed in Task 14. */
+    public Set<ClaimChunk> claimChunks() {
+        return overlappingChunks();
     }
 
     @Override
@@ -72,7 +81,7 @@ public record Claim(
 
     @Override
     public Set<ClaimChunkView> chunks() {
-        return claimChunks.stream()
+        return region.overlappingChunks().stream()
                 .map(chunk -> new ClaimChunkView(chunk.worldId(), chunk.chunkX(), chunk.chunkZ()))
                 .collect(Collectors.toUnmodifiableSet());
     }

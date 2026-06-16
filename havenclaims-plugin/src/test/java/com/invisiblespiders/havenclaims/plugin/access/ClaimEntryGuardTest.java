@@ -6,6 +6,7 @@ import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import java.time.Instant;
 import java.util.Map;
@@ -109,13 +110,18 @@ class ClaimEntryGuardTest {
 
     private static Claim claim(ClaimChunk chunk, Set<UUID> deniedPlayers) {
         Instant now = Instant.parse("2026-06-09T00:00:00Z");
+        // Convert single chunk to its block region
+        ClaimRegion region = new ClaimRegion(
+                chunk.worldId(),
+                chunk.chunkX() * 16, chunk.chunkZ() * 16,
+                chunk.chunkX() * 16 + 15, chunk.chunkZ() * 16 + 15
+        );
         return new Claim(
                 UUID.randomUUID(),
                 "Home",
                 OwnerType.PLAYER,
                 UUID.randomUUID(),
-                chunk.worldId(),
-                Set.of(chunk),
+                region,
                 Map.of("build", FlagState.OFF),
                 Set.of(),
                 deniedPlayers,

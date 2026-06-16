@@ -240,13 +240,13 @@ class ClaimMemberServiceTest {
             Set<UUID> deniedPlayers
     ) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
+        // chunk (0,0) covers blocks [0,0] to [15,15]
         return new Claim(
                 UUID.randomUUID(),
                 "Home",
                 ownerType,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of("build", FlagState.OFF),
                 members,
                 deniedPlayers,

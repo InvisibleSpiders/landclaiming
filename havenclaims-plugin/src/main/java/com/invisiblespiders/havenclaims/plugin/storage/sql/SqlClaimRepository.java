@@ -2,8 +2,8 @@ package com.invisiblespiders.havenclaims.plugin.storage.sql;
 
 import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimRole;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
@@ -120,7 +120,8 @@ public class SqlClaimRepository implements ClaimRepository {
                 if (!resultSet.next()) {
                     return Optional.empty();
                 }
-                return Optional.of(mapClaim(connection, resultSet));
+                Claim claim = mapClaim(connection, resultSet);
+                return Optional.ofNullable(claim);
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed to find claim by chunk.", exception);
@@ -137,7 +138,8 @@ public class SqlClaimRepository implements ClaimRepository {
                 if (!resultSet.next()) {
                     return Optional.empty();
                 }
-                return Optional.of(mapClaim(connection, resultSet));
+                Claim claim = mapClaim(connection, resultSet);
+                return Optional.ofNullable(claim);
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed to find claim by id.", exception);
@@ -204,7 +206,7 @@ public class SqlClaimRepository implements ClaimRepository {
             statement.setString(2, claim.name());
             statement.setString(3, claim.owner().name());
             statement.setString(4, claim.ownerUuid() == null ? null : claim.ownerUuid().toString());
-            statement.setString(5, claim.worldId().toString());
+            statement.setString(5, claim.region().worldId().toString());
             statement.setString(6, claim.createdAt().toString());
             statement.setString(7, claim.updatedAt().toString());
             statement.executeUpdate();
@@ -212,38 +214,14 @@ public class SqlClaimRepository implements ClaimRepository {
     }
 
     private void insertBlockRegion(Connection connection, Claim claim) throws SQLException {
-        // Calculate bounding box from chunks
-        // Each chunk is 16x16 blocks, so chunk coordinates need to be converted to block coordinates
-        // Chunk X/Z coords map to: minBlock = chunkCoord * 16, maxBlock = chunkCoord * 16 + 15
-        if (claim.claimChunks().isEmpty()) {
-            return;
-        }
-
-        int minBlockX = Integer.MAX_VALUE;
-        int minBlockZ = Integer.MAX_VALUE;
-        int maxBlockX = Integer.MIN_VALUE;
-        int maxBlockZ = Integer.MIN_VALUE;
-
-        for (ClaimChunk chunk : claim.claimChunks()) {
-            int chunkMinX = chunk.chunkX() * 16;
-            int chunkMinZ = chunk.chunkZ() * 16;
-            int chunkMaxX = chunkMinX + 15;
-            int chunkMaxZ = chunkMinZ + 15;
-
-            minBlockX = Math.min(minBlockX, chunkMinX);
-            minBlockZ = Math.min(minBlockZ, chunkMinZ);
-            maxBlockX = Math.max(maxBlockX, chunkMaxX);
-            maxBlockZ = Math.max(maxBlockZ, chunkMaxZ);
-        }
-
         String sql = "INSERT INTO claim_block_regions (claim_id, world_id, min_x, min_z, max_x, max_z) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, claim.id().toString());
-            statement.setString(2, claim.worldId().toString());
-            statement.setInt(3, minBlockX);
-            statement.setInt(4, minBlockZ);
-            statement.setInt(5, maxBlockX);
-            statement.setInt(6, maxBlockZ);
+            statement.setString(2, claim.region().worldId().toString());
+            statement.setInt(3, claim.region().minX());
+            statement.setInt(4, claim.region().minZ());
+            statement.setInt(5, claim.region().maxX());
+            statement.setInt(6, claim.region().maxZ());
             statement.executeUpdate();
         }
     }
@@ -298,7 +276,6 @@ public class SqlClaimRepository implements ClaimRepository {
                         resultSet.getString("name"),
                         OwnerType.valueOf(resultSet.getString("owner_type")),
                         nullableUuid(resultSet.getString("owner_uuid")),
-                        UUID.fromString(resultSet.getString("world_id")),
                         Instant.parse(resultSet.getString("created_at")),
                         Instant.parse(resultSet.getString("updated_at"))
                 ));
@@ -309,20 +286,23 @@ public class SqlClaimRepository implements ClaimRepository {
         }
 
         List<UUID> claimIds = rows.stream().map(ClaimRow::id).toList();
-        Map<UUID, Set<ClaimChunk>> chunksByClaim = bulkLoadChunks(connection, claimIds);
+        Map<UUID, ClaimRegion> regionsByClaim = bulkLoadRegions(connection, claimIds);
         Map<UUID, Map<String, FlagState>> flagsByClaim = bulkLoadFlags(connection, claimIds);
         Map<UUID, Set<ClaimMember>> membersByClaim = bulkLoadMembers(connection, claimIds);
         Map<UUID, Set<UUID>> deniedByClaim = bulkLoadDeniedPlayers(connection, claimIds);
 
         List<Claim> claims = new ArrayList<>(rows.size());
         for (ClaimRow row : rows) {
+            ClaimRegion region = regionsByClaim.get(row.id());
+            if (region == null) {
+                continue; // data integrity: skip claims with no region
+            }
             claims.add(new Claim(
                     row.id(),
                     row.name(),
                     row.ownerType(),
                     row.ownerUuid(),
-                    row.worldId(),
-                    chunksByClaim.getOrDefault(row.id(), Set.of()),
+                    region,
                     flagsByClaim.getOrDefault(row.id(), Map.of()),
                     membersByClaim.getOrDefault(row.id(), Set.of()),
                     deniedByClaim.getOrDefault(row.id(), Set.of()),
@@ -338,7 +318,6 @@ public class SqlClaimRepository implements ClaimRepository {
             String name,
             OwnerType ownerType,
             UUID ownerUuid,
-            UUID worldId,
             Instant createdAt,
             Instant updatedAt
     ) {}
@@ -353,8 +332,8 @@ public class SqlClaimRepository implements ClaimRepository {
         }
     }
 
-    private Map<UUID, Set<ClaimChunk>> bulkLoadChunks(Connection connection, List<UUID> claimIds) throws SQLException {
-        Map<UUID, Set<ClaimChunk>> result = new HashMap<>();
+    private Map<UUID, ClaimRegion> bulkLoadRegions(Connection connection, List<UUID> claimIds) throws SQLException {
+        Map<UUID, ClaimRegion> result = new HashMap<>();
         String sql = "SELECT claim_id, world_id, min_x, min_z, max_x, max_z FROM claim_block_regions WHERE claim_id IN ("
                 + inClausePlaceholders(claimIds.size()) + ")";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -362,26 +341,13 @@ public class SqlClaimRepository implements ClaimRepository {
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     UUID claimId = UUID.fromString(resultSet.getString("claim_id"));
-                    UUID worldId = UUID.fromString(resultSet.getString("world_id"));
-                    int minX = resultSet.getInt("min_x");
-                    int minZ = resultSet.getInt("min_z");
-                    int maxX = resultSet.getInt("max_x");
-                    int maxZ = resultSet.getInt("max_z");
-
-                    Set<ClaimChunk> chunks = new HashSet<>();
-                    // Convert block coordinates back to chunk coordinates
-                    int minChunkX = Math.floorDiv(minX, 16);
-                    int minChunkZ = Math.floorDiv(minZ, 16);
-                    int maxChunkX = Math.floorDiv(maxX, 16);
-                    int maxChunkZ = Math.floorDiv(maxZ, 16);
-
-                    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
-                        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
-                            chunks.add(new ClaimChunk(worldId, cx, cz));
-                        }
-                    }
-
-                    result.put(claimId, chunks);
+                    result.put(claimId, new ClaimRegion(
+                            UUID.fromString(resultSet.getString("world_id")),
+                            resultSet.getInt("min_x"),
+                            resultSet.getInt("min_z"),
+                            resultSet.getInt("max_x"),
+                            resultSet.getInt("max_z")
+                    ));
                 }
             }
         }
@@ -443,51 +409,24 @@ public class SqlClaimRepository implements ClaimRepository {
 
     private Claim mapClaim(Connection connection, ResultSet resultSet) throws SQLException {
         UUID claimId = UUID.fromString(resultSet.getString("id"));
-        UUID worldId = UUID.fromString(resultSet.getString("world_id"));
+        List<UUID> ids = List.of(claimId);
+        Map<UUID, ClaimRegion> regions = bulkLoadRegions(connection, ids);
+        ClaimRegion region = regions.get(claimId);
+        if (region == null) {
+            return null; // data integrity: skip claims with no region
+        }
         return new Claim(
                 claimId,
                 resultSet.getString("name"),
                 OwnerType.valueOf(resultSet.getString("owner_type")),
                 nullableUuid(resultSet.getString("owner_uuid")),
-                worldId,
-                loadChunks(connection, claimId),
+                region,
                 loadFlags(connection, claimId),
                 loadMembers(connection, claimId),
                 loadDeniedPlayers(connection, claimId),
                 Instant.parse(resultSet.getString("created_at")),
                 Instant.parse(resultSet.getString("updated_at"))
         );
-    }
-
-    private Set<ClaimChunk> loadChunks(Connection connection, UUID claimId) throws SQLException {
-        Set<ClaimChunk> chunks = new HashSet<>();
-        try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT world_id, min_x, min_z, max_x, max_z FROM claim_block_regions WHERE claim_id = ?"
-        )) {
-            statement.setString(1, claimId.toString());
-            try (ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    UUID worldId = UUID.fromString(resultSet.getString("world_id"));
-                    int minX = resultSet.getInt("min_x");
-                    int minZ = resultSet.getInt("min_z");
-                    int maxX = resultSet.getInt("max_x");
-                    int maxZ = resultSet.getInt("max_z");
-
-                    // Convert block coordinates back to chunk coordinates
-                    int minChunkX = Math.floorDiv(minX, 16);
-                    int minChunkZ = Math.floorDiv(minZ, 16);
-                    int maxChunkX = Math.floorDiv(maxX, 16);
-                    int maxChunkZ = Math.floorDiv(maxZ, 16);
-
-                    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
-                        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
-                            chunks.add(new ClaimChunk(worldId, cx, cz));
-                        }
-                    }
-                }
-            }
-        }
-        return Set.copyOf(chunks);
     }
 
     private Map<String, FlagState> loadFlags(Connection connection, UUID claimId) throws SQLException {

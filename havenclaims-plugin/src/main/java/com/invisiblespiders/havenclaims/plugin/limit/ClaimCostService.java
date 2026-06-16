@@ -34,10 +34,9 @@ public final class ClaimCostService {
         Objects.requireNonNull(selectedRegion, "selectedRegion");
 
         int allowedBlocks = limitService.getBlockLimit(ownerId);
-        // Uses claimChunks().size() as stand-in until Task 6 adds region().area()
         int existingBlocks = claimIndex.findAll().stream()
                 .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
-                .mapToInt(c -> c.claimChunks().size())
+                .mapToInt(c -> c.region().area())
                 .sum();
         int selectedBlocks = selectedRegion.area();
         int proposedTotalBlocks = existingBlocks + selectedBlocks;
@@ -51,7 +50,7 @@ public final class ClaimCostService {
         int allowedBlocks = limitService.getBlockLimit(ownerId);
         int existingTotal = claimIndex.findAll().stream()
                 .filter(c -> c.owner() == OwnerType.PLAYER && ownerId.equals(c.ownerUuid()))
-                .mapToInt(c -> c.claimChunks().size())
+                .mapToInt(c -> c.region().area())
                 .sum();
         int afterDeletion = existingTotal - blocksBeingRemoved;
         double costBefore = claimCostConfig.priceOverage(Math.max(0, existingTotal - allowedBlocks));

@@ -7,6 +7,7 @@ import com.invisiblespiders.havenclaims.api.protection.ClaimProtectionResult;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.protection.ProtectionService;
@@ -156,13 +157,18 @@ class ProtectionListenerTest {
 
     private static Claim claim(ClaimChunk chunk, Map<String, FlagState> flags, Set<ClaimChunk> chunks) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
+        UUID worldId = chunk.worldId();
+        int minCX = chunks.stream().mapToInt(ClaimChunk::chunkX).min().orElse(chunk.chunkX());
+        int minCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).min().orElse(chunk.chunkZ());
+        int maxCX = chunks.stream().mapToInt(ClaimChunk::chunkX).max().orElse(chunk.chunkX());
+        int maxCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).max().orElse(chunk.chunkZ());
+        ClaimRegion region = new ClaimRegion(worldId, minCX * 16, minCZ * 16, maxCX * 16 + 15, maxCZ * 16 + 15);
         return new Claim(
                 UUID.randomUUID(),
                 "Spawn",
                 OwnerType.PLAYER,
                 UUID.randomUUID(),
-                chunk.worldId(),
-                chunks,
+                region,
                 flags,
                 Set.of(),
                 Set.of(),

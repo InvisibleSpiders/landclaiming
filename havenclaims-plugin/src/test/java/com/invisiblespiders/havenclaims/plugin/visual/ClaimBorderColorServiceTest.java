@@ -6,6 +6,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
@@ -26,26 +27,12 @@ import org.junit.jupiter.api.Test;
 
 class ClaimBorderColorServiceTest {
     @Test
-    void redWhenSelectionIsBlockedByAnotherClaimBuffer() {
+    void redWhenSelectionIsWithinBlockBufferOfAnotherClaim() {
         TestContext context = TestContext.create(10, Map.of());
         UUID otherOwnerId = UUID.randomUUID();
         context.addClaim(claim(otherOwnerId, context.worldId, Set.of(new ClaimChunk(context.worldId, 0, 0)), OwnerType.PLAYER));
 
-        BorderColor color = context.service.colorForPlayerSelection(
-                context.ownerId,
-                "Home",
-                Set.of(new ClaimChunk(context.worldId, 3, 0)),
-                Set.of()
-        );
-
-        assertThat(color).isEqualTo(BorderColor.RED);
-    }
-
-    @Test
-    void yellowWhenSelectionCanMergeWithSameNamedOwnerClaim() {
-        TestContext context = TestContext.create(10, Map.of());
-        context.addClaim(claim(context.ownerId, context.worldId, Set.of(new ClaimChunk(context.worldId, 0, 0)), OwnerType.PLAYER, "Home"));
-
+        // Chunk (1,0) is adjacent to chunk (0,0) — 0-block gap, within 3-block buffer → RED
         BorderColor color = context.service.colorForPlayerSelection(
                 context.ownerId,
                 "Home",
@@ -53,7 +40,24 @@ class ClaimBorderColorServiceTest {
                 Set.of()
         );
 
-        assertThat(color).isEqualTo(BorderColor.YELLOW);
+        assertThat(color).isEqualTo(BorderColor.RED);
+    }
+
+    @Test
+    void aquaWhenSelectionBordersSameNamedOwnerClaimMergeDisabled() {
+        // In Phase 1, findMergeTargets always returns empty (merge disabled).
+        // Adjacent same-named own claim → no YELLOW merge color, cost applies instead.
+        TestContext context = TestContext.create(10, Map.of());
+        context.addClaim(claim(context.ownerId, context.worldId, Set.of(new ClaimChunk(context.worldId, 0, 0)), OwnerType.PLAYER, "Home"));
+
+        BorderColor color = context.service.colorForPlayerSelection(
+                context.ownerId,
+                "Home",
+                Set.of(new ClaimChunk(context.worldId, 2, 0)),
+                Set.of()
+        );
+
+        assertThat(color).isEqualTo(BorderColor.AQUA);
     }
 
     @Test
@@ -109,7 +113,13 @@ class ClaimBorderColorServiceTest {
 
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks, OwnerType ownerType, String name) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
-        return new Claim(UUID.randomUUID(), name, ownerType, ownerId, worldId, chunks, Map.of(), now, now);
+        // Derive bounding region from chunks
+        int minCX = chunks.stream().mapToInt(ClaimChunk::chunkX).min().orElse(0);
+        int minCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).min().orElse(0);
+        int maxCX = chunks.stream().mapToInt(ClaimChunk::chunkX).max().orElse(0);
+        int maxCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).max().orElse(0);
+        ClaimRegion region = new ClaimRegion(worldId, minCX * 16, minCZ * 16, maxCX * 16 + 15, maxCZ * 16 + 15);
+        return new Claim(UUID.randomUUID(), name, ownerType, ownerId, region, Map.of(), now, now);
     }
 
     private static final class TestContext {

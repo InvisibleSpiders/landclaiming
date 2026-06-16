@@ -6,6 +6,7 @@ import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
@@ -195,13 +196,18 @@ class AdminClaimServiceTest {
     }
 
     private static Claim claim(String name, UUID worldId, Set<ClaimChunk> chunks, OwnerType ownerType) {
+        // Derive a bounding region from the chunks
+        int minCX = chunks.stream().mapToInt(ClaimChunk::chunkX).min().orElse(0);
+        int minCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).min().orElse(0);
+        int maxCX = chunks.stream().mapToInt(ClaimChunk::chunkX).max().orElse(0);
+        int maxCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).max().orElse(0);
+        ClaimRegion region = new ClaimRegion(worldId, minCX * 16, minCZ * 16, maxCX * 16 + 15, maxCZ * 16 + 15);
         return new Claim(
                 UUID.randomUUID(),
                 name,
                 ownerType,
                 ownerType == OwnerType.ADMIN ? null : UUID.randomUUID(),
-                worldId,
-                chunks,
+                region,
                 Map.of(),
                 Instant.parse("2026-06-07T00:00:00Z"),
                 Instant.parse("2026-06-07T00:00:00Z")
@@ -209,13 +215,14 @@ class AdminClaimServiceTest {
     }
 
     private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
+        // chunk (chunkX, 0) covers blocks [chunkX*16, 0] to [chunkX*16+15, 15]
+        ClaimRegion region = new ClaimRegion(worldId, chunkX * 16, 0, chunkX * 16 + 15, 15);
         return new Claim(
                 UUID.randomUUID(),
                 name,
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                region,
                 Map.of(),
                 Instant.parse("2026-06-07T00:00:00Z"),
                 Instant.parse("2026-06-07T00:00:00Z")

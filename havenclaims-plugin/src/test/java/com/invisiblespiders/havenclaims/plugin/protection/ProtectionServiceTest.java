@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.invisiblespiders.havenclaims.api.protection.ClaimProtectionResult;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimRole;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
@@ -24,9 +24,10 @@ class ProtectionServiceTest {
     private final UUID visitor = UUID.randomUUID();
 
     private Claim claimWith(String flag, FlagState state) {
+        UUID worldId = UUID.randomUUID();
         return new Claim(
-                UUID.randomUUID(), "C", OwnerType.PLAYER, owner, UUID.randomUUID(),
-                Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0)),
+                UUID.randomUUID(), "C", OwnerType.PLAYER, owner,
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(flag, state),
                 Set.of(new ClaimMember(manager, ClaimRole.MANAGER), new ClaimMember(member, ClaimRole.MEMBER)),
                 Set.of(), Instant.now(), Instant.now());

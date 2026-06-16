@@ -14,6 +14,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMemberService;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimRole;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.flag.ClaimFlagService;
@@ -655,8 +656,7 @@ class ClaimsCommandAdminTest {
                 name,
                 OwnerType.ADMIN,
                 null,
-                worldId,
-                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                new ClaimRegion(worldId, chunkX * 16, 0, chunkX * 16 + 15, 15),
                 Map.of(),
                 now,
                 now
@@ -685,8 +685,7 @@ class ClaimsCommandAdminTest {
                 name,
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                new ClaimRegion(worldId, chunkX * 16, 0, chunkX * 16 + 15, 15),
                 flags,
                 members,
                 now,

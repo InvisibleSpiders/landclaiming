@@ -37,28 +37,29 @@ class ClaimCostServiceTest {
     }
 
     @Test
-    void quoteIncludesExistingPlayerChunksWhenPricingOverLimitSelection() {
+    void quoteIncludesExistingPlayerBlocksWhenPricingOverLimitSelection() {
         ClaimIndex claimIndex = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        claimIndex.add(claim(ownerId, worldId, Set.of(
-                new ClaimChunk(worldId, 0, 0),
-                new ClaimChunk(worldId, 1, 0)
-        )));
+        // Existing claim: chunk (0,0) only — bounding region [0,0] to [15,15] = 256 blocks
+        claimIndex.add(claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0))));
         ClaimCostService service = new ClaimCostService(
                 claimIndex,
-                limitOf(3),
+                limitOf(300),
                 new ClaimCostConfig(true, 100.0, 60)
         );
 
-        // region covering chunks (2,0) and (3,0): 2 chunks × 256 blocks each = 512 selectedBlocks
-        ClaimRegion region = new ClaimRegion(worldId, 2 * 16, 0, 3 * 16 + 15, 15);
+        // selected region: chunk (1,0) — [16,0] to [31,15] = 256 blocks
+        ClaimRegion region = new ClaimRegion(worldId, 16, 0, 31, 15);
         ClaimCostQuote quote = service.quotePlayerClaim(ownerId, region);
 
-        assertThat(quote.allowedBlocks()).isEqualTo(3);
-        assertThat(quote.existingBlocks()).isEqualTo(2); // claimChunks().size() stand-in
+        // existing = region().area() of the single existing claim = 16*16 = 256
+        int existingArea = new ClaimRegion(worldId, 0, 0, 15, 15).area();
+        assertThat(quote.allowedBlocks()).isEqualTo(300);
+        assertThat(quote.existingBlocks()).isEqualTo(existingArea);
         assertThat(quote.selectedBlocks()).isEqualTo(region.area());
-        assertThat(quote.proposedTotalBlocks()).isEqualTo(2 + region.area());
+        assertThat(quote.proposedTotalBlocks()).isEqualTo(existingArea + region.area());
+        // 256+256=512, limit=300, overage=212
         assertThat(quote.overageBlocks()).isGreaterThan(0);
     }
 
@@ -103,31 +104,31 @@ class ClaimCostServiceTest {
         ClaimIndex index = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        index.add(claim(ownerId, worldId, Set.of(
-                new ClaimChunk(worldId, 0, 0),
-                new ClaimChunk(worldId, 1, 0),
-                new ClaimChunk(worldId, 2, 0))));
+        // Single chunk (0,0): region [0,0] to [15,15] = 256 blocks
+        index.add(claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0))));
         ClaimCostService service = new ClaimCostService(
-                index, limitOf(10),
+                index, limitOf(1000),
                 new ClaimCostConfig(true, 100.0, 60));
 
-        assertThat(service.computeDeletionRefund(ownerId, 3)).isEqualTo(0.0);
+        // existingTotal = 256 blocks, limit = 1000 — well below limit, refund = 0
+        assertThat(service.computeDeletionRefund(ownerId, 256)).isEqualTo(0.0);
     }
 
     @Test
-    void computeDeletionRefundCoversOnlyOverLimitChunks() {
+    void computeDeletionRefundCoversOnlyOverLimitBlocks() {
         ClaimIndex index = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Set<ClaimChunk> chunks = new java.util.HashSet<>();
-        for (int i = 0; i < 15; i++) chunks.add(new ClaimChunk(worldId, i, 0));
-        index.add(claim(ownerId, worldId, Set.copyOf(chunks)));
+        // Single chunk region [0,0] to [15,15] = 256 blocks
+        index.add(claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0))));
         ClaimCostService service = new ClaimCostService(
-                index, limitOf(10),
+                index, limitOf(200),
                 new ClaimCostConfig(true, 100.0, 60));
 
-        // 15 chunks, limit 10. Removing 8: overageBefore=5(500), overageAfter=0(0) → 500
-        assertThat(service.computeDeletionRefund(ownerId, 8)).isEqualTo(500.0);
+        // existingTotal=256, limit=200, overageBefore=56 (cost=5600)
+        // After removing 100 blocks: existingTotal-100=156, 156<=200, overageAfter=0 (cost=0)
+        // refund = 5600 - 0 = 5600
+        assertThat(service.computeDeletionRefund(ownerId, 100)).isEqualTo(5600.0);
     }
 
     @Test
@@ -135,19 +136,26 @@ class ClaimCostServiceTest {
         ClaimIndex index = new ClaimIndex();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Set<ClaimChunk> chunks = new java.util.HashSet<>();
-        for (int i = 0; i < 20; i++) chunks.add(new ClaimChunk(worldId, i, 0));
-        index.add(claim(ownerId, worldId, Set.copyOf(chunks)));
+        // Single chunk region [0,0] to [15,15] = 256 blocks
+        index.add(claim(ownerId, worldId, Set.of(new ClaimChunk(worldId, 0, 0))));
         ClaimCostService service = new ClaimCostService(
-                index, limitOf(10),
+                index, limitOf(200),
                 new ClaimCostConfig(true, 100.0, 60));
 
-        // 20 chunks, limit 10. Removing 5: overageBefore=10(1000), overageAfter=5(500) → 500
-        assertThat(service.computeDeletionRefund(ownerId, 5)).isEqualTo(500.0);
+        // existingTotal=256, limit=200, overageBefore=56 (cost=5600)
+        // After removing 6 blocks: existingTotal-6=250, overageAfter=50 (cost=5000)
+        // refund = 5600 - 5000 = 600
+        assertThat(service.computeDeletionRefund(ownerId, 6)).isEqualTo(600.0);
     }
 
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks) {
         Instant now = Instant.parse("2026-06-07T00:00:00Z");
-        return new Claim(UUID.randomUUID(), "Existing", OwnerType.PLAYER, ownerId, worldId, chunks, Map.of(), now, now);
+        // Derive bounding region from chunk set
+        int minCX = chunks.stream().mapToInt(ClaimChunk::chunkX).min().orElse(0);
+        int minCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).min().orElse(0);
+        int maxCX = chunks.stream().mapToInt(ClaimChunk::chunkX).max().orElse(0);
+        int maxCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).max().orElse(0);
+        ClaimRegion region = new ClaimRegion(worldId, minCX * 16, minCZ * 16, maxCX * 16 + 15, maxCZ * 16 + 15);
+        return new Claim(UUID.randomUUID(), "Existing", OwnerType.PLAYER, ownerId, region, Map.of(), now, now);
     }
 }

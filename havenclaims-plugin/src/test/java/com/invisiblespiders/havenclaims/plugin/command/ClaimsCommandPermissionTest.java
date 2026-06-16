@@ -18,6 +18,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.ClaimDenyService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMemberService;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimRole;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
@@ -606,8 +607,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(new ClaimMember(memberId, ClaimRole.MANAGER)),
                 java.time.Instant.now(),
@@ -672,8 +672,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(new ClaimMember(memberId, ClaimRole.MEMBER)),
                 java.time.Instant.now(),
@@ -733,8 +732,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0), new ClaimChunk(worldId, 1, 0)),
+                new ClaimRegion(worldId, 0, 0, 31, 15),
                 Map.of("build", com.invisiblespiders.havenclaims.api.flag.FlagState.ALL),
                 Set.of(new ClaimMember(memberId, ClaimRole.MEMBER)),
                 Set.of(deniedId),
@@ -799,8 +797,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(),
                 Set.of(deniedId),
@@ -867,8 +864,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(),
                 Set.of(deniedId),
@@ -1200,8 +1196,7 @@ class ClaimsCommandPermissionTest {
                 name,
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                new ClaimRegion(worldId, chunkX * 16, 0, chunkX * 16 + 15, 15),
                 Map.of(),
                 java.time.Instant.now(),
                 java.time.Instant.now()
