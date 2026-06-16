@@ -3,6 +3,7 @@ package com.invisiblespiders.havenclaims.plugin.visual;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -106,5 +107,26 @@ class ChunkBorderPlannerTest {
         );
 
         assertThat(plan.durationTicks()).isZero();
+    }
+
+    @Test
+    void planRectangleProducesFourEdgesForSingleBlock() {
+        UUID world = UUID.randomUUID();
+        ClaimRegion region = new ClaimRegion(world, 5, 10, 5, 10);
+        ChunkBorderPlan plan = ChunkBorderPlanner.planRectangle(region, (w, x, z) -> 64.0, BorderColor.GREEN, 100);
+        // Single block 5,10 → border at x=5..6, z=10..11 → 4 edges (1 per side)
+        assertThat(plan.edges()).hasSize(4);
+    }
+
+    @Test
+    void planRectangleEdgesMatchRegionBounds() {
+        UUID world = UUID.randomUUID();
+        ClaimRegion region = new ClaimRegion(world, 0, 0, 15, 15);
+        ChunkBorderPlan plan = ChunkBorderPlanner.planRectangle(region, (w, x, z) -> 64.0, BorderColor.GREEN, 100);
+        // North edge at z=0: 16 segments (x=0..15)
+        // South edge at z=16: 16 segments
+        // West edge at x=0: 16 segments (z=0..15)
+        // East edge at x=16: 16 segments
+        assertThat(plan.edges()).hasSize(64);
     }
 }
