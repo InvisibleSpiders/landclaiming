@@ -18,51 +18,37 @@ public final class LimitService implements HavenClaimsLimitService {
     }
 
     @Override
-    public int getLimit(UUID playerId) {
+    public int getBlockLimit(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId");
         return repository.getLimit(playerId).orElse(defaultLimit);
     }
 
     @Override
-    public void setLimit(UUID playerId, int limit) {
+    public void setBlockLimit(UUID playerId, int limit) {
         Objects.requireNonNull(playerId, "playerId");
         if (limit < 1) throw new IllegalArgumentException("limit must be >= 1");
         repository.setLimit(playerId, limit);
     }
 
     @Override
-    public void addChunks(UUID playerId, int chunks) {
+    public void addBlocks(UUID playerId, int blocks) {
         Objects.requireNonNull(playerId, "playerId");
-        if (chunks < 1) throw new IllegalArgumentException("chunks must be >= 1");
-        repository.updateLimit(playerId, defaultLimit, current -> current + chunks);
+        if (blocks < 1) throw new IllegalArgumentException("blocks must be >= 1");
+        repository.updateLimit(playerId, defaultLimit, current -> current + blocks);
     }
 
     @Override
-    public void removeChunks(UUID playerId, int chunks) {
+    public void removeBlocks(UUID playerId, int blocks) {
         Objects.requireNonNull(playerId, "playerId");
-        if (chunks < 1) throw new IllegalArgumentException("chunks must be >= 1");
-        repository.updateLimit(playerId, defaultLimit, current -> Math.max(1, current - chunks));
+        if (blocks < 1) throw new IllegalArgumentException("blocks must be >= 1");
+        repository.updateLimit(playerId, defaultLimit, current -> Math.max(1, current - blocks));
     }
 
-    public int overageChunks(int proposedTotalChunks, int allowedChunks) {
-        return Math.max(0, proposedTotalChunks - allowedChunks);
+    public int overageBlocks(int proposedTotalBlocks, int allowedBlocks) {
+        return Math.max(0, proposedTotalBlocks - allowedBlocks);
     }
 
-    public static double flatOverLimitCost(int overageChunks, double costPerChunk) {
-        return Math.max(0, overageChunks) * Math.max(0.0, costPerChunk);
-    }
-
-    public static double exponentialOverLimitCost(int overageChunks, double baseCost, double multiplier) {
-        int n = Math.max(0, overageChunks);
-        double base = Math.max(0.0, baseCost);
-        double mult = Math.max(0.0, multiplier);
-        double total = 0.0;
-        for (int i = 0; i < n; i++) {
-            total += base * Math.pow(mult, i);
-            if (total >= Double.MAX_VALUE) {
-                return Double.MAX_VALUE;
-            }
-        }
-        return total;
+    public static double flatOverLimitCost(int overageBlocks, double costPerBlock) {
+        return Math.max(0, overageBlocks) * Math.max(0.0, costPerBlock);
     }
 }

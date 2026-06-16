@@ -1,11 +1,10 @@
 package com.invisiblespiders.havenclaims.plugin.limit;
 
 public record ClaimCostQuote(
-        int allowedChunks,
-        int existingChunks,
-        int selectedChunks,
-        int proposedTotalChunks,
-        int overageChunks,
+        int allowedBlocks,
+        int existingBlocks,
+        int selectedBlocks,
+        int proposedTotalBlocks,
+        int overageBlocks,
         double cost
-) {
-}
+) {}

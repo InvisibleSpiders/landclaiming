@@ -9,6 +9,7 @@ import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
 import com.invisiblespiders.havenclaims.plugin.protection.ProtectionService;
@@ -163,13 +164,18 @@ class BukkitHavenClaimsApiTest {
 
     private static Claim claim(UUID ownerId, UUID worldId, Set<ClaimChunk> chunks, Map<String, FlagState> flags) {
         Instant now = Instant.parse("2026-06-08T00:00:00Z");
+        // Derive bounding region from the chunks
+        int minCX = chunks.stream().mapToInt(ClaimChunk::chunkX).min().orElse(0);
+        int minCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).min().orElse(0);
+        int maxCX = chunks.stream().mapToInt(ClaimChunk::chunkX).max().orElse(0);
+        int maxCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).max().orElse(0);
+        ClaimRegion region = new ClaimRegion(worldId, minCX * 16, minCZ * 16, maxCX * 16 + 15, maxCZ * 16 + 15);
         return new Claim(
                 UUID.randomUUID(),
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                chunks,
+                region,
                 flags,
                 now,
                 now
@@ -197,7 +203,7 @@ class BukkitHavenClaimsApiTest {
         @Override
         public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
             return claims.stream()
-                    .filter(claim -> claim.claimChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
+                    .filter(claim -> claim.overlappingChunks().contains(new ClaimChunk(worldId, chunkX, chunkZ)))
                     .findFirst();
         }
 

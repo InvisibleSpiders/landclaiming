@@ -20,7 +20,7 @@ public final class ClaimCostMessageService {
             boolean paidOverLimitEnabled
     ) {
         String costText;
-        if (quote.overageChunks() > 0 && !paidOverLimitEnabled) {
+        if (quote.overageBlocks() > 0 && !paidOverLimitEnabled) {
             costText = messageService.renderPlain("claim.cost-preview.unavailable", Map.of());
         } else if (quote.cost() <= 0.0) {
             costText = messageService.renderPlain("claim.cost-preview.free", Map.of());
@@ -28,10 +28,10 @@ public final class ClaimCostMessageService {
             costText = formattedCost;
         }
         Map<String, String> placeholders = Map.of(
-                "selected_chunks", String.valueOf(quote.selectedChunks()),
-                "proposed_total_chunks", String.valueOf(quote.proposedTotalChunks()),
-                "allowed_chunks", String.valueOf(quote.allowedChunks()),
-                "overage_chunks", String.valueOf(quote.overageChunks()),
+                "selected_blocks", String.valueOf(quote.selectedBlocks()),
+                "proposed_total_blocks", String.valueOf(quote.proposedTotalBlocks()),
+                "allowed_blocks", String.valueOf(quote.allowedBlocks()),
+                "overage_blocks", String.valueOf(quote.overageBlocks()),
                 "cost", costText
         );
         return List.of(

@@ -356,15 +356,15 @@ public final class DialogService {
         player.sendMessage(messageService.renderOrDefault(
                 "claim.create-preview.selection",
                 placeholders,
-                "<gray>Selection: <yellow><selected_chunks></yellow> chunks"));
+                "<gray>Selection: <yellow><selected_blocks></yellow> blocks"));
         player.sendMessage(messageService.renderOrDefault(
                 "claim.create-preview.current-total",
                 placeholders,
-                "<gray>Total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"));
+                "<gray>Total after claim: <yellow><proposed_total_blocks></yellow> / <yellow><allowed_blocks></yellow> blocks"));
         player.sendMessage(messageService.renderOrDefault(
                 "claim.create-preview.over-limit",
                 placeholders,
-                "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"));
+                "<gray>Over limit: <yellow><overage_blocks></yellow> blocks"));
         player.sendMessage(messageService.renderOrDefault(
                 "claim.create-preview.cost",
                 placeholders,
@@ -383,10 +383,10 @@ public final class DialogService {
     private static Map<String, String> createPreviewPlaceholders(ClaimCreatePreview preview) {
         return Map.of(
                 "claim_name", preview.claimName(),
-                "selected_chunks", String.valueOf(preview.selectedChunks()),
-                "proposed_total_chunks", String.valueOf(preview.proposedTotalChunks()),
-                "allowed_chunks", String.valueOf(preview.allowedChunks()),
-                "overage_chunks", String.valueOf(preview.overageChunks()),
+                "selected_blocks", String.valueOf(preview.selectedBlocks()),
+                "proposed_total_blocks", String.valueOf(preview.proposedTotalBlocks()),
+                "allowed_blocks", String.valueOf(preview.allowedBlocks()),
+                "overage_blocks", String.valueOf(preview.overageBlocks()),
                 "cost", preview.cost()
         );
     }

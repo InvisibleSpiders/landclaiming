@@ -5,6 +5,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.economy.ClaimPaymentService;
 import com.invisiblespiders.havenclaims.plugin.flag.FlagRegistry;
@@ -63,13 +64,24 @@ public final class AdminClaimService {
         }
 
         Instant now = Instant.now();
+        UUID worldId = chunks.iterator().next().worldId();
+        int minChunkX = chunks.stream().mapToInt(ClaimChunk::chunkX).min().orElseThrow();
+        int minChunkZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).min().orElseThrow();
+        int maxChunkX = chunks.stream().mapToInt(ClaimChunk::chunkX).max().orElseThrow();
+        int maxChunkZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).max().orElseThrow();
+        ClaimRegion region = new ClaimRegion(
+                worldId,
+                minChunkX * 16,
+                minChunkZ * 16,
+                maxChunkX * 16 + 15,
+                maxChunkZ * 16 + 15
+        );
         Claim claim = new Claim(
                 UUID.randomUUID(),
                 trimmedName,
                 OwnerType.ADMIN,
                 null,
-                chunks.iterator().next().worldId(),
-                chunks,
+                region,
                 defaultFlags(),
                 now,
                 now
@@ -158,8 +170,7 @@ public final class AdminClaimService {
                             claim.name(),
                             claim.owner(),
                             newOwnerId,
-                            claim.worldId(),
-                            claim.claimChunks(),
+                            claim.region(),
                             claim.flags(),
                             retainedMembers,
                             claim.deniedPlayers(),
@@ -187,7 +198,7 @@ public final class AdminClaimService {
         double totalRefunded = 0.0;
         for (Claim claim : claims) {
             if (refund) {
-                double amount = costService.computeDeletionRefund(ownerId, claim.claimChunks().size());
+                double amount = costService.computeDeletionRefund(ownerId, claim.overlappingChunks().size());
                 if (amount > 0.0) {
                     paymentService.refund(ownerId, new ClaimCostQuote(0, 0, 0, 0, 0, amount));
                     totalRefunded += amount;

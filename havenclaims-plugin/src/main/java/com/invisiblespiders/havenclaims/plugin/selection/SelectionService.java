@@ -1,88 +1,72 @@
 package com.invisiblespiders.havenclaims.plugin.selection;
 
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import org.bukkit.Chunk;
-import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 public class SelectionService {
     private final ClaimService claimService;
-    private final Map<UUID, ClaimChunk> firstCorners = new HashMap<>();
-    private final Map<UUID, Set<ClaimChunk>> completedSelections = new HashMap<>();
+    private final Map<UUID, BlockPos> firstCorners = new HashMap<>();
+    private final Map<UUID, ClaimRegion> completedSelections = new HashMap<>();
 
     public SelectionService(ClaimService claimService) {
         this.claimService = Objects.requireNonNull(claimService, "claimService");
     }
 
-    public Optional<Set<ClaimChunk>> select(Player player, Chunk chunk) {
+    /** Called by ClaimToolListener when a player right-clicks a block. */
+    public Optional<ClaimRegion> select(Player player, Block block) {
         Objects.requireNonNull(player, "player");
-        Objects.requireNonNull(chunk, "chunk");
-
-        World world = Objects.requireNonNull(chunk.getWorld(), "chunk world");
-        return select(player.getUniqueId(), new ClaimChunk(world.getUID(), chunk.getX(), chunk.getZ()));
+        Objects.requireNonNull(block, "block");
+        UUID worldId = block.getWorld().getUID();
+        return select(player.getUniqueId(), new BlockPos(worldId, block.getX(), block.getZ()));
     }
 
-    public Optional<Set<ClaimChunk>> select(UUID playerId, ClaimChunk chunk) {
+    /** Testable overload — takes UUID and BlockPos directly. */
+    public Optional<ClaimRegion> select(UUID playerId, BlockPos pos) {
         Objects.requireNonNull(playerId, "playerId");
-        Objects.requireNonNull(chunk, "chunk");
+        Objects.requireNonNull(pos, "pos");
 
-        ClaimChunk firstCorner = firstCorners.get(playerId);
+        BlockPos firstCorner = firstCorners.get(playerId);
         if (firstCorner == null) {
             completedSelections.remove(playerId);
-            firstCorners.put(playerId, chunk);
+            firstCorners.put(playerId, pos);
             return Optional.empty();
         }
 
-        if (!firstCorner.worldId().equals(chunk.worldId())) {
+        if (!firstCorner.worldId().equals(pos.worldId())) {
             completedSelections.remove(playerId);
-            firstCorners.put(playerId, chunk);
+            firstCorners.put(playerId, pos);
             return Optional.empty();
         }
 
-        Set<ClaimChunk> chunks = claimService.expandRectangle(
-                firstCorner.worldId(),
-                firstCorner.chunkX(),
-                firstCorner.chunkZ(),
-                chunk.chunkX(),
-                chunk.chunkZ()
-        );
-        completedSelections.put(playerId, chunks);
-        return Optional.of(chunks);
+        ClaimRegion region = claimService.blockRectangle(firstCorner, pos);
+        completedSelections.put(playerId, region);
+        firstCorners.remove(playerId);
+        return Optional.of(region);
     }
 
-    public Optional<Set<ClaimChunk>> pendingSelection(UUID playerId) {
+    public Optional<ClaimRegion> pendingSelection(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId");
         return Optional.ofNullable(completedSelections.get(playerId));
     }
 
-    public Optional<Set<ClaimChunk>> consumeSelection(UUID playerId) {
+    public Optional<ClaimRegion> consumeSelection(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId");
         firstCorners.remove(playerId);
         return Optional.ofNullable(completedSelections.remove(playerId));
     }
 
-    public void replacePendingSelection(UUID playerId, Set<ClaimChunk> chunks) {
-        Objects.requireNonNull(playerId, "playerId");
-        Objects.requireNonNull(chunks, "chunks");
-        if (chunks.isEmpty()) {
-            completedSelections.remove(playerId);
-            return;
-        }
-        completedSelections.put(playerId, Set.copyOf(chunks));
-    }
-
     public boolean clear(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId");
-        boolean hadFirstCorner = firstCorners.remove(playerId) != null;
-        boolean hadCompletedSelection = completedSelections.remove(playerId) != null;
-        return hadFirstCorner || hadCompletedSelection;
+        boolean hadFirst = firstCorners.remove(playerId) != null;
+        boolean hadCompleted = completedSelections.remove(playerId) != null;
+        return hadFirst || hadCompleted;
     }
 
     public boolean clear(Player player) {

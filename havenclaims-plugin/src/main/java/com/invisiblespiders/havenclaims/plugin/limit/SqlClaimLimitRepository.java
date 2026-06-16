@@ -19,13 +19,13 @@ public final class SqlClaimLimitRepository implements ClaimLimitRepository {
     @Override
     public OptionalInt getLimit(UUID playerId) {
         Objects.requireNonNull(playerId, "playerId");
-        String sql = "SELECT chunk_limit FROM claim_player_limits WHERE player_uuid = ?";
+        String sql = "SELECT block_limit FROM claim_player_limits WHERE player_uuid = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, playerId.toString());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return OptionalInt.of(rs.getInt("chunk_limit"));
+                    return OptionalInt.of(rs.getInt("block_limit"));
                 }
                 return OptionalInt.empty();
             }
@@ -37,7 +37,7 @@ public final class SqlClaimLimitRepository implements ClaimLimitRepository {
     @Override
     public void setLimit(UUID playerId, int limit) {
         Objects.requireNonNull(playerId, "playerId");
-        String sql = "INSERT OR REPLACE INTO claim_player_limits (player_uuid, chunk_limit) VALUES (?, ?)";
+        String sql = "INSERT OR REPLACE INTO claim_player_limits (player_uuid, block_limit) VALUES (?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, playerId.toString());
@@ -52,8 +52,8 @@ public final class SqlClaimLimitRepository implements ClaimLimitRepository {
     public void updateLimit(UUID playerId, int defaultLimit, java.util.function.IntUnaryOperator operator) {
         Objects.requireNonNull(playerId, "playerId");
         Objects.requireNonNull(operator, "operator");
-        String selectSql = "SELECT chunk_limit FROM claim_player_limits WHERE player_uuid = ?";
-        String upsertSql = "INSERT OR REPLACE INTO claim_player_limits (player_uuid, chunk_limit) VALUES (?, ?)";
+        String selectSql = "SELECT block_limit FROM claim_player_limits WHERE player_uuid = ?";
+        String upsertSql = "INSERT OR REPLACE INTO claim_player_limits (player_uuid, block_limit) VALUES (?, ?)";
         try (Connection conn = dataSource.getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -61,7 +61,7 @@ public final class SqlClaimLimitRepository implements ClaimLimitRepository {
                 try (PreparedStatement sel = conn.prepareStatement(selectSql)) {
                     sel.setString(1, playerId.toString());
                     try (ResultSet rs = sel.executeQuery()) {
-                        current = rs.next() ? rs.getInt("chunk_limit") : defaultLimit;
+                        current = rs.next() ? rs.getInt("block_limit") : defaultLimit;
                     }
                 }
                 int newValue = Math.max(1, operator.applyAsInt(current));

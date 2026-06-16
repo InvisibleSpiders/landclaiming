@@ -10,8 +10,8 @@ import static org.mockito.Mockito.withSettings;
 
 import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import java.time.Instant;
 import java.util.Map;
@@ -68,8 +68,7 @@ class EntityControlServiceTest {
                 "Home",
                 OwnerType.PLAYER,
                 UUID.randomUUID(),
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 flags,
                 now,
                 now

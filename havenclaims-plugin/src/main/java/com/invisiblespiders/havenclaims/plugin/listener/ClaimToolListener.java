@@ -1,9 +1,6 @@
 package com.invisiblespiders.havenclaims.plugin.listener;
 
-import com.invisiblespiders.havenclaims.plugin.claim.Claim;
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
-import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeService;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
 import com.invisiblespiders.havenclaims.plugin.selection.DoubleCrouchClearService;
@@ -14,8 +11,6 @@ import com.invisiblespiders.havenclaims.plugin.visual.ClaimBorderColorService;
 import com.invisiblespiders.havenclaims.plugin.visual.ChunkBorderVisualService;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
@@ -32,7 +27,6 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimToolListener implements Listener {
     private static final String CLAIM_PERMISSION = "havenclaims.claim";
@@ -119,44 +113,30 @@ public class ClaimToolListener implements Listener {
             return;
         }
 
-        Chunk chunk = selectionChunk(event.getClickedBlock(), player.getLocation().getChunk());
-        ClaimChunk selectedChunk = new ClaimChunk(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
-        Optional<Claim> clickedClaim = claimAt(selectedChunk);
-        if (clickedClaim.isPresent() && !isOwnerClaim(player, clickedClaim.orElseThrow())) {
-            showBorder(player, Set.of(selectedChunk), BorderColor.RED);
-            player.sendMessage(message("claim.tool.point-claimed-other"));
-            return;
-        }
-        if (clickedClaim.isPresent()) {
-            player.sendMessage(message("claim.tool.point-claimed-own"));
+        Block clickedBlock = event.getClickedBlock();
+        if (clickedBlock == null) {
+            clickedBlock = player.getLocation().getBlock();
         }
 
-        selectionService.select(player, chunk).ifPresentOrElse(
-                chunks -> {
-                    Set<ClaimChunk> normalizedChunks = normalizeSelection(player, chunks);
-                    if (normalizedChunks.isEmpty()) {
-                        selectionService.replacePendingSelection(player.getUniqueId(), Set.of());
-                        clickedClaim.ifPresent(claim -> showBorder(player, claim.claimChunks(), BorderColor.GOLD));
-                        player.sendMessage(message("claim.tool.selection-only-existing"));
-                        return;
-                    }
-                    if (!normalizedChunks.equals(chunks)) {
-                        selectionService.replacePendingSelection(player.getUniqueId(), normalizedChunks);
-                        player.sendMessage(message("claim.tool.selection-existing-trimmed"));
-                    }
-                    showBorder(player, normalizedChunks, previewColor(player, normalizedChunks));
-                    sendSelectionComplete(player, normalizedChunks);
+        selectionService.select(player, clickedBlock).ifPresentOrElse(
+                region -> {
+                    showRegionBorder(player, region, BorderColor.GREEN);
+                    sendSelectionComplete(player, region);
                 },
-                () -> {
-                    Set<ClaimChunk> chunks = Set.of(selectedChunk);
-                    if (clickedClaim.isPresent()) {
-                        showBorder(player, clickedClaim.orElseThrow().claimChunks(), BorderColor.GOLD);
-                    } else {
-                        showBorder(player, chunks, previewColor(player, chunks));
-                    }
-                    player.sendMessage(message("claim.tool.first-corner-selected"));
-                }
+                () -> player.sendMessage(message("claim.tool.first-corner-selected"))
         );
+    }
+
+    private void sendSelectionComplete(Player player, com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion region) {
+        player.sendMessage(message("claim.tool.selection-complete", java.util.Map.of(
+                "area", String.valueOf(region.area())
+        )));
+    }
+
+    private void showRegionBorder(Player player, com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion region, BorderColor color) {
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.showSelection(player, region, color);
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -232,66 +212,12 @@ public class ClaimToolListener implements Listener {
         return claimToolService.isClaimTool(previousItem) && !claimToolService.isClaimTool(newItem);
     }
 
-    private void sendSelectionComplete(Player player, Set<ClaimChunk> chunks) {
-        player.sendMessage(message("claim.tool.selection-complete", java.util.Map.of(
-                "chunk_count", String.valueOf(chunks.size())
-        )));
-    }
-
     private void sendMissingPermission(Player player) {
         player.sendMessage(message("command.claim.no-permission"));
     }
 
     private void sendSelectionCleared(Player player) {
         player.sendMessage(message("command.selection.cleared"));
-    }
-
-    private Set<ClaimChunk> normalizeSelection(Player player, Set<ClaimChunk> chunks) {
-        if (claimIndex == null) {
-            return chunks;
-        }
-        Set<ClaimChunk> newChunks = chunks.stream()
-                .filter(chunk -> claimAt(chunk)
-                        .filter(claim -> isOwnerClaim(player, claim))
-                        .isEmpty())
-                .collect(Collectors.toUnmodifiableSet());
-        return newChunks.size() == chunks.size() ? chunks : newChunks;
-    }
-
-    private Optional<Claim> claimAt(ClaimChunk chunk) {
-        if (claimIndex == null) {
-            return Optional.empty();
-        }
-        return claimIndex.findAt(chunk);
-    }
-
-    private boolean isOwnerClaim(Player player, Claim claim) {
-        return claim.owner() == OwnerType.PLAYER && player.getUniqueId().equals(claim.ownerUuid());
-    }
-
-    private void showBorder(Player player, Set<ClaimChunk> chunks, BorderColor color) {
-        if (chunkBorderVisualService != null) {
-            chunkBorderVisualService.showSelection(player, chunks, color);
-        }
-    }
-
-    private BorderColor previewColor(Player player, Set<ClaimChunk> chunks) {
-        if (claimBorderColorService == null) {
-            return BorderColor.GREEN;
-        }
-        return claimBorderColorService.colorForPlayerSelection(
-                player.getUniqueId(),
-                Optional.empty(),
-                chunks,
-                permissionNodes(player)
-        );
-    }
-
-    private Set<String> permissionNodes(Player player) {
-        return player.getEffectivePermissions().stream()
-                .filter(PermissionAttachmentInfo::getValue)
-                .map(PermissionAttachmentInfo::getPermission)
-                .collect(Collectors.toUnmodifiableSet());
     }
 
     private Component message(String key) {

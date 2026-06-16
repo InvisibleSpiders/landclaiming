@@ -7,32 +7,54 @@ import com.invisiblespiders.havenclaims.api.claim.ClaimChunkView;
 import com.invisiblespiders.havenclaims.api.claim.ClaimView;
 import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ClaimTest {
+    private final UUID world = UUID.randomUUID();
+    private final UUID owner = UUID.randomUUID();
+    private final ClaimRegion region = new ClaimRegion(world, 0, 0, 15, 15);
+    private final Instant now = Instant.now();
+
+    @Test
+    void worldIdDelegatesToRegion() {
+        Claim claim = claim(region);
+        assertThat(claim.worldId()).isEqualTo(world);
+    }
+
+    @Test
+    void overlappingChunksComesFromRegion() {
+        Claim claim = claim(region);
+        assertThat(claim.overlappingChunks()).isEqualTo(region.overlappingChunks());
+    }
+
+    @Test
+    void regionAccessorReturnsRegion() {
+        Claim claim = claim(region);
+        assertThat(claim.region()).isEqualTo(region);
+    }
+
     @Test
     void exposesClaimViewDataFromPluginDomainModel() {
         UUID claimId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
-        Claim claim = new Claim(
+        // chunk (4,-2) covers blocks [64,-32] to [79,-17]
+        ClaimRegion r = new ClaimRegion(worldId, 64, -32, 79, -17);
+        Claim c = new Claim(
                 claimId,
                 "Spawn",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 4, -2)),
+                r,
                 Map.of("build", FlagState.ALL),
                 Instant.parse("2026-06-07T00:00:00Z"),
                 Instant.parse("2026-06-07T00:05:00Z")
         );
 
-        ClaimView view = claim;
+        ClaimView view = c;
 
         assertThat(view.id()).isEqualTo(claimId);
         assertThat(view.name()).isEqualTo("Spawn");
@@ -41,74 +63,29 @@ class ClaimTest {
         assertThat(view.worldId()).isEqualTo(worldId);
         assertThat(view.chunks()).containsExactly(new ClaimChunkView(worldId, 4, -2));
         assertThat(view.flags()).containsEntry("build", FlagState.ALL);
-    }
-
-    @Test
-    void defensiveCopiesMutableConstructorInputs() {
-        UUID worldId = UUID.randomUUID();
-        ClaimChunk originalChunk = new ClaimChunk(worldId, 4, -2);
-        ClaimChunk addedChunk = new ClaimChunk(worldId, 5, -2);
-        Set<ClaimChunk> claimChunks = new HashSet<>();
-        claimChunks.add(originalChunk);
-        Map<String, FlagState> flags = new HashMap<>();
-        flags.put("build", FlagState.ALL);
-
-        Claim claim = new Claim(
-                UUID.randomUUID(),
-                "Spawn",
-                OwnerType.PLAYER,
-                UUID.randomUUID(),
-                worldId,
-                claimChunks,
-                flags,
-                Instant.parse("2026-06-07T00:00:00Z"),
-                Instant.parse("2026-06-07T00:05:00Z")
-        );
-
-        claimChunks.add(addedChunk);
-        flags.put("interact", FlagState.OFF);
-
-        assertThat(claim.claimChunks()).containsExactly(originalChunk);
-        assertThat(claim.chunks()).containsExactly(new ClaimChunkView(worldId, 4, -2));
-        assertThat(claim.flags()).containsExactly(Map.entry("build", FlagState.ALL));
+        assertThat(view.region()).isEqualTo(r);
     }
 
     @Test
     void flagsViewCannotBeModified() {
-        Claim claim = new Claim(
-                UUID.randomUUID(),
-                "Spawn",
-                OwnerType.PLAYER,
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                Set.of(),
-                Map.of("build", FlagState.ALL),
-                Instant.parse("2026-06-07T00:00:00Z"),
-                Instant.parse("2026-06-07T00:05:00Z")
-        );
+        Claim c = claim(region);
 
-        assertThatThrownBy(() -> claim.flags().put("interact", FlagState.OFF))
+        assertThatThrownBy(() -> c.flags().put("interact", FlagState.OFF))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
     void chunkViewsCannotBeModified() {
-        UUID worldId = UUID.randomUUID();
-        Claim claim = new Claim(
-                UUID.randomUUID(),
-                "Spawn",
-                OwnerType.PLAYER,
-                UUID.randomUUID(),
-                worldId,
-                Set.of(new ClaimChunk(worldId, 4, -2)),
-                Map.of(),
-                Instant.parse("2026-06-07T00:00:00Z"),
-                Instant.parse("2026-06-07T00:05:00Z")
-        );
+        Claim c = claim(region);
 
-        assertThatThrownBy(() -> claim.claimChunks().add(new ClaimChunk(worldId, 5, -2)))
+        assertThatThrownBy(() -> c.overlappingChunks().add(new ClaimChunk(world, 99, 99)))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> claim.chunks().add(new ClaimChunkView(worldId, 5, -2)))
+        assertThatThrownBy(() -> c.chunks().add(new ClaimChunkView(world, 99, 99)))
                 .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    private Claim claim(ClaimRegion r) {
+        return new Claim(UUID.randomUUID(), "Home", OwnerType.PLAYER, owner,
+                r, Map.of(), now, now);
     }
 }

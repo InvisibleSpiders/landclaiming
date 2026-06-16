@@ -4,10 +4,10 @@ import java.util.Objects;
 
 public record ClaimCreatePreview(
         String claimName,
-        int selectedChunks,
-        int proposedTotalChunks,
-        int allowedChunks,
-        int overageChunks,
+        int selectedBlocks,
+        int proposedTotalBlocks,
+        int allowedBlocks,
+        int overageBlocks,
         String cost,
         ClaimMenuAction confirmAction,
         ClaimMenuAction cancelAction

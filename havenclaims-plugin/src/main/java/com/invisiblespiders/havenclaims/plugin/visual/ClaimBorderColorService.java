@@ -4,6 +4,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimValidationResult;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostQuote;
@@ -51,10 +52,11 @@ public final class ClaimBorderColorService {
         Objects.requireNonNull(permissions, "permissions");
 
         String validationName = claimName.filter(name -> !name.isBlank()).orElse(PREVIEW_CLAIM_NAME);
+        ClaimRegion region = chunksAsRegion(chunks);
         ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(
                 ownerId,
                 validationName,
-                chunks,
+                region,
                 permissions.contains("havenclaims.bypass.claim-buffer")
         );
         if (!validationResult.isAllowed()) {
@@ -62,13 +64,13 @@ public final class ClaimBorderColorService {
         }
 
         if (claimName.filter(name -> !name.isBlank())
-                .map(name -> !claimCreationService.findMergeTargets(ownerId, name, chunks).isEmpty())
+                .map(name -> !claimCreationService.findMergeTargets(ownerId, name, region).isEmpty())
                 .orElseGet(() -> bordersOwnerClaim(ownerId, chunks))) {
             return BorderColor.YELLOW;
         }
 
         if (claimCostService != null && !permissions.contains("havenclaims.bypass.claim-limit")) {
-            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, chunks);
+            ClaimCostQuote quote = claimCostService.quotePlayerClaim(ownerId, region);
             if (quote.cost() > 0.0) {
                 return BorderColor.AQUA;
             }
@@ -84,8 +86,18 @@ public final class ClaimBorderColorService {
                 .anyMatch(claim -> chunks.stream().anyMatch(chunk -> bordersClaim(chunk, claim)));
     }
 
+    private static ClaimRegion chunksAsRegion(Set<ClaimChunk> chunks) {
+        if (chunks.isEmpty()) throw new IllegalArgumentException("chunks cannot be empty");
+        UUID worldId = chunks.iterator().next().worldId();
+        int minX = chunks.stream().mapToInt(c -> c.chunkX() * 16).min().getAsInt();
+        int minZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16).min().getAsInt();
+        int maxX = chunks.stream().mapToInt(c -> c.chunkX() * 16 + 15).max().getAsInt();
+        int maxZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16 + 15).max().getAsInt();
+        return new ClaimRegion(worldId, minX, minZ, maxX, maxZ);
+    }
+
     private boolean bordersClaim(ClaimChunk proposedChunk, Claim claim) {
-        return claim.claimChunks().stream().anyMatch(existingChunk ->
+        return claim.overlappingChunks().stream().anyMatch(existingChunk ->
                 proposedChunk.worldId().equals(existingChunk.worldId())
                         && Math.abs(proposedChunk.chunkX() - existingChunk.chunkX())
                         + Math.abs(proposedChunk.chunkZ() - existingChunk.chunkZ()) == 1

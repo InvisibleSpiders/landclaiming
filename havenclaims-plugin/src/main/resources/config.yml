@@ -3,26 +3,31 @@ claiming:
   # Maximum claim name length accepted by /claim create.
   max-name-length: 32
   # Minimum chunk gap between a player claim and another player's claim.
-  player-buffer-distance: 3
+  player-buffer-distance: 16
   # Minimum chunk gap between player claims and admin-owned claims.
-  admin-buffer-distance: 3
-  # Allows claim groups to become non-rectangular by adding or removing chunks.
-  allow-irregular-claims: true
+  admin-buffer-distance: 16
   # Offers merge/separate choices when new chunks touch one of the player's existing claims.
   allow-merge-with-own-claims: true
 
 limits:
   # Used when a player has no database-backed claim limit override.
-  default-claim-limit: 10
+  starting-claim-blocks: 500
+  accrual:
+    enabled: true
+    blocks-per-interval: 10
+    interval-seconds: 60
+    max-blocks: 50000
+    afk:
+      mode: reduced
+      rate-multiplier: 0.5
   over-limit:
-    # Allows economy payments for chunks above the player's claim limit.
+    # Allows economy payments for blocks above the player's claim limit.
     # When disabled, over-limit claims are denied unless the player has havenclaims.bypass.claim-limit.
     enabled: true
-    # Options: flat, exponential.
-    pricing-mode: exponential
-    flat-cost-per-chunk: 250.0
-    exponential-base-cost: 250.0
-    exponential-multiplier: 1.25
+    # Cost per block beyond the player's limit.
+    flat-cost-per-block: 0.10
+    # Seconds before a pending over-limit purchase confirmation expires.
+    confirm-timeout-seconds: 60
 
 ui:
   # Prefer Paper Dialog API menus where the current server supports them.

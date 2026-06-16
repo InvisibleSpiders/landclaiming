@@ -16,6 +16,8 @@ public interface ClaimView {
 
     UUID worldId();
 
+    ClaimRegionView region();
+
     Set<ClaimChunkView> chunks();
 
     Map<String, FlagState> flags();

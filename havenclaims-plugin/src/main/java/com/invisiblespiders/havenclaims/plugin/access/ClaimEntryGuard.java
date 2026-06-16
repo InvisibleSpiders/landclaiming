@@ -43,10 +43,10 @@ public final class ClaimEntryGuard {
         Objects.requireNonNull(currentChunk, "currentChunk");
         Objects.requireNonNull(claim, "claim");
 
-        int minX = claim.claimChunks().stream().mapToInt(ClaimChunk::chunkX).min().orElse(currentChunk.chunkX());
-        int maxX = claim.claimChunks().stream().mapToInt(ClaimChunk::chunkX).max().orElse(currentChunk.chunkX());
-        int minZ = claim.claimChunks().stream().mapToInt(ClaimChunk::chunkZ).min().orElse(currentChunk.chunkZ());
-        int maxZ = claim.claimChunks().stream().mapToInt(ClaimChunk::chunkZ).max().orElse(currentChunk.chunkZ());
+        int minX = claim.overlappingChunks().stream().mapToInt(ClaimChunk::chunkX).min().orElse(currentChunk.chunkX());
+        int maxX = claim.overlappingChunks().stream().mapToInt(ClaimChunk::chunkX).max().orElse(currentChunk.chunkX());
+        int minZ = claim.overlappingChunks().stream().mapToInt(ClaimChunk::chunkZ).min().orElse(currentChunk.chunkZ());
+        int maxZ = claim.overlappingChunks().stream().mapToInt(ClaimChunk::chunkZ).max().orElse(currentChunk.chunkZ());
 
         for (int radius = 1; radius <= 64; radius++) {
             ClaimChunk fallback = nearestUnclaimedInRing(currentChunk, claim, minX, maxX, minZ, maxZ, radius);
@@ -74,7 +74,7 @@ public final class ClaimEntryGuard {
                     continue;
                 }
                 ClaimChunk candidate = new ClaimChunk(claim.worldId(), x, z);
-                if (claim.claimChunks().contains(candidate) || claimIndex.findAt(candidate).isPresent()) {
+                if (claim.overlappingChunks().contains(candidate) || claimIndex.findAt(candidate).isPresent()) {
                     continue;
                 }
                 int distance = Math.abs(candidate.chunkX() - currentChunk.chunkX())

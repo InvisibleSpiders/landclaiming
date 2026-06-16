@@ -6,6 +6,7 @@ import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimRole;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
@@ -23,16 +24,13 @@ class ClaimMenuServiceTest {
         ClaimMenuService service = new ClaimMenuService(messages());
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
+        // Region covering chunks (0,0) and (1,0): blocks [0,0] to [31,15]
         Claim claim = new Claim(
                 UUID.randomUUID(),
                 "Haven Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(
-                        new ClaimChunk(worldId, 0, 0),
-                        new ClaimChunk(worldId, 1, 0)
-                ),
+                new ClaimRegion(worldId, 0, 0, 31, 15),
                 Map.of("build", FlagState.ALL, "container_access", FlagState.OFF),
                 Set.of(new ClaimMember(UUID.randomUUID(), ClaimRole.MANAGER)),
                 Instant.parse("2026-06-08T00:00:00Z"),
@@ -67,8 +65,7 @@ class ClaimMenuServiceTest {
                 "Spawn",
                 OwnerType.ADMIN,
                 UUID.randomUUID(),
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(),
                 Instant.parse("2026-06-08T00:00:00Z"),
@@ -99,8 +96,7 @@ class ClaimMenuServiceTest {
                 "Spawn",
                 OwnerType.PLAYER,
                 UUID.randomUUID(),
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(),
                 Instant.parse("2026-06-08T00:00:00Z"),
@@ -128,8 +124,7 @@ class ClaimMenuServiceTest {
                 "Spawn",
                 OwnerType.PLAYER,
                 UUID.randomUUID(),
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(),
                 Instant.parse("2026-06-08T00:00:00Z"),
@@ -163,13 +158,13 @@ class ClaimMenuServiceTest {
     }
 
     private static Claim playerClaim(String name, UUID ownerId, UUID worldId, int chunkX) {
+        // chunk (chunkX, 0): blocks [chunkX*16, 0] to [chunkX*16+15, 15]
         return new Claim(
                 UUID.randomUUID(),
                 name,
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                new ClaimRegion(worldId, chunkX * 16, 0, chunkX * 16 + 15, 15),
                 Map.of(),
                 Set.of(),
                 Instant.parse("2026-06-08T00:00:00Z"),

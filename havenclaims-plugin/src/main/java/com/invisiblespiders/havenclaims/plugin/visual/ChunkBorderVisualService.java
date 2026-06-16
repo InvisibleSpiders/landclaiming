@@ -1,6 +1,7 @@
 package com.invisiblespiders.havenclaims.plugin.visual;
 
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -45,6 +46,19 @@ public final class ChunkBorderVisualService {
         }
         activePlayers.add(playerId);
         renderer.show(player, ChunkBorderPlanner.plan(chunks, heightProvider, color, durationTicks));
+    }
+
+    public void showSelection(Player player, ClaimRegion region, BorderColor color) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(region, "region");
+        Objects.requireNonNull(color, "color");
+
+        UUID playerId = player.getUniqueId();
+        if (activePlayers.contains(playerId)) {
+            renderer.clear(playerId);
+        }
+        activePlayers.add(playerId);
+        renderer.show(player, ChunkBorderPlanner.planRectangle(region, heightProvider, color, durationTicks));
     }
 
     public boolean clear(UUID playerId) {

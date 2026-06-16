@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.invisiblespiders.havenclaims.api.flag.FlagState;
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import java.time.Instant;
@@ -23,8 +23,9 @@ class ClaimFlagServiceTest {
     private final UUID owner = UUID.randomUUID();
 
     private Claim claim(Map<String, FlagState> flags) {
-        return new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, owner, UUID.randomUUID(),
-                Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0)), flags, Set.of(), Set.of(),
+        UUID worldId = UUID.randomUUID();
+        return new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, owner,
+                new ClaimRegion(worldId, 0, 0, 15, 15), flags, Set.of(), Set.of(),
                 Instant.now(), Instant.now());
     }
 
@@ -94,8 +95,9 @@ class ClaimFlagServiceTest {
     void setFlagPreservesDeniedPlayers() {
         List<Claim> saved = new ArrayList<>();
         UUID denied = UUID.randomUUID();
-        Claim c = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, owner, UUID.randomUUID(),
-                Set.of(new ClaimChunk(UUID.randomUUID(), 0, 0)),
+        UUID worldId = UUID.randomUUID();
+        Claim c = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, owner,
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of("build", FlagState.VISITORS), Set.of(), Set.of(denied),
                 Instant.now(), Instant.now());
         service(saved).setFlagState(owner, c, "build", FlagState.OFF, perm -> true);

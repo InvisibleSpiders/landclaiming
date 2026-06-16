@@ -1,6 +1,7 @@
 package com.invisiblespiders.havenclaims.plugin.visual;
 
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -130,5 +131,36 @@ public final class ChunkBorderPlanner {
                     heightProvider.borderY(worldId, sampleX, z),
                     color));
         }
+    }
+
+    public static ChunkBorderPlan planRectangle(
+            ClaimRegion region,
+            ChunkGroundHeightProvider heightProvider,
+            BorderColor color,
+            int durationTicks
+    ) {
+        Objects.requireNonNull(region, "region");
+        Objects.requireNonNull(heightProvider, "heightProvider");
+        Objects.requireNonNull(color, "color");
+
+        UUID worldId = region.worldId();
+        int edgeMinX = region.minX();
+        int edgeMaxX = region.maxX() + 1;
+        int edgeMinZ = region.minZ();
+        int edgeMaxZ = region.maxZ() + 1;
+
+        List<BorderEdge> edges = new ArrayList<>();
+        addHorizontalSegments(edges, worldId, edgeMinX, edgeMaxX, edgeMinZ, edgeMinZ, heightProvider, color);
+        addHorizontalSegments(edges, worldId, edgeMinX, edgeMaxX, edgeMaxZ, edgeMaxZ - 1, heightProvider, color);
+        addVerticalSegments(edges, worldId, edgeMinX, edgeMinZ, edgeMaxZ, edgeMinX, heightProvider, color);
+        addVerticalSegments(edges, worldId, edgeMaxX, edgeMinZ, edgeMaxZ, edgeMaxX - 1, heightProvider, color);
+
+        edges.sort(Comparator
+                .comparing(BorderEdge::worldId)
+                .thenComparingInt(BorderEdge::x1)
+                .thenComparingInt(BorderEdge::z1)
+                .thenComparingInt(BorderEdge::x2)
+                .thenComparingInt(BorderEdge::z2));
+        return new ChunkBorderPlan(edges, durationTicks);
     }
 }

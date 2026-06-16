@@ -10,7 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.listener.ClaimToolListener;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
@@ -375,7 +375,7 @@ class ClaimModeListenerTest {
         claimModeListener.onInteract(second);
 
         assertThat(selectionService.pendingSelection(fixture.playerId()))
-                .contains(Set.of(new ClaimChunk(worldId, 0, 0), new ClaimChunk(worldId, 1, 0)));
+                .contains(new ClaimRegion(worldId, 0, 0, 16, 0));
     }
 
     @Test
@@ -516,7 +516,13 @@ class ClaimModeListenerTest {
 
     private static Block block(Chunk chunk) {
         Block block = mock(Block.class);
+        World world = chunk.getWorld();
+        int blockX = chunk.getX() * 16;
+        int blockZ = chunk.getZ() * 16;
         when(block.getChunk()).thenReturn(chunk);
+        when(block.getWorld()).thenReturn(world);
+        when(block.getX()).thenReturn(blockX);
+        when(block.getZ()).thenReturn(blockZ);
         return block;
     }
 

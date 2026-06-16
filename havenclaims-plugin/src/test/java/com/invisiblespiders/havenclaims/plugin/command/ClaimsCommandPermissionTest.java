@@ -18,6 +18,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.ClaimDenyService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMemberService;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimRole;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
@@ -29,6 +30,7 @@ import com.invisiblespiders.havenclaims.plugin.limit.ClaimCostService;
 import com.invisiblespiders.havenclaims.plugin.limit.ClaimLimitRepository;
 import com.invisiblespiders.havenclaims.plugin.limit.LimitService;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
+import com.invisiblespiders.havenclaims.plugin.selection.BlockPos;
 import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
 import com.invisiblespiders.havenclaims.plugin.storage.ClaimRepository;
 import com.invisiblespiders.havenclaims.plugin.tool.ClaimToolService;
@@ -102,6 +104,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
         Player player = mock(Player.class);
@@ -128,15 +131,13 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(
-                new ClaimChunk(worldId, 0, 0),
-                new ClaimChunk(worldId, 1, 0)
-        ));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 31, 15));
         LimitService limitService = new LimitService(1, emptyLimitRepository());
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
                 limitService,
-                new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                new ClaimCostConfig(false, 100.0, 60)
         );
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
@@ -169,6 +170,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 limitService,
                 null,
+                null,
                 null
         );
 
@@ -184,15 +186,13 @@ class ClaimsCommandPermissionTest {
         UUID worldId = UUID.randomUUID();
         ClaimIndex claimIndex = new ClaimIndex();
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(
-                new ClaimChunk(worldId, 0, 0),
-                new ClaimChunk(worldId, 1, 0)
-        ));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 31, 15));
         LimitService limitService = new LimitService(1, emptyLimitRepository());
         ClaimCostService costService = new ClaimCostService(
                 claimIndex,
                 limitService,
-                new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                new ClaimCostConfig(false, 100.0, 60)
         );
         Player player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(ownerId);
@@ -219,15 +219,16 @@ class ClaimsCommandPermissionTest {
                 null,
                 limitService,
                 null,
+                null,
                 null
         );
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{"cost"});
 
         assertThat(plain(messages)).containsExactly(
-                "Selection: 2 chunks",
-                "Current total after claim: 2 / 1 chunks",
-                "Over limit: 1 chunks",
+                "Selection: 512 blocks",
+                "Current total after claim: 512 / 1 blocks",
+                "Over limit: 511 blocks",
                 "Cost: not available"
         );
     }
@@ -251,7 +252,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -282,6 +284,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -309,7 +312,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack normalItem = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -339,6 +343,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -366,7 +371,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -384,8 +390,8 @@ class ClaimsCommandPermissionTest {
                 claimIndex,
                 new ClaimCostService(
                         claimIndex,
-                        new LimitService(5, emptyLimitRepository()),
-                        new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                        new LimitService(1000, emptyLimitRepository()),
+                        new ClaimCostConfig(false, 100.0, 60)
                 ),
                 new ClaimPaymentService(new NoopEconomyService()),
                 null,
@@ -402,6 +408,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -410,9 +417,9 @@ class ClaimsCommandPermissionTest {
         assertThat(repository.savedClaims).isEmpty();
         assertThat(plain(messages)).containsExactly(
                 "Create claim Claim 1?",
-                "Selection: 1 chunks",
-                "Total after claim: 1 / 5 chunks",
-                "Over limit: 0 chunks",
+                "Selection: 256 blocks",
+                "Total after claim: 256 / 1000 blocks",
+                "Over limit: 0 blocks",
                 "Cost: free",
                 "Actions:",
                 "- Create Claim (/claim createconfirm Claim 1)",
@@ -436,7 +443,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack normalItem = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -453,8 +461,8 @@ class ClaimsCommandPermissionTest {
                 claimIndex,
                 new ClaimCostService(
                         claimIndex,
-                        new LimitService(5, emptyLimitRepository()),
-                        new ClaimCostConfig(false, ClaimCostConfig.PricingMode.FLAT, 100.0, 100.0, 2.0)
+                        new LimitService(1000, emptyLimitRepository()),
+                        new ClaimCostConfig(false, 100.0, 60)
                 ),
                 new ClaimPaymentService(new NoopEconomyService()),
                 null,
@@ -471,6 +479,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -479,9 +488,9 @@ class ClaimsCommandPermissionTest {
         assertThat(repository.savedClaims).isEmpty();
         assertThat(plain(messages)).containsExactly(
                 "Create claim Home?",
-                "Selection: 1 chunks",
-                "Total after claim: 1 / 5 chunks",
-                "Over limit: 0 chunks",
+                "Selection: 256 blocks",
+                "Total after claim: 256 / 1000 blocks",
+                "Over limit: 0 blocks",
                 "Cost: free",
                 "Actions:",
                 "- Create Claim (/claim createconfirm Home)",
@@ -506,7 +515,8 @@ class ClaimsCommandPermissionTest {
                 32
         );
         SelectionService selectionService = new SelectionService(new ClaimService());
-        selectionService.replacePendingSelection(ownerId, Set.of(new ClaimChunk(worldId, 0, 0)));
+        selectionService.select(ownerId, new BlockPos(worldId, 0, 0));
+        selectionService.select(ownerId, new BlockPos(worldId, 15, 15));
         ClaimToolService toolService = mock(ClaimToolService.class);
         ItemStack tool = mock(ItemStack.class);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -537,6 +547,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -580,6 +591,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -606,8 +618,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(new ClaimMember(memberId, ClaimRole.MANAGER)),
                 java.time.Instant.now(),
@@ -645,6 +656,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -672,8 +684,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(new ClaimMember(memberId, ClaimRole.MEMBER)),
                 java.time.Instant.now(),
@@ -710,6 +721,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -733,8 +745,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0), new ClaimChunk(worldId, 1, 0)),
+                new ClaimRegion(worldId, 0, 0, 31, 15),
                 Map.of("build", com.invisiblespiders.havenclaims.api.flag.FlagState.ALL),
                 Set.of(new ClaimMember(memberId, ClaimRole.MEMBER)),
                 Set.of(deniedId),
@@ -765,6 +776,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -799,8 +811,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(),
                 Set.of(deniedId),
@@ -840,6 +851,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
@@ -867,8 +879,7 @@ class ClaimsCommandPermissionTest {
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                new ClaimRegion(worldId, 0, 0, 15, 15),
                 Map.of(),
                 Set.of(),
                 Set.of(deniedId),
@@ -906,6 +917,7 @@ class ClaimsCommandPermissionTest {
                 null,
                 null,
                 mock(HavenClaimsLimitService.class),
+                null,
                 null,
                 null
         );
@@ -1038,12 +1050,13 @@ class ClaimsCommandPermissionTest {
                 null,
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{"viewborder", claim.id().toString()});
 
-        verify(visualService).showSelection(player, claim.claimChunks(), BorderColor.GOLD);
+        verify(visualService).showSelection(player, claim.overlappingChunks(), BorderColor.GOLD);
         assertThat(plain(messages)).containsExactly("Showing this claim border.");
     }
 
@@ -1051,9 +1064,9 @@ class ClaimsCommandPermissionTest {
         return new MessageService(Map.ofEntries(
                 Map.entry("command.claim.no-permission", "<red>You do not have permission to create claims."),
                 Map.entry("claim.over-limit-disabled", "<red>This claim exceeds your claim limit."),
-                Map.entry("claim.cost-preview.selection", "<gray>Selection: <yellow><selected_chunks></yellow> chunks"),
-                Map.entry("claim.cost-preview.current-total", "<gray>Current total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"),
-                Map.entry("claim.cost-preview.over-limit", "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"),
+                Map.entry("claim.cost-preview.selection", "<gray>Selection: <yellow><selected_blocks></yellow> blocks"),
+                Map.entry("claim.cost-preview.current-total", "<gray>Current total after claim: <yellow><proposed_total_blocks></yellow> / <yellow><allowed_blocks></yellow> blocks"),
+                Map.entry("claim.cost-preview.over-limit", "<gray>Over limit: <yellow><overage_blocks></yellow> blocks"),
                 Map.entry("claim.cost-preview.cost", "<gray>Cost: <green><cost></green>"),
                 Map.entry("claim.cost-preview.free", "free"),
                 Map.entry("claim.cost-preview.unavailable", "not available"),
@@ -1067,9 +1080,9 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.selection-required", "<red>Select chunks first."),
                 Map.entry("claim.created", "<green>Claim <claim_name> created."),
                 Map.entry("claim.create-preview.title", "<gold>Create claim <yellow><claim_name></yellow>?"),
-                Map.entry("claim.create-preview.selection", "<gray>Selection: <yellow><selected_chunks></yellow> chunks"),
-                Map.entry("claim.create-preview.current-total", "<gray>Total after claim: <yellow><proposed_total_chunks></yellow> / <yellow><allowed_chunks></yellow> chunks"),
-                Map.entry("claim.create-preview.over-limit", "<gray>Over limit: <yellow><overage_chunks></yellow> chunks"),
+                Map.entry("claim.create-preview.selection", "<gray>Selection: <yellow><selected_blocks></yellow> blocks"),
+                Map.entry("claim.create-preview.current-total", "<gray>Total after claim: <yellow><proposed_total_blocks></yellow> / <yellow><allowed_blocks></yellow> blocks"),
+                Map.entry("claim.create-preview.over-limit", "<gray>Over limit: <yellow><overage_blocks></yellow> blocks"),
                 Map.entry("claim.create-preview.cost", "<gray>Cost: <green><cost></green>"),
                 Map.entry("claim.create-preview.actions-header", "<gold>Actions:"),
                 Map.entry("claim.create-preview.action", "<gray>- <yellow><label></yellow> (<command>)"),
@@ -1175,6 +1188,7 @@ class ClaimsCommandPermissionTest {
                         repository, claimIndex, FlagRegistry.createDefault(), 32),
                 mock(HavenClaimsLimitService.class),
                 null,
+                null,
                 null
         );
     }
@@ -1200,8 +1214,7 @@ class ClaimsCommandPermissionTest {
                 name,
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, chunkX, 0)),
+                new ClaimRegion(worldId, chunkX * 16, 0, chunkX * 16 + 15, 15),
                 Map.of(),
                 java.time.Instant.now(),
                 java.time.Instant.now()

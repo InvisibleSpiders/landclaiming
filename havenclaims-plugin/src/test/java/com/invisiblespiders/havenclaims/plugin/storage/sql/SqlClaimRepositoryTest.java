@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.invisiblespiders.havenclaims.plugin.claim.Claim;
-import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimCreationService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimMember;
+import com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimRole;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimService;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimValidationResult;
@@ -30,7 +30,7 @@ import org.sqlite.SQLiteDataSource;
 
 class SqlClaimRepositoryTest {
     @Test
-    void savesAndLoadsClaimWithChunksFlagsAndMembers(@TempDir Path tempDirectory) throws Exception {
+    void savesAndLoadsClaimWithRegionFlagsAndMembers(@TempDir Path tempDirectory) throws Exception {
         SQLiteDataSource dataSource = new SQLiteDataSource();
         dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("havenclaims.db"));
         applyMigrations(dataSource);
@@ -42,13 +42,14 @@ class SqlClaimRepositoryTest {
         UUID deniedId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
         Instant createdAt = Instant.parse("2026-06-07T00:00:00Z");
+        // Region covering chunks (1,2) and (1,3): blocks [16,32] to [47,63]
+        ClaimRegion region = new ClaimRegion(worldId, 16, 32, 47, 63);
         Claim claim = new Claim(
                 claimId,
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 1, 2), new ClaimChunk(worldId, 1, 3)),
+                region,
                 Map.of("build", FlagState.OFF, "interact", FlagState.OFF),
                 Set.of(
                         new ClaimMember(memberId, ClaimRole.MEMBER),
@@ -61,10 +62,25 @@ class SqlClaimRepositoryTest {
 
         repository.saveClaim(claim);
 
-        assertThat(repository.findClaimAt(worldId, 1, 2)).contains(claim);
-        assertThat(repository.findClaimById(claimId)).contains(claim);
-        assertThat(repository.findClaimsByOwner(OwnerType.PLAYER, ownerId)).containsExactly(claim);
-        assertThat(repository.findAllClaims()).containsExactly(claim);
+        // findClaimAt uses chunk (1,2) which maps to block range overlapping the region
+        assertThat(repository.findClaimAt(worldId, 1, 2)).isPresent().satisfies(loaded -> {
+            assertThat(loaded.get().id()).isEqualTo(claimId);
+            assertThat(loaded.get().region()).isEqualTo(region);
+            assertThat(loaded.get().members()).containsExactlyInAnyOrder(
+                    new ClaimMember(memberId, ClaimRole.MEMBER),
+                    new ClaimMember(managerId, ClaimRole.MANAGER)
+            );
+            assertThat(loaded.get().deniedPlayers()).containsExactly(deniedId);
+        });
+        assertThat(repository.findClaimById(claimId)).isPresent().satisfies(loaded -> {
+            assertThat(loaded.get().region()).isEqualTo(region);
+        });
+        assertThat(repository.findClaimsByOwner(OwnerType.PLAYER, ownerId)).hasSize(1).satisfies(list -> {
+            assertThat(list.get(0).region()).isEqualTo(region);
+        });
+        assertThat(repository.findAllClaims()).hasSize(1).satisfies(list -> {
+            assertThat(list.get(0).region()).isEqualTo(region);
+        });
     }
 
     @Test
@@ -77,13 +93,14 @@ class SqlClaimRepositoryTest {
         UUID ownerId = UUID.randomUUID();
         UUID worldId = UUID.randomUUID();
         Instant createdAt = Instant.parse("2026-06-07T00:00:00Z");
+        // chunk (1,2): blocks [16,32] to [31,47]
+        ClaimRegion region = new ClaimRegion(worldId, 16, 32, 31, 47);
         Claim claim = new Claim(
                 claimId,
                 "Home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 1, 2)),
+                region,
                 Map.of("build", FlagState.OFF),
                 createdAt,
                 createdAt
@@ -104,8 +121,9 @@ class SqlClaimRepositoryTest {
         applyMigrations(dataSource);
         SqlClaimRepository repository = new SqlClaimRepository(dataSource);
         UUID world = UUID.randomUUID();
-        Claim claim = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, UUID.randomUUID(), world,
-                Set.of(new ClaimChunk(world, 1, 2)),
+        // chunk (1,2): blocks [16,32] to [31,47]
+        ClaimRegion region = new ClaimRegion(world, 16, 32, 31, 47);
+        Claim claim = new Claim(UUID.randomUUID(), "C", OwnerType.PLAYER, UUID.randomUUID(), region,
                 Map.of("container_access", FlagState.ALL, "explosion_damage", FlagState.OFF),
                 Set.of(), Set.of(), Instant.now(), Instant.now());
         repository.saveClaim(claim);
@@ -116,7 +134,8 @@ class SqlClaimRepositoryTest {
     }
 
     @Test
-    void mergesClaimsWithoutConflictingWithRedundantClaimChunks(@TempDir Path tempDirectory) throws Exception {
+    void savesTwoSeparateClaimsInPhase1(@TempDir Path tempDirectory) throws Exception {
+        // Phase 1: merge is disabled. Creating two claims with ClaimRegion results in two rows.
         SQLiteDataSource dataSource = new SQLiteDataSource();
         dataSource.setUrl("jdbc:sqlite:" + tempDirectory.resolve("havenclaims.db"));
         applyMigrations(dataSource);
@@ -135,26 +154,28 @@ class SqlClaimRepositoryTest {
         UUID worldId = UUID.randomUUID();
         UUID deniedId = UUID.randomUUID();
         Instant createdAt = Instant.parse("2026-06-07T00:00:00Z");
+        // First claim: chunk (0,0) — blocks [0,0] to [15,15]
+        ClaimRegion firstRegion = new ClaimRegion(worldId, 0, 0, 15, 15);
         Claim first = new Claim(
                 UUID.randomUUID(),
                 "home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 0, 0)),
+                firstRegion,
                 Map.of("build", FlagState.OFF),
                 Set.of(),
                 Set.of(deniedId),
                 createdAt,
                 createdAt
         );
+        // Second claim: chunk (2,0) — blocks [32,0] to [47,15]
+        ClaimRegion secondRegion = new ClaimRegion(worldId, 32, 0, 47, 15);
         Claim second = new Claim(
                 UUID.randomUUID(),
                 "home",
                 OwnerType.PLAYER,
                 ownerId,
-                worldId,
-                Set.of(new ClaimChunk(worldId, 2, 0)),
+                secondRegion,
                 Map.of("container_access", FlagState.OFF),
                 Set.of(),
                 Set.of(),
@@ -166,19 +187,18 @@ class SqlClaimRepositoryTest {
         claimIndex.add(first);
         claimIndex.add(second);
 
-        ClaimValidationResult result = service.createPlayerClaim(ownerId, "Home", Set.of(new ClaimChunk(worldId, 1, 0)));
+        // Chunk (1,0) is between the two — blocks [16,0] to [31,15]
+        // Same owner, so buffer check is skipped — should be allowed
+        ClaimValidationResult result = service.createPlayerClaim(
+                ownerId, "Home", new ClaimRegion(worldId, 16, 0, 31, 15));
 
         assertThat(result.isAllowed()).isTrue();
-        assertThat(repository.findAllClaims()).hasSize(1);
-        Claim merged = repository.findAllClaims().get(0);
-        assertThat(merged.id()).isEqualTo(first.id());
-        assertThat(merged.name()).isEqualTo("Home");
-        assertThat(merged.deniedPlayers()).containsExactly(deniedId);
-        assertThat(merged.claimChunks()).containsExactlyInAnyOrder(
-                new ClaimChunk(worldId, 0, 0),
-                new ClaimChunk(worldId, 1, 0),
-                new ClaimChunk(worldId, 2, 0)
-        );
+        // No merge in Phase 1: 3 separate claims
+        assertThat(repository.findAllClaims()).hasSize(3);
+        // Original first claim still has its denied players
+        Claim loadedFirst = repository.findClaimById(first.id()).orElseThrow();
+        assertThat(loadedFirst.deniedPlayers()).containsExactly(deniedId);
+        assertThat(loadedFirst.region()).isEqualTo(firstRegion);
     }
 
     private static void applyMigrations(DataSource dataSource) throws Exception {
