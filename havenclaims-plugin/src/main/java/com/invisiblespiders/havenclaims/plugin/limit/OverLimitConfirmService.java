@@ -17,6 +17,9 @@ public final class OverLimitConfirmService {
     }
 
     public void store(UUID playerId, ClaimRegion region, String claimName, double cost) {
+        Objects.requireNonNull(playerId, "playerId");
+        Objects.requireNonNull(region, "region");
+        Objects.requireNonNull(claimName, "claimName");
         store(playerId, region, claimName, cost, Instant.now().plusSeconds(timeoutSeconds));
     }
 
