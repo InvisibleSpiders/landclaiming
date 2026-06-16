@@ -1,4 +1,5 @@
--- V5__block_regions.sql
+DROP TABLE IF EXISTS claim_chunks;
+
 CREATE TABLE IF NOT EXISTS claim_block_regions (
     claim_id VARCHAR(36) NOT NULL,
     world_id VARCHAR(36) NOT NULL,
@@ -9,3 +10,6 @@ CREATE TABLE IF NOT EXISTS claim_block_regions (
     PRIMARY KEY (claim_id),
     FOREIGN KEY (claim_id) REFERENCES claims(id) ON DELETE CASCADE
 );
+
+ALTER TABLE claim_player_limits RENAME COLUMN chunk_limit TO block_limit;
+UPDATE claim_player_limits SET block_limit = block_limit * 256;

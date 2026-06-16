@@ -97,17 +97,25 @@ public class SqlClaimRepository implements ClaimRepository {
     @Override
     public Optional<Claim> findClaimAt(UUID worldId, int chunkX, int chunkZ) {
         Objects.requireNonNull(worldId, "worldId");
+        // Convert chunk coordinates to block coordinates
+        int blockMinX = chunkX * 16;
+        int blockMinZ = chunkZ * 16;
+        int blockMaxX = blockMinX + 15;
+        int blockMaxZ = blockMinZ + 15;
+
         String sql = """
                 SELECT c.*
                 FROM claims c
-                INNER JOIN claim_chunks cc ON c.id = cc.claim_id
-                WHERE cc.world_id = ? AND cc.chunk_x = ? AND cc.chunk_z = ?
+                INNER JOIN claim_block_regions cbr ON c.id = cbr.claim_id
+                WHERE cbr.world_id = ? AND cbr.min_x <= ? AND cbr.max_x >= ? AND cbr.min_z <= ? AND cbr.max_z >= ?
                 """;
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, worldId.toString());
-            statement.setInt(2, chunkX);
-            statement.setInt(3, chunkZ);
+            statement.setInt(2, blockMaxX);
+            statement.setInt(3, blockMinX);
+            statement.setInt(4, blockMaxZ);
+            statement.setInt(5, blockMinZ);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next()) {
                     return Optional.empty();
@@ -166,14 +174,14 @@ public class SqlClaimRepository implements ClaimRepository {
         executeDelete(connection, "DELETE FROM claim_members WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claim_denied_players WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claim_flags WHERE claim_id = ?", claimId);
-        executeDelete(connection, "DELETE FROM claim_chunks WHERE claim_id = ?", claimId);
+        executeDelete(connection, "DELETE FROM claim_block_regions WHERE claim_id = ?", claimId);
         executeDelete(connection, "DELETE FROM claims WHERE id = ?", claimId);
     }
 
     private void replaceClaim(Connection connection, Claim claim) throws SQLException {
         deleteClaim(connection, claim.id());
         insertClaim(connection, claim);
-        insertChunks(connection, claim);
+        insertBlockRegion(connection, claim);
         insertFlags(connection, claim);
         insertMembers(connection, claim);
         insertDeniedPlayers(connection, claim);
@@ -203,17 +211,40 @@ public class SqlClaimRepository implements ClaimRepository {
         }
     }
 
-    private void insertChunks(Connection connection, Claim claim) throws SQLException {
-        String sql = "INSERT INTO claim_chunks (claim_id, world_id, chunk_x, chunk_z) VALUES (?, ?, ?, ?)";
+    private void insertBlockRegion(Connection connection, Claim claim) throws SQLException {
+        // Calculate bounding box from chunks
+        // Each chunk is 16x16 blocks, so chunk coordinates need to be converted to block coordinates
+        // Chunk X/Z coords map to: minBlock = chunkCoord * 16, maxBlock = chunkCoord * 16 + 15
+        if (claim.claimChunks().isEmpty()) {
+            return;
+        }
+
+        int minBlockX = Integer.MAX_VALUE;
+        int minBlockZ = Integer.MAX_VALUE;
+        int maxBlockX = Integer.MIN_VALUE;
+        int maxBlockZ = Integer.MIN_VALUE;
+
+        for (ClaimChunk chunk : claim.claimChunks()) {
+            int chunkMinX = chunk.chunkX() * 16;
+            int chunkMinZ = chunk.chunkZ() * 16;
+            int chunkMaxX = chunkMinX + 15;
+            int chunkMaxZ = chunkMinZ + 15;
+
+            minBlockX = Math.min(minBlockX, chunkMinX);
+            minBlockZ = Math.min(minBlockZ, chunkMinZ);
+            maxBlockX = Math.max(maxBlockX, chunkMaxX);
+            maxBlockZ = Math.max(maxBlockZ, chunkMaxZ);
+        }
+
+        String sql = "INSERT INTO claim_block_regions (claim_id, world_id, min_x, min_z, max_x, max_z) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            for (ClaimChunk chunk : claim.claimChunks()) {
-                statement.setString(1, claim.id().toString());
-                statement.setString(2, chunk.worldId().toString());
-                statement.setInt(3, chunk.chunkX());
-                statement.setInt(4, chunk.chunkZ());
-                statement.addBatch();
-            }
-            statement.executeBatch();
+            statement.setString(1, claim.id().toString());
+            statement.setString(2, claim.worldId().toString());
+            statement.setInt(3, minBlockX);
+            statement.setInt(4, minBlockZ);
+            statement.setInt(5, maxBlockX);
+            statement.setInt(6, maxBlockZ);
+            statement.executeUpdate();
         }
     }
 
@@ -324,18 +355,33 @@ public class SqlClaimRepository implements ClaimRepository {
 
     private Map<UUID, Set<ClaimChunk>> bulkLoadChunks(Connection connection, List<UUID> claimIds) throws SQLException {
         Map<UUID, Set<ClaimChunk>> result = new HashMap<>();
-        String sql = "SELECT claim_id, world_id, chunk_x, chunk_z FROM claim_chunks WHERE claim_id IN ("
+        String sql = "SELECT claim_id, world_id, min_x, min_z, max_x, max_z FROM claim_block_regions WHERE claim_id IN ("
                 + inClausePlaceholders(claimIds.size()) + ")";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             bindClaimIds(statement, claimIds);
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     UUID claimId = UUID.fromString(resultSet.getString("claim_id"));
-                    result.computeIfAbsent(claimId, key -> new HashSet<>()).add(new ClaimChunk(
-                            UUID.fromString(resultSet.getString("world_id")),
-                            resultSet.getInt("chunk_x"),
-                            resultSet.getInt("chunk_z")
-                    ));
+                    UUID worldId = UUID.fromString(resultSet.getString("world_id"));
+                    int minX = resultSet.getInt("min_x");
+                    int minZ = resultSet.getInt("min_z");
+                    int maxX = resultSet.getInt("max_x");
+                    int maxZ = resultSet.getInt("max_z");
+
+                    Set<ClaimChunk> chunks = new HashSet<>();
+                    // Convert block coordinates back to chunk coordinates
+                    int minChunkX = minX >> 4;  // Divide by 16
+                    int minChunkZ = minZ >> 4;
+                    int maxChunkX = maxX >> 4;
+                    int maxChunkZ = maxZ >> 4;
+
+                    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+                        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+                            chunks.add(new ClaimChunk(worldId, cx, cz));
+                        }
+                    }
+
+                    result.put(claimId, chunks);
                 }
             }
         }
@@ -416,16 +462,28 @@ public class SqlClaimRepository implements ClaimRepository {
     private Set<ClaimChunk> loadChunks(Connection connection, UUID claimId) throws SQLException {
         Set<ClaimChunk> chunks = new HashSet<>();
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT world_id, chunk_x, chunk_z FROM claim_chunks WHERE claim_id = ?"
+                "SELECT world_id, min_x, min_z, max_x, max_z FROM claim_block_regions WHERE claim_id = ?"
         )) {
             statement.setString(1, claimId.toString());
             try (ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    chunks.add(new ClaimChunk(
-                            UUID.fromString(resultSet.getString("world_id")),
-                            resultSet.getInt("chunk_x"),
-                            resultSet.getInt("chunk_z")
-                    ));
+                if (resultSet.next()) {
+                    UUID worldId = UUID.fromString(resultSet.getString("world_id"));
+                    int minX = resultSet.getInt("min_x");
+                    int minZ = resultSet.getInt("min_z");
+                    int maxX = resultSet.getInt("max_x");
+                    int maxZ = resultSet.getInt("max_z");
+
+                    // Convert block coordinates back to chunk coordinates
+                    int minChunkX = minX >> 4;  // Divide by 16
+                    int minChunkZ = minZ >> 4;
+                    int maxChunkX = maxX >> 4;
+                    int maxChunkZ = maxZ >> 4;
+
+                    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+                        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+                            chunks.add(new ClaimChunk(worldId, cx, cz));
+                        }
+                    }
                 }
             }
         }
