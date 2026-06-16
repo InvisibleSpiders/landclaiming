@@ -21,9 +21,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Logger;
 import javax.sql.DataSource;
 
 public class SqlClaimRepository implements ClaimRepository {
+    private static final Logger logger = Logger.getLogger(SqlClaimRepository.class.getName());
     private final DataSource dataSource;
 
     public SqlClaimRepository(DataSource dataSource) {
@@ -413,7 +415,8 @@ public class SqlClaimRepository implements ClaimRepository {
         Map<UUID, ClaimRegion> regions = bulkLoadRegions(connection, ids);
         ClaimRegion region = regions.get(claimId);
         if (region == null) {
-            return null; // data integrity: skip claims with no region
+            logger.warning("Claim " + claimId + " has no region row in claim_block_regions — skipping.");
+            return null;
         }
         return new Claim(
                 claimId,

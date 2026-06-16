@@ -111,8 +111,11 @@ class AdminClaimServiceDisbandTest {
 
         DisbandResult result = service.disbandPlayerClaims(ownerId, true, costService, paymentService);
 
-        assertThat(deposited).isNotEmpty();
-        assertThat(result.totalRefunded()).isGreaterThan(0.0);
+        // claimChunks().size() = 1; existingTotal = 256 blocks (16×16); limit = 0
+        // costBefore = max(0, 256-0)*100.0 = 25600.0; costAfter = max(0, 255-0)*100.0 = 25500.0
+        // refund = 25600.0 - 25500.0 = 100.0
+        assertThat(deposited).containsExactly(100.0);
+        assertThat(result.totalRefunded()).isEqualTo(100.0);
     }
 
     // -------------------------------------------------------------------------

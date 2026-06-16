@@ -131,7 +131,7 @@ public final class ClaimCreationService {
         return List.of();
     }
 
-    /** Backward-compat shim — removed in Task 7. */
+    /** Backward-compat shim — removed in Task 14. */
     public ClaimValidationResult createPlayerClaim(UUID ownerUuid, String name, Set<ClaimChunk> chunks,
             List<Claim> mergeTargets, boolean bypassBuffer) {
         return createPlayerClaim(ownerUuid, name, chunksToRegion(chunks), bypassBuffer);
@@ -152,6 +152,7 @@ public final class ClaimCreationService {
         return List.of();
     }
 
+    // Bounding-box approximation — callers must only pass rectangular chunk sets.
     private static ClaimRegion chunksToRegion(Set<ClaimChunk> chunks) {
         if (chunks == null || chunks.isEmpty()) {
             throw new IllegalArgumentException("chunks must not be null or empty");
