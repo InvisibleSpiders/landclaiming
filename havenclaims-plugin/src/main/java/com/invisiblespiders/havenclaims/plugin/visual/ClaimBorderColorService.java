@@ -86,6 +86,7 @@ public final class ClaimBorderColorService {
     }
 
     private static ClaimRegion chunksAsRegion(Set<ClaimChunk> chunks) {
+        if (chunks.isEmpty()) throw new IllegalArgumentException("chunks cannot be empty");
         UUID worldId = chunks.iterator().next().worldId();
         int minX = chunks.stream().mapToInt(c -> c.chunkX() * 16).min().getAsInt();
         int minZ = chunks.stream().mapToInt(c -> c.chunkZ() * 16).min().getAsInt();
