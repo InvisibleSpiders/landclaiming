@@ -1,8 +1,8 @@
 # HavenClaims
 
-HavenClaims is a Paper land claiming plugin that protects land by chunks. It uses a charged golden hoe claim tool, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
+HavenClaims is a Paper land claiming plugin that protects land by chunks. It uses a temporary claim mode inventory, configurable flags, player and admin claims, SQLite or MySQL/MariaDB storage, MiniMessage messages, a public Bukkit service API, and optional economy over-limit claiming.
 
-This branch is an MVP foundation. The current build includes claim-tool selection, optional-name claim creation, same-name merge confirmation, claim cost previews, member and deny management, dialog-backed claim menus, clickable flag editing with descriptions, enforced claim protection flags, admin claim commands, advanced entity-control flags, and the public `HavenClaimsApi` service for other plugins.
+This branch is an MVP foundation. The current build includes claim-mode selection, optional-name claim creation, same-name merge confirmation, claim cost previews, member and deny management, dialog-backed claim menus, clickable flag editing with descriptions, enforced claim protection flags, admin claim commands, advanced entity-control flags, and the public `HavenClaimsApi` service for other plugins.
 
 ## Requirements
 
@@ -25,15 +25,17 @@ Feature PRs should follow the [development checklist](docs/development-checklist
 
 ## Quick Start
 
-- Run `/claim tool` to receive the claim tool.
-- Right-click two chunks with the tool to record selection corners.
+- Run `/claimmode`, `/cm`, or `/claim mode` to enter claim mode.
+- Claim mode stores your hotbar and offhand, gives temporary claim tools, and restores your items when you exit.
+- Use the claim tool in slot 0 to select two chunks.
 - Run `/claim cost` to preview allowance and over-limit cost.
 - Run `/claim create [name]` to preview and create the claim.
 - Run `/claim` to open your claims dashboard from anywhere.
 - Run `/claim menu` while in a claim, or `/claim menu <claim-id>`, to manage a specific claim.
 - Run `/claim flags` while in a claim, or `/claim flags <claim-id>`, to open clickable flag controls.
 - Run `/claim viewborder` to show the current selection, claim, or chunk border.
-- Switch away from the claim tool or double crouch within the configured window to clear an active selection.
+- Use slot 8 or `/claimmode off` to exit claim mode.
+- Switch away from the claim mode selection tool or double crouch within the configured window to clear an active selection.
 
 ## Persistence
 
@@ -46,7 +48,9 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 | Command | Permission | Description |
 | --- | --- | --- |
 | `/claim` | `havenclaims.gui` | Opens the player's claims dashboard. |
-| `/claim tool` | `havenclaims.tool.use` | Gives the configured claim tool. The default item is a charged golden hoe. |
+| `/claimmode` | `havenclaims.claim` | Enters, exits, or toggles claim mode. |
+| `/cm` | `havenclaims.claim` | Short alias for `/claimmode`. |
+| `/claim mode` | `havenclaims.claim` | Enters, exits, or toggles claim mode from the base claim command. |
 | `/claim create [name]` | `havenclaims.claim` | Previews and creates a player claim from the current completed two-corner selection. |
 | `/claim cost` | `havenclaims.claim` | Previews selected chunks, allowance, over-limit chunks, and cost. `/claim quote` is also accepted. |
 | `/claim menu [claim-id]` | `havenclaims.gui` | Opens the player's claims dashboard, the current claim menu, or a specific owned/managed claim menu by UUID. |
@@ -89,10 +93,11 @@ Base command: `/claim`. Aliases: `/claims`, `/lc`.
 
 | Shortcut | Permission | Description |
 | --- | --- | --- |
-| Right-click with claim tool | `havenclaims.tool.use` | Selects claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
-| Switch away from claim tool | `havenclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.clear-on-tool-switch` is enabled. |
-| Double crouch | `havenclaims.tool.use` | Clears a pending first corner or completed selection and removes its border when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
-| Sneak + swap hand | `havenclaims.gui` | Opens `/claim menu` when the claim tool is involved. |
+| Right-click with the slot 0 claim mode selection tool | `havenclaims.claim` | Selects claim corners by chunk and shows a temporary glowing border around the selected chunk or completed selection. |
+| Use the slot 8 claim mode exit tool | `havenclaims.claim` | Exits claim mode and restores the stored hotbar and offhand items. |
+| Switch away from the claim mode selection tool | `havenclaims.claim` | Clears a pending first corner or completed selection and removes its border when `selection.clear-on-tool-switch` is enabled. |
+| Double crouch | `havenclaims.claim` | Clears a pending first corner or completed selection and removes its border when `selection.double-crouch-clear.enabled` is true. No message is sent when there is no selection to clear. |
+| Sneak + swap hand | `havenclaims.gui` | Opens `/claim menu` when configured by `shortcuts.sneak-swap-hand`. |
 
 ## Selection Behavior
 
@@ -163,11 +168,8 @@ access-denial:
 | Permission | Default | Description |
 | --- | --- | --- |
 | `havenclaims.use` | `true` | Allows basic HavenClaims usage and help/info access. |
-| `havenclaims.claim` | `true` | Allows player claim creation, cost previews, selection cancellation, and merge confirmation flows. |
+| `havenclaims.claim` | `true` | Allows claim mode, player claim creation, cost previews, selection cancellation, and merge confirmation flows. |
 | `havenclaims.gui` | `true` | Allows opening claim menus and flag editor views. |
-| `havenclaims.tool.use` | `true` | Allows receiving and using the claim tool. |
-| `havenclaims.tool.craft` | `true` | Allows crafting the claim tool when the recipe is enabled. |
-| `havenclaims.tool.recharge` | `true` | Reserved for claim tool recharge flows. |
 | `havenclaims.member.manage` | `true` | Reserved for broader member management permission gating. Current member commands are owner-gated. |
 | `havenclaims.deny.manage` | `true` | Allows using denied-entry management commands. Claim ownership or manager role is still required. |
 | `havenclaims.flag.<flag>` | Registered from `permissions.yml` flag-edit groups | Allows the claim owner to edit a specific flag, such as `havenclaims.flag.build` or `havenclaims.flag.item_drop`. Group nodes such as `havenclaims.flag.edit.basic` grant their listed child flags. |

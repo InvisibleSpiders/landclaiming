@@ -6,5 +6,4 @@ HavenClaims generates commented YAML files in `plugins/HavenClaims/`.
 - `storage.yml` controls SQLite or MySQL/MariaDB storage.
 - `messages.yml` controls MiniMessage-formatted text.
 - `permissions.yml` controls registered flag edit groups.
-- `tool.yml` controls the claim tool item, custom model data, lore, and charges.
-- `recipes.yml` controls the default claim tool recipe.
+- `config.yml` also includes `claim-mode` settings for enabling claim mode, keeping a short per-player session history, allowing claim-mode-safe commands, and blocking commands that should not run while a player's hotbar and offhand are stored.

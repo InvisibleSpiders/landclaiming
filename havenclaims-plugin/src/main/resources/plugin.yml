@@ -13,6 +13,10 @@ commands:
     description: Opens HavenClaims commands and menus.
     usage: /claim
     aliases: [claims, lc]
+  claimmode:
+    description: Toggles HavenClaims claim mode.
+    usage: /claimmode [on|off|toggle]
+    aliases: [cm]
 permissions:
   havenclaims.use:
     description: Allows basic HavenClaims usage.
@@ -22,15 +26,6 @@ permissions:
     default: true
   havenclaims.gui:
     description: Allows opening claim menus.
-    default: true
-  havenclaims.tool.use:
-    description: Allows using the claim tool.
-    default: true
-  havenclaims.tool.craft:
-    description: Allows crafting the claim tool.
-    default: true
-  havenclaims.tool.recharge:
-    description: Allows recharging the claim tool.
     default: true
   havenclaims.member.manage:
     description: Allows managing claim members.

@@ -3,11 +3,9 @@ claim:
   denied: "<red>You cannot do that in <white><claim_name></white>."
   create-denied: "<red>Claim could not be created: <yellow><reason></yellow>"
   blocked-near-other: "<red>You cannot claim within <yellow><distance></yellow> chunks of another player's land."
-  not-enough-charges: "<red>Your claim tool needs <yellow><needed></yellow> charges, but only has <yellow><available></yellow>."
   over-limit-cost: "<yellow>This claim exceeds your allowance by <over_chunks> chunks and will cost <green><cost></green>."
   economy-unavailable: "<red>Paid over-limit claiming is enabled, but economy is unavailable."
-  selection-required: "<red>Select two chunks with the claim tool first."
-  hold-tool: "<red>Hold your claim tool to create a claim."
+  selection-required: "<red>Select two chunks with the claim mode selection tool first."
   charged: "<green>Charged <yellow><cost></yellow> for over-limit claim chunks."
   over-limit-disabled: "<red>This claim exceeds your claim limit."
   create:
@@ -229,18 +227,28 @@ claim:
     action-labels:
       create: "Create Claim"
       cost: "Claim Cost"
-      tool: "Claim Tool"
     dialog:
       title: "<gold>My Claims"
       claim-button: "<yellow><claim_name></yellow> <gray>(<chunk_count> chunks)</gray>"
       claim-tooltip: "<gray><command></gray>"
       action-button: "<yellow><label></yellow>"
       action-tooltip: "<gray><command></gray>"
-tool:
-  name: "<gold>Claiming Hoe</gold>"
-  lore:
-    - "<gray>Charges: <yellow><charges></yellow>/<yellow><max_charges></yellow>"
-    - "<gray>Right-click two chunks to select land.</gray>"
+claim-mode:
+  entered: "<green>Claim mode enabled. Your hotbar and offhand are stored safely."
+  exited: "<yellow>Claim mode disabled. Your stored items were restored."
+  already-active: "<yellow>You are already in claim mode."
+  not-active: "<yellow>You are not in claim mode."
+  disabled: "<red>Claim mode is disabled."
+  blocked-command: "<red>Exit claim mode before using <yellow>/<command></yellow>."
+  blocked-inventory: "<red>Exit claim mode before moving hotbar items."
+  blocked-drop: "<red>Exit claim mode before dropping items."
+  blocked-pickup: "<red>Exit claim mode before picking up items."
+  blocked-swap: "<red>Exit claim mode before swapping hands."
+  subclaim-coming-soon: "<yellow>Subclaims are coming soon."
+  restore-partial: "<yellow>Some stored items were moved to your inventory because their original slots were unavailable."
+  restore-recovery: "<red>Some stored items could not be restored and were moved to claim mode recovery. Contact staff."
+  restore-failed: "<red>Claim mode restore failed. Contact staff immediately."
+  menu-help: "<gold>Claim Mode:</gold> <gray>Use the selection tool to select land, slot 8 to exit."
 command:
   player-only: "<red>Only players can use HavenClaims commands."
   claim:
@@ -249,9 +257,6 @@ command:
     claim-creation: "<red>Claim creation is not available yet."
     claim-info: "<red>Claim info is not available yet."
     claim-cost: "<red>Claim cost previews are not available yet."
-  tool:
-    no-permission: "<red>You do not have permission to use the claim tool."
-    given: "<green>Claim tool added to your inventory."
   selection:
     cleared: "<yellow>Claim selection cleared."
   help:
@@ -259,7 +264,7 @@ command:
     menu: "<yellow>/claim menu [claim-id]</yellow><gray> - opens your claim dashboard or a specific claim menu.</gray>"
     flags: "<yellow>/claim flags [claim-id]</yellow><gray> - opens the flag editor for this claim or claim ID.</gray>"
     viewborder: "<yellow>/claim viewborder [claim-id]</yellow><gray> - shows the current selection, claim, chunk, or claim ID border.</gray>"
-    tool: "<yellow>/claim tool</yellow><gray> - gives you the configured claiming tool.</gray>"
+    mode: "<yellow>/claim mode</yellow><gray> - toggles claim mode.</gray>"
     create: "<yellow>/claim create [name]</yellow><gray> - creates a claim from your pending selection.</gray>"
     member: "<yellow>/claim member <add|remove|list> [claim-id]</yellow><gray> - manages members for the current claim or claim ID.</gray>"
     deny: "<yellow>/claim deny|undeny|denied [claim-id]</yellow><gray> - manages denied players for the current claim or claim ID.</gray>"

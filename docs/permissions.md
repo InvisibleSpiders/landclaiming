@@ -5,10 +5,9 @@ Core permissions:
 - `havenclaims.use`
 - `havenclaims.claim`
 - `havenclaims.gui`
-- `havenclaims.tool.use`
-- `havenclaims.tool.craft`
-- `havenclaims.tool.recharge`
 - `havenclaims.member.manage`
+
+Normal players use `havenclaims.claim` to enter claim mode, select chunks, preview costs, create claims, cancel selections, and confirm same-name merge flows.
 
 Admin permissions:
 

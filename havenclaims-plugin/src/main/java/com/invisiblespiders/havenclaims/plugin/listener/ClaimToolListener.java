@@ -4,6 +4,7 @@ import com.invisiblespiders.havenclaims.plugin.claim.Claim;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk;
 import com.invisiblespiders.havenclaims.plugin.claim.ClaimIndex;
 import com.invisiblespiders.havenclaims.plugin.claim.OwnerType;
+import com.invisiblespiders.havenclaims.plugin.claimmode.ClaimModeService;
 import com.invisiblespiders.havenclaims.plugin.message.MessageService;
 import com.invisiblespiders.havenclaims.plugin.selection.DoubleCrouchClearService;
 import com.invisiblespiders.havenclaims.plugin.selection.SelectionService;
@@ -34,10 +35,11 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 
 public class ClaimToolListener implements Listener {
-    private static final String CLAIM_TOOL_PERMISSION = "havenclaims.tool.use";
+    private static final String CLAIM_PERMISSION = "havenclaims.claim";
 
     private final ClaimToolService claimToolService;
     private final SelectionService selectionService;
+    private ClaimModeService claimModeService;
     private final DoubleCrouchClearService doubleCrouchClearService;
     private final ChunkBorderVisualService chunkBorderVisualService;
     private final ClaimBorderColorService claimBorderColorService;
@@ -47,12 +49,21 @@ public class ClaimToolListener implements Listener {
     private boolean doubleCrouchClearEnabled;
 
     public ClaimToolListener(ClaimToolService claimToolService, SelectionService selectionService) {
-        this(claimToolService, selectionService, null, null, null, null, null, false, false);
+        this(claimToolService, selectionService, null, null, null, null, null, null, false, false);
     }
 
     public ClaimToolListener(
             ClaimToolService claimToolService,
             SelectionService selectionService,
+            ClaimModeService claimModeService
+    ) {
+        this(claimToolService, selectionService, claimModeService, null, null, null, null, null, false, false);
+    }
+
+    public ClaimToolListener(
+            ClaimToolService claimToolService,
+            SelectionService selectionService,
+            ClaimModeService claimModeService,
             DoubleCrouchClearService doubleCrouchClearService,
             ChunkBorderVisualService chunkBorderVisualService,
             ClaimBorderColorService claimBorderColorService,
@@ -63,6 +74,7 @@ public class ClaimToolListener implements Listener {
     ) {
         this.claimToolService = Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = Objects.requireNonNull(selectionService, "selectionService");
+        this.claimModeService = claimModeService;
         this.doubleCrouchClearService = doubleCrouchClearService;
         this.chunkBorderVisualService = chunkBorderVisualService;
         this.claimBorderColorService = claimBorderColorService;
@@ -72,12 +84,16 @@ public class ClaimToolListener implements Listener {
         this.doubleCrouchClearEnabled = doubleCrouchClearEnabled;
     }
 
+    public void setClaimModeService(ClaimModeService claimModeService) {
+        this.claimModeService = claimModeService;
+    }
+
     public void reload(boolean newClearOnToolSwitch, boolean newDoubleCrouchClearEnabled) {
         this.clearOnToolSwitch = newClearOnToolSwitch;
         this.doubleCrouchClearEnabled = newDoubleCrouchClearEnabled;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND || !isSelectionAction(event.getAction())) {
             return;
@@ -87,10 +103,18 @@ public class ClaimToolListener implements Listener {
         if (!claimToolService.isClaimTool(itemStack)) {
             return;
         }
+        Player player = event.getPlayer();
+        if (claimModeService != null && !claimModeService.isInClaimMode(player.getUniqueId())) {
+            return;
+        }
 
+        handleClaimToolSelection(event);
+    }
+
+    public void handleClaimToolSelection(PlayerInteractEvent event) {
         event.setCancelled(true);
         Player player = event.getPlayer();
-        if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
+        if (!player.hasPermission(CLAIM_PERMISSION)) {
             sendMissingPermission(player);
             return;
         }
@@ -135,7 +159,7 @@ public class ClaimToolListener implements Listener {
         );
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
         if (!player.isSneaking()) {
@@ -148,7 +172,7 @@ public class ClaimToolListener implements Listener {
         }
 
         event.setCancelled(true);
-        if (!player.hasPermission(CLAIM_TOOL_PERMISSION)) {
+        if (!player.hasPermission(CLAIM_PERMISSION)) {
             sendMissingPermission(player);
             return;
         }
@@ -215,7 +239,7 @@ public class ClaimToolListener implements Listener {
     }
 
     private void sendMissingPermission(Player player) {
-        player.sendMessage(message("command.tool.no-permission"));
+        player.sendMessage(message("command.claim.no-permission"));
     }
 
     private void sendSelectionCleared(Player player) {

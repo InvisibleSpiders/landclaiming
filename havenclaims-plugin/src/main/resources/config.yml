@@ -30,6 +30,26 @@ ui:
   # Use inventory menus for dense or item-based flows.
   use-inventory-fallbacks: true
 
+claim-mode:
+  enabled: true
+  history-per-player: 5
+  allowed-commands:
+    - claimmode
+    - cm
+    - claim
+  blocked-commands:
+    - storage
+    - vault
+    - shop
+    - auction
+    - ah
+    - trade
+    - pay
+    - sell
+    - buy
+    - kit
+    - mail
+
 notifications:
   claim-boundary:
     # Shows a configurable message when players enter or exit claimed land.
@@ -80,11 +100,10 @@ shortcuts:
   sneak-swap-hand:
     # Opens the context claim menu when the player sneaks and presses the swap-hand key.
     enabled: true
-    require-claim-tool-in-hand: false
     cancel-item-swap: true
 
 selection:
-  # Clears a pending selection when the player switches away from the claim tool.
+  # Clears a pending selection when the player switches away from the claim mode selection tool.
   clear-on-tool-switch: true
   double-crouch-clear:
     # Clears a pending selection when the player crouches twice within the configured window.
