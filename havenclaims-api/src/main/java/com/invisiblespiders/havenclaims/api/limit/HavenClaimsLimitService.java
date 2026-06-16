@@ -7,4 +7,10 @@ public interface HavenClaimsLimitService {
     void setBlockLimit(UUID playerId, int limit);
     void addBlocks(UUID playerId, int blocks);
     void removeBlocks(UUID playerId, int blocks);
+
+    /** @deprecated Use {@link #getBlockLimit(UUID)} instead. */
+    @Deprecated
+    default int getLimit(UUID playerId) {
+        return getBlockLimit(playerId);
+    }
 }
