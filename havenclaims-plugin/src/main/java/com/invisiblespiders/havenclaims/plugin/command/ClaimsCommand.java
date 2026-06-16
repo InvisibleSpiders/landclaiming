@@ -1858,7 +1858,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(message("command.unavailable.claim-creation"));
             return true;
         }
-        Optional<PendingOverLimitPurchase> pendingOpt = overLimitConfirmService.consume(player.getUniqueId());
+        // Peek without removing so that a payment failure leaves the purchase intact for retry.
+        Optional<PendingOverLimitPurchase> pendingOpt = overLimitConfirmService.getPending(player.getUniqueId());
         if (pendingOpt.isEmpty()) {
             player.sendMessage(message("claim.over-limit-expired"));
             return true;
@@ -1869,10 +1870,14 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             ClaimCostQuote chargeQuote = new ClaimCostQuote(0, 0, 0, 0, 0, purchase.cost());
             ClaimPaymentResult paymentResult = claimPaymentService.charge(player.getUniqueId(), chargeQuote);
             if (!paymentResult.allowed()) {
+                // Leave the pending purchase so the player can retry /claim confirm-purchase.
                 player.sendMessage(claimCreateDenied(paymentResult.messageKey()));
                 return true;
             }
         }
+
+        // Charge succeeded (or no charge needed) — now consume so it cannot be used again.
+        overLimitConfirmService.consume(player.getUniqueId());
 
         boolean bypass = player.hasPermission(CLAIM_BUFFER_BYPASS_PERMISSION);
         ClaimValidationResult result = claimCreationService.createPlayerClaim(
