@@ -370,10 +370,10 @@ public class SqlClaimRepository implements ClaimRepository {
 
                     Set<ClaimChunk> chunks = new HashSet<>();
                     // Convert block coordinates back to chunk coordinates
-                    int minChunkX = minX >> 4;  // Divide by 16
-                    int minChunkZ = minZ >> 4;
-                    int maxChunkX = maxX >> 4;
-                    int maxChunkZ = maxZ >> 4;
+                    int minChunkX = Math.floorDiv(minX, 16);
+                    int minChunkZ = Math.floorDiv(minZ, 16);
+                    int maxChunkX = Math.floorDiv(maxX, 16);
+                    int maxChunkZ = Math.floorDiv(maxZ, 16);
 
                     for (int cx = minChunkX; cx <= maxChunkX; cx++) {
                         for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
@@ -466,7 +466,7 @@ public class SqlClaimRepository implements ClaimRepository {
         )) {
             statement.setString(1, claimId.toString());
             try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
+                while (resultSet.next()) {
                     UUID worldId = UUID.fromString(resultSet.getString("world_id"));
                     int minX = resultSet.getInt("min_x");
                     int minZ = resultSet.getInt("min_z");
@@ -474,10 +474,10 @@ public class SqlClaimRepository implements ClaimRepository {
                     int maxZ = resultSet.getInt("max_z");
 
                     // Convert block coordinates back to chunk coordinates
-                    int minChunkX = minX >> 4;  // Divide by 16
-                    int minChunkZ = minZ >> 4;
-                    int maxChunkX = maxX >> 4;
-                    int maxChunkZ = maxZ >> 4;
+                    int minChunkX = Math.floorDiv(minX, 16);
+                    int minChunkZ = Math.floorDiv(minZ, 16);
+                    int maxChunkX = Math.floorDiv(maxX, 16);
+                    int maxChunkZ = Math.floorDiv(maxZ, 16);
 
                     for (int cx = minChunkX; cx <= maxChunkX; cx++) {
                         for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
