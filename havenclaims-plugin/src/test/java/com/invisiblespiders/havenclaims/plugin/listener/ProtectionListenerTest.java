@@ -26,6 +26,7 @@ class ProtectionListenerTest {
 
         Optional<ClaimProtectionResult> result = listener.checkProtection(
                 new ClaimChunk(UUID.randomUUID(), 0, 0),
+                0, 0,
                 UUID.randomUUID(),
                 permission -> false,
                 "break"
@@ -41,6 +42,7 @@ class ProtectionListenerTest {
 
         Optional<ClaimProtectionResult> result = listener.checkProtection(
                 chunk,
+                chunk.chunkX() * 16, chunk.chunkZ() * 16,
                 UUID.randomUUID(),
                 permission -> permission.equals("havenclaims.bypass.protection"),
                 "build"
@@ -56,6 +58,7 @@ class ProtectionListenerTest {
 
         Optional<ClaimProtectionResult> result = listener.checkProtection(
                 chunk,
+                chunk.chunkX() * 16, chunk.chunkZ() * 16,
                 UUID.randomUUID(),
                 permission -> permission.equals("havenclaims.bypass.protection.interact"),
                 "interact"
@@ -71,6 +74,7 @@ class ProtectionListenerTest {
 
         Optional<ClaimProtectionResult> result = listener.checkProtection(
                 chunk,
+                chunk.chunkX() * 16, chunk.chunkZ() * 16,
                 UUID.randomUUID(),
                 permission -> false,
                 "break"
@@ -142,6 +146,37 @@ class ProtectionListenerTest {
         assertThat(blocked).isFalse();
     }
 
+    @Test
+    void blockOutsideRegionInSameChunkIsNotProtected() {
+        UUID worldId = UUID.randomUUID();
+        // Claim covers only blocks 0-7 in X, chunk 0 covers 0-15
+        ClaimRegion region = new ClaimRegion(worldId, 0, 0, 7, 15);
+        Claim claim = claimWithRegion(region, Map.of("build", FlagState.VISITORS));
+        ClaimChunk chunk = new ClaimChunk(worldId, 0, 0);
+        ProtectionListener listener = listener(Map.of(chunk, claim));
+
+        // Block at x=10 is in chunk 0 but outside the region (region only goes to x=7)
+        Optional<ClaimProtectionResult> result = listener.checkProtection(
+                chunk, 10, 5, UUID.randomUUID(), permission -> false, "build");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void blockOnExactBoundaryIsProtected() {
+        UUID worldId = UUID.randomUUID();
+        ClaimRegion region = new ClaimRegion(worldId, 0, 0, 7, 7);
+        Claim claim = claimWithRegion(region, Map.of("build", FlagState.VISITORS));
+        ClaimChunk chunk = new ClaimChunk(worldId, 0, 0);
+        ProtectionListener listener = listener(Map.of(chunk, claim));
+
+        // Block at x=7, z=7 is exactly on the boundary of the region
+        Optional<ClaimProtectionResult> result = listener.checkProtection(
+                chunk, 7, 7, UUID.randomUUID(), permission -> false, "build");
+
+        assertThat(result).contains(ClaimProtectionResult.DENY_WITH_MESSAGE);
+    }
+
     private static ProtectionListener listener(Map<ClaimChunk, Claim> claims) {
         ClaimIndex claimIndex = new ClaimIndex();
         claimIndex.load(claims.values());
@@ -163,6 +198,11 @@ class ProtectionListenerTest {
         int maxCX = chunks.stream().mapToInt(ClaimChunk::chunkX).max().orElse(chunk.chunkX());
         int maxCZ = chunks.stream().mapToInt(ClaimChunk::chunkZ).max().orElse(chunk.chunkZ());
         ClaimRegion region = new ClaimRegion(worldId, minCX * 16, minCZ * 16, maxCX * 16 + 15, maxCZ * 16 + 15);
+        return claimWithRegion(region, flags);
+    }
+
+    private static Claim claimWithRegion(ClaimRegion region, Map<String, FlagState> flags) {
+        Instant now = Instant.parse("2026-06-07T00:00:00Z");
         return new Claim(
                 UUID.randomUUID(),
                 "Spawn",

@@ -177,6 +177,8 @@ public final class ProtectionListener implements Listener {
 
     Optional<ClaimProtectionResult> checkProtection(
             ClaimChunk claimChunk,
+            int blockX,
+            int blockZ,
             UUID actorUuid,
             Predicate<String> permissionCheck,
             String flagKey
@@ -185,8 +187,14 @@ public final class ProtectionListener implements Listener {
         Objects.requireNonNull(permissionCheck, "permissionCheck");
         Objects.requireNonNull(flagKey, "flagKey");
 
-        Optional<Claim> claim = claimIndex.findAt(claimChunk);
-        if (claim.isEmpty()) {
+        Optional<Claim> claimOpt = claimIndex.findAt(claimChunk);
+        if (claimOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Claim claim = claimOpt.get();
+
+        // Block-exact containment check (chunk lookup is the fast first pass; region is exact)
+        if (!claim.region().containsBlock(blockX, blockZ)) {
             return Optional.empty();
         }
 
@@ -194,30 +202,33 @@ public final class ProtectionListener implements Listener {
             return Optional.of(ClaimProtectionResult.ALLOW);
         }
 
-        return Optional.of(protectionService.checkClaimFlag(claim.orElseThrow(), actorUuid, flagKey));
+        return Optional.of(protectionService.checkClaimFlag(claim, actorUuid, flagKey));
     }
 
     private boolean isDeniedWithMessage(Block block, Player player, String flagKey) {
-        Optional<Claim> claim = claimAt(block);
-        if (claim.isEmpty()) {
-            return false;
-        }
-
-        boolean denied = checkProtection(claimChunk(block), player.getUniqueId(), player::hasPermission, flagKey)
-                .filter(result -> result != ClaimProtectionResult.ALLOW)
-                .isPresent();
+        int blockX = block.getX();
+        int blockZ = block.getZ();
+        Optional<ClaimProtectionResult> result = checkProtection(
+                claimChunk(block), blockX, blockZ, player.getUniqueId(), player::hasPermission, flagKey);
+        boolean denied = result.filter(r -> r != ClaimProtectionResult.ALLOW).isPresent();
         if (denied) {
-            sendDenied(player, claim.orElseThrow());
+            claimAt(block).ifPresent(claim -> sendDenied(player, claim));
         }
         return denied;
     }
 
     private boolean isDenied(Block block, UUID actorUuid, Predicate<String> permissionCheck, String flagKey) {
-        return isDenied(claimChunk(block), actorUuid, permissionCheck, flagKey);
+        return isDenied(claimChunk(block), block.getX(), block.getZ(), actorUuid, permissionCheck, flagKey);
     }
 
     private boolean isDenied(ClaimChunk claimChunk, UUID actorUuid, Predicate<String> permissionCheck, String flagKey) {
-        return checkProtection(claimChunk, actorUuid, permissionCheck, flagKey)
+        // Conservative fallback for piston/fluid: use chunk min-corner as block coordinates.
+        // This is an overprotection approximation acceptable for Phase 1.
+        return isDenied(claimChunk, claimChunk.chunkX() * 16, claimChunk.chunkZ() * 16, actorUuid, permissionCheck, flagKey);
+    }
+
+    private boolean isDenied(ClaimChunk claimChunk, int blockX, int blockZ, UUID actorUuid, Predicate<String> permissionCheck, String flagKey) {
+        return checkProtection(claimChunk, blockX, blockZ, actorUuid, permissionCheck, flagKey)
                 .filter(result -> result != ClaimProtectionResult.ALLOW)
                 .isPresent();
     }
