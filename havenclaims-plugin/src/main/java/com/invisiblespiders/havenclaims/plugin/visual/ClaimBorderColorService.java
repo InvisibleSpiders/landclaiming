@@ -46,13 +46,22 @@ public final class ClaimBorderColorService {
             Set<ClaimChunk> chunks,
             Set<String> permissions
     ) {
+        Objects.requireNonNull(chunks, "chunks");
+        return colorForPlayerSelection(ownerId, claimName, chunksAsRegion(chunks), permissions);
+    }
+
+    public BorderColor colorForPlayerSelection(
+            UUID ownerId,
+            Optional<String> claimName,
+            ClaimRegion region,
+            Set<String> permissions
+    ) {
         Objects.requireNonNull(ownerId, "ownerId");
         Objects.requireNonNull(claimName, "claimName");
-        Objects.requireNonNull(chunks, "chunks");
+        Objects.requireNonNull(region, "region");
         Objects.requireNonNull(permissions, "permissions");
 
         String validationName = claimName.filter(name -> !name.isBlank()).orElse(PREVIEW_CLAIM_NAME);
-        ClaimRegion region = chunksAsRegion(chunks);
         ClaimValidationResult validationResult = claimCreationService.validatePlayerClaim(
                 ownerId,
                 validationName,
@@ -65,7 +74,7 @@ public final class ClaimBorderColorService {
 
         if (claimName.filter(name -> !name.isBlank())
                 .map(name -> !claimCreationService.findMergeTargets(ownerId, name, region).isEmpty())
-                .orElseGet(() -> bordersOwnerClaim(ownerId, chunks))) {
+                .orElseGet(() -> bordersOwnerClaim(ownerId, region.overlappingChunks()))) {
             return BorderColor.YELLOW;
         }
 

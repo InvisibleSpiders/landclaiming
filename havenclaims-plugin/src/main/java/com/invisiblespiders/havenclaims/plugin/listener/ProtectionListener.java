@@ -31,6 +31,7 @@ import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockRedstoneEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -112,15 +113,49 @@ public final class ProtectionListener implements Listener {
 
     @EventHandler
     public void onBlockSpread(BlockSpreadEvent event) {
-        if (isDeniedEnteringClaim(claimChunk(event.getSource()), claimChunk(event.getBlock()), "fire_spread")) {
+        Block toBlock = event.getBlock();
+        if (isDeniedEnteringClaimExact(
+                claimChunk(toBlock), toBlock.getX(), toBlock.getZ(),
+                claimChunk(event.getSource()),
+                "fire_spread")) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onBlockFromTo(BlockFromToEvent event) {
-        if (isDeniedEnteringClaim(claimChunk(event.getBlock()), claimChunk(event.getToBlock()), "fluid_flow")) {
+        Block toBlock = event.getToBlock();
+        // Use exact destination block coordinates rather than chunk-min-corner approximation
+        // to correctly guard partial-chunk claims.
+        if (isDeniedEnteringClaimExact(
+                claimChunk(toBlock), toBlock.getX(), toBlock.getZ(),
+                claimChunk(event.getBlock()),
+                "fluid_flow")) {
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onBlockRedstone(BlockRedstoneEvent event) {
+        // Only care about blocks becoming powered (new > old)
+        if (event.getNewCurrent() <= event.getOldCurrent()) {
+            return;
+        }
+        Block block = event.getBlock();
+        ClaimChunk destChunk = claimChunk(block);
+        Optional<Claim> destClaim = claimIndex.findAt(destChunk);
+        if (destClaim.isEmpty()) {
+            return;
+        }
+        // Block-exact containment: ignore if block is outside the claim's selected region
+        if (!destClaim.get().region().containsBlock(block.getX(), block.getZ())) {
+            return;
+        }
+        // Check whether the flag is enabled for this claim
+        Optional<ClaimProtectionResult> result = checkProtection(
+                destChunk, block.getX(), block.getZ(), null, permission -> false, "redstone_signal");
+        if (result.filter(r -> r != ClaimProtectionResult.ALLOW).isPresent()) {
+            event.setNewCurrent(event.getOldCurrent());
         }
     }
 
@@ -222,8 +257,7 @@ public final class ProtectionListener implements Listener {
     }
 
     private boolean isDenied(ClaimChunk claimChunk, UUID actorUuid, Predicate<String> permissionCheck, String flagKey) {
-        // Conservative fallback for piston/fluid: use chunk min-corner as block coordinates.
-        // This is an overprotection approximation acceptable for Phase 1.
+        // Use chunk min-corner only as a legacy test overload; production paths pass exact coordinates.
         return isDenied(claimChunk, claimChunk.chunkX() * 16, claimChunk.chunkZ() * 16, actorUuid, permissionCheck, flagKey);
     }
 
@@ -233,8 +267,27 @@ public final class ProtectionListener implements Listener {
                 .isPresent();
     }
 
+    /** Fluid/fire-spread variant that uses exact destination coordinates for partial-chunk claim accuracy. */
+    boolean isDeniedEnteringClaimExact(
+            ClaimChunk destinationChunk, int blockX, int blockZ,
+            ClaimChunk sourceChunk,
+            String flagKey) {
+        Optional<Claim> destinationClaim = claimIndex.findAt(destinationChunk);
+        if (destinationClaim.isEmpty()) {
+            return false;
+        }
+        Optional<Claim> sourceClaim = claimIndex.findAt(sourceChunk);
+        if (sourceClaim.isPresent() && sourceClaim.orElseThrow().id().equals(destinationClaim.orElseThrow().id())) {
+            return false;
+        }
+        return checkProtection(destinationChunk, blockX, blockZ, null, permission -> false, flagKey)
+                .filter(result -> result != ClaimProtectionResult.ALLOW)
+                .isPresent();
+    }
+
     private Optional<Claim> claimAt(Block block) {
-        return claimIndex.findAt(claimChunk(block));
+        return claimIndex.findAt(claimChunk(block))
+                .filter(claim -> claim.region().containsBlock(block.getX(), block.getZ()));
     }
 
     private ClaimChunk claimChunk(Block block) {
@@ -248,16 +301,26 @@ public final class ProtectionListener implements Listener {
             BlockFace movementDirection,
             boolean includePistonHeadDestination
     ) {
-        java.util.List<ClaimChunk> sourceChunks = movedBlocks.stream()
-                .map(this::claimChunk)
-                .toList();
-        java.util.List<ClaimChunk> destinationChunks = new java.util.ArrayList<>(movedBlocks.stream()
-                .map(block -> claimChunk(block.getRelative(movementDirection)))
-                .toList());
-        if (includePistonHeadDestination) {
-            destinationChunks.add(claimChunk(pistonBlock.getRelative(movementDirection)));
+        // Check each source block with exact coordinates
+        for (Block source : movedBlocks) {
+            if (isDenied(claimChunk(source), source.getX(), source.getZ(), null, permission -> false, "piston_protection")) {
+                return true;
+            }
         }
-        return pistonTouchesProtectedClaim(sourceChunks, destinationChunks);
+        // Check each destination block with exact coordinates
+        for (Block source : movedBlocks) {
+            Block dest = source.getRelative(movementDirection);
+            if (isDenied(claimChunk(dest), dest.getX(), dest.getZ(), null, permission -> false, "piston_protection")) {
+                return true;
+            }
+        }
+        if (includePistonHeadDestination) {
+            Block pistonDest = pistonBlock.getRelative(movementDirection);
+            if (isDenied(claimChunk(pistonDest), pistonDest.getX(), pistonDest.getZ(), null, permission -> false, "piston_protection")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // null actorUuid signals "no player actor" — isDenied skips owner/member checks and

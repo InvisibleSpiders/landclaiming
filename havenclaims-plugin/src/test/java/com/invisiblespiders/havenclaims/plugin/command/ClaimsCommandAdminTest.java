@@ -106,8 +106,8 @@ class ClaimsCommandAdminTest {
                 .toList();
         assertThat(plainMessages).containsExactly(
                 "Admin claims:",
-                "- Alpha (1 chunks) " + alpha.id(),
-                "- Beta (1 chunks) " + beta.id()
+                "- Alpha (256 blocks) " + alpha.id(),
+                "- Beta (256 blocks) " + beta.id()
         );
     }
 
@@ -138,7 +138,7 @@ class ClaimsCommandAdminTest {
                 .toList();
         assertThat(plainMessages).containsExactly(
                 "Claims for Builder:",
-                "- Home (1 chunks) " + home.id()
+                "- Home (256 blocks) " + home.id()
         );
     }
 
@@ -606,10 +606,10 @@ class ClaimsCommandAdminTest {
                 new MessageService(Map.ofEntries(
                         Map.entry("admin.claim.list-header", "<gold>Admin claims:"),
                         Map.entry("admin.claim.list-empty", "<yellow>No admin claims exist."),
-                        Map.entry("admin.claim.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>"),
+                        Map.entry("admin.claim.list-entry", "<gray>- <yellow><claim_name></yellow> (<block_count> blocks) <claim_id>"),
                         Map.entry("admin.claim.no-permission", "<red>You do not have permission to manage admin claims."),
                         Map.entry("admin.userclaims.list-header", "<gold>Claims for <yellow><player></yellow>:"),
-                        Map.entry("admin.userclaims.list-entry", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <claim_id>"),
+                        Map.entry("admin.userclaims.list-entry", "<gray>- <yellow><claim_name></yellow> (<block_count> blocks) <claim_id>"),
                         Map.entry("admin.userclaims.no-permission", "<red>You do not have permission to manage user claims."),
                         Map.entry("admin.userclaims.transfer-player-not-found", "<red>Player <player> is not online. Use a UUID to transfer offline players."),
                         Map.entry("admin.userclaims.transferred", "<green>Transferred <claim_name> to <player>."),

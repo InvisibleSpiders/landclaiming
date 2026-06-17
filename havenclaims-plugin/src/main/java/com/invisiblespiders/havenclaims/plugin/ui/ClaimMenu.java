@@ -6,7 +6,7 @@ import java.util.Objects;
 public record ClaimMenu(
         String title,
         String ownerType,
-        int chunkCount,
+        int blockCount,
         int memberCount,
         int flagCount,
         boolean viewerOwnsClaim,

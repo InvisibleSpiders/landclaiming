@@ -599,7 +599,7 @@ class ClaimsCommandPermissionTest {
 
         assertThat(plain(messages)).containsExactly(
                 "My Claims",
-                "- Home (1 chunks) /claim menu " + claim.id(),
+                "- Home (256 blocks) /claim menu " + claim.id(),
                 "Actions:",
                 "- Create Claim (/claim create)",
                 "- Claim Cost (/claim cost)"
@@ -786,7 +786,7 @@ class ClaimsCommandPermissionTest {
         assertThat(plain(messages)).containsExactly(
                 "Claim: Home",
                 "Owner type: PLAYER",
-                "Chunks: 2",
+                "Blocks: 512",
                 "Members: 1",
                 "Denied players: 1",
                 "Configured flags: 1",
@@ -1056,7 +1056,7 @@ class ClaimsCommandPermissionTest {
 
         command.onCommand(player, mock(Command.class), "claim", new String[]{"viewborder", claim.id().toString()});
 
-        verify(visualService).showSelection(player, claim.overlappingChunks(), BorderColor.GOLD);
+        verify(visualService).showSelection(player, claim.region(), BorderColor.GOLD);
         assertThat(plain(messages)).containsExactly("Showing this claim border.");
     }
 
@@ -1096,7 +1096,7 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.menu.no-permission", "<red>You do not have permission to open claim menus."),
                 Map.entry("claim.dashboard.title", "<gold>My Claims"),
                 Map.entry("claim.dashboard.empty", "<yellow>You do not have any claims yet."),
-                Map.entry("claim.dashboard.claim", "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <command>"),
+                Map.entry("claim.dashboard.claim", "<gray>- <yellow><claim_name></yellow> (<block_count> blocks) <command>"),
                 Map.entry("claim.dashboard.actions-header", "<gold>Actions:"),
                 Map.entry("claim.dashboard.action", "<gray>- <yellow><label></yellow> (<command>)"),
                 Map.entry("claim.dashboard.action-labels.create", "Create Claim"),
@@ -1124,7 +1124,7 @@ class ClaimsCommandPermissionTest {
                 Map.entry("claim.deny.removed", "<green>Allowed <yellow><player></yellow> back into this claim."),
                 Map.entry("claim.info.name", "<gold>Claim: <yellow><claim_name></yellow>"),
                 Map.entry("claim.info.owner-type", "<gray>Owner type: <white><owner_type></white>"),
-                Map.entry("claim.info.chunks", "<gray>Chunks: <white><chunk_count></white>"),
+                Map.entry("claim.info.blocks", "<gray>Blocks: <white><block_count></white>"),
                 Map.entry("claim.info.members", "<gray>Members: <white><member_count></white>"),
                 Map.entry("claim.info.denied", "<gray>Denied players: <white><denied_count></white>"),
                 Map.entry("claim.info.flags", "<gray>Configured flags: <white><flag_count></white>"),

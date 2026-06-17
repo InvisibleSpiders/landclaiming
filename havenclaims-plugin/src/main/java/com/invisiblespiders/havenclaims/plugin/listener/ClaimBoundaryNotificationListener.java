@@ -71,12 +71,17 @@ public final class ClaimBoundaryNotificationListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
-        if (!enabled || !movedChunk(event.getFrom(), event.getTo())) {
+        if (!enabled) {
+            return;
+        }
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        if (from.getBlockX() == to.getBlockX() && from.getBlockZ() == to.getBlockZ() && Objects.equals(from.getWorld(), to.getWorld())) {
             return;
         }
 
         Player player = event.getPlayer();
-        Optional<Claim> claim = claimAt(event.getTo());
+        Optional<Claim> claim = claimAt(to);
         Claim previousClaim = currentClaims.get(player.getUniqueId());
         UUID previousClaimId = previousClaim == null ? null : previousClaim.id();
         UUID nextClaimId = claim.map(Claim::id).orElse(null);
@@ -104,22 +109,19 @@ public final class ClaimBoundaryNotificationListener implements Listener {
     }
 
     private Optional<Claim> claimAt(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return Optional.empty();
+        }
         Chunk chunk = location.getChunk();
-        return claimIndex.findAt(new ClaimChunk(location.getWorld().getUID(), chunk.getX(), chunk.getZ()));
-    }
-
-    private boolean movedChunk(Location from, Location to) {
-        return from.getWorld() != null
-                && to.getWorld() != null
-                && (!from.getWorld().equals(to.getWorld())
-                || from.getChunk().getX() != to.getChunk().getX()
-                || from.getChunk().getZ() != to.getChunk().getZ());
+        return claimIndex.findAt(new ClaimChunk(location.getWorld().getUID(), chunk.getX(), chunk.getZ()))
+                .filter(claim -> claim.region().containsBlock(location.getBlockX(), location.getBlockZ()));
     }
 
     private Map<String, String> placeholders(Claim claim) {
         return Map.of(
                 "claim_name", claim.name(),
                 "owner_type", claim.owner().name().toLowerCase(),
+                "block_count", String.valueOf(claim.region().area()),
                 "chunk_count", String.valueOf(claim.overlappingChunks().size())
         );
     }

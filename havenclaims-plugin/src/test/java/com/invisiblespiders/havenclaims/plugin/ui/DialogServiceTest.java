@@ -208,7 +208,7 @@ class DialogServiceTest {
         return new ClaimMenu(
                 "Home",
                 "PLAYER",
-                3,
+                768,
                 1,
                 2,
                 true,
@@ -241,7 +241,7 @@ class DialogServiceTest {
                 List.of(new ClaimDashboardRow(
                         java.util.UUID.randomUUID(),
                         "Home",
-                        3,
+                        768,
                         true,
                         "/claim menu " + java.util.UUID.randomUUID()
                 )),
@@ -254,7 +254,7 @@ class DialogServiceTest {
                 java.util.UUID.randomUUID(),
                 "Home",
                 "PLAYER",
-                3,
+                768,
                 1,
                 1,
                 2,
@@ -301,7 +301,7 @@ class DialogServiceTest {
         return new MessageService(Map.ofEntries(
                 Map.entry("claim.menu.title", "<gold><claim_name>"),
                 Map.entry("claim.menu.owner-type", "<gray><owner_type>"),
-                Map.entry("claim.menu.chunks", "<gray><chunk_count>"),
+                Map.entry("claim.menu.blocks", "<gray><block_count>"),
                 Map.entry("claim.menu.members", "<gray><member_count>"),
                 Map.entry("claim.menu.flags", "<gray><flag_count>"),
                 Map.entry("claim.menu.viewer-owner", "<gray><is_owner>"),

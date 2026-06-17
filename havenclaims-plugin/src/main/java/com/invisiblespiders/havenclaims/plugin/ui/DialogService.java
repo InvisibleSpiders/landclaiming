@@ -11,12 +11,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 public final class DialogService {
+    private static final Logger LOGGER = Logger.getLogger(DialogService.class.getName());
     private boolean preferDialogs;
     private final DialogRenderer dialogRenderer;
 
@@ -51,7 +54,7 @@ public final class DialogService {
     private void openClaimMenuChat(Player player, ClaimMenu menu, MessageService messageService) {
         player.sendMessage(messageService.render("claim.menu.title", Map.of("claim_name", menu.title())));
         player.sendMessage(messageService.render("claim.menu.owner-type", Map.of("owner_type", menu.ownerType())));
-        player.sendMessage(messageService.render("claim.menu.chunks", Map.of("chunk_count", String.valueOf(menu.chunkCount()))));
+        player.sendMessage(messageService.render("claim.menu.blocks", Map.of("block_count", String.valueOf(menu.blockCount()))));
         player.sendMessage(messageService.render("claim.menu.members", Map.of("member_count", String.valueOf(menu.memberCount()))));
         player.sendMessage(messageService.render("claim.menu.flags", Map.of("flag_count", String.valueOf(menu.flagCount()))));
         player.sendMessage(messageService.render("claim.menu.viewer-owner", Map.of("is_owner", String.valueOf(menu.viewerOwnsClaim()))));
@@ -92,11 +95,11 @@ public final class DialogService {
                     Map.of(
                             "claim_id", row.claimId().toString(),
                             "claim_name", row.claimName(),
-                            "chunk_count", String.valueOf(row.chunkCount()),
+                            "block_count", String.valueOf(row.blockCount()),
                             "is_current", String.valueOf(row.currentClaim()),
                             "command", row.manageCommand()
                     ),
-                    "<gray>- <yellow><claim_name></yellow> (<chunk_count> chunks) <command>")
+                    "<gray>- <yellow><claim_name></yellow> (<block_count> blocks) <command>")
                     .clickEvent(ClickEvent.runCommand(row.manageCommand())));
         }
         player.sendMessage(messageService.renderOrDefault("claim.dashboard.actions-header", Map.of(), "<gold>Actions:"));
@@ -134,9 +137,9 @@ public final class DialogService {
                 placeholders,
                 "<gray>Owner type: <white><owner_type></white>"));
         player.sendMessage(messageService.renderOrDefault(
-                "claim.info.chunks",
+                "claim.info.blocks",
                 placeholders,
-                "<gray>Chunks: <white><chunk_count></white>"));
+                "<gray>Blocks: <white><block_count></white>"));
         player.sendMessage(messageService.renderOrDefault(
                 "claim.info.members",
                 placeholders,
@@ -256,6 +259,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimMenu(player, menu, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Menu dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -264,6 +268,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openFlagEditor(player, editor, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Flag Editor dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -272,6 +277,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimDashboard(player, dashboard, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Dashboard dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -280,6 +286,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimInfo(player, info, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Info dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -288,6 +295,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimMembers(player, members, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Members dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -296,6 +304,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openDeniedPlayers(player, denied, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Denied Players dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -327,7 +336,7 @@ public final class DialogService {
                 "claim_id", info.claimId().toString(),
                 "claim_name", info.claimName(),
                 "owner_type", info.ownerType(),
-                "chunk_count", String.valueOf(info.chunkCount()),
+                "block_count", String.valueOf(info.blockCount()),
                 "member_count", String.valueOf(info.memberCount()),
                 "denied_count", String.valueOf(info.deniedCount()),
                 "flag_count", String.valueOf(info.flagCount()),
@@ -433,7 +442,7 @@ public final class DialogService {
                     Map.of(
                             "claim_name", menu.title(),
                             "owner_type", menu.ownerType(),
-                            "chunk_count", String.valueOf(menu.chunkCount()),
+                            "block_count", String.valueOf(menu.blockCount()),
                             "member_count", String.valueOf(menu.memberCount()),
                             "flag_count", String.valueOf(menu.flagCount()),
                             "is_owner", String.valueOf(menu.viewerOwnsClaim()),
@@ -460,14 +469,14 @@ public final class DialogService {
                 Map<String, String> placeholders = Map.of(
                         "claim_id", row.claimId().toString(),
                         "claim_name", row.claimName(),
-                        "chunk_count", String.valueOf(row.chunkCount()),
+                        "block_count", String.valueOf(row.blockCount()),
                         "is_current", String.valueOf(row.currentClaim()),
                         "command", row.manageCommand()
                 );
                 buttons.add(ActionButton.builder(messageService.renderOrDefault(
                                 "claim.dashboard.dialog.claim-button",
                                 placeholders,
-                                "<yellow><claim_name></yellow> <gray>(<chunk_count> chunks)</gray>"))
+                                "<yellow><claim_name></yellow> <gray>(<block_count> blocks)</gray>"))
                         .tooltip(messageService.renderOrDefault(
                                 "claim.dashboard.dialog.claim-tooltip",
                                 placeholders,
@@ -559,9 +568,9 @@ public final class DialogService {
                             infoPlaceholders(info),
                             "<gray>Owner type: <white><owner_type></white>")),
                     DialogBody.plainMessage(messageService.renderOrDefault(
-                            "claim.info.chunks",
+                            "claim.info.blocks",
                             infoPlaceholders(info),
-                            "<gray>Chunks: <white><chunk_count></white>")),
+                            "<gray>Blocks: <white><block_count></white>")),
                     DialogBody.plainMessage(messageService.renderOrDefault(
                             "claim.info.members",
                             infoPlaceholders(info),

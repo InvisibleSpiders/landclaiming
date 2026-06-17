@@ -41,7 +41,7 @@ class ClaimMenuServiceTest {
 
         assertThat(menu.title()).isEqualTo("Haven Home");
         assertThat(menu.ownerType()).isEqualTo("PLAYER");
-        assertThat(menu.chunkCount()).isEqualTo(2);
+        assertThat(menu.blockCount()).isEqualTo(512);
         assertThat(menu.memberCount()).isEqualTo(1);
         assertThat(menu.flagCount()).isEqualTo(2);
         assertThat(menu.viewerOwnsClaim()).isTrue();

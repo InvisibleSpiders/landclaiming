@@ -103,19 +103,14 @@ class AdminClaimServiceDisbandTest {
 
         List<Double> deposited = new ArrayList<>();
         // limit = 0: all 256 blocks are over-limit
-        // adminService calls computeDeletionRefund(ownerId, 1 /* claimChunks().size() */)
-        // existingTotal=256, afterDeletion=255, overageBefore=256, overageAfter=255
-        // refund = (256-255)*100.0 = 100.0
+        // refund = 256 * 100.0 = 25600.0
         ClaimCostService costService = costService(index, 0, 100.0);
         ClaimPaymentService paymentService = fakePaymentService(deposited);
 
         DisbandResult result = service.disbandPlayerClaims(ownerId, true, costService, paymentService);
 
-        // claimChunks().size() = 1; existingTotal = 256 blocks (16×16); limit = 0
-        // costBefore = max(0, 256-0)*100.0 = 25600.0; costAfter = max(0, 255-0)*100.0 = 25500.0
-        // refund = 25600.0 - 25500.0 = 100.0
-        assertThat(deposited).containsExactly(100.0);
-        assertThat(result.totalRefunded()).isEqualTo(100.0);
+        assertThat(deposited).containsExactly(25600.0);
+        assertThat(result.totalRefunded()).isEqualTo(25600.0);
     }
 
     // -------------------------------------------------------------------------

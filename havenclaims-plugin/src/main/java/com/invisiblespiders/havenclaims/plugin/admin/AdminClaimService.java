@@ -198,7 +198,7 @@ public final class AdminClaimService {
         double totalRefunded = 0.0;
         for (Claim claim : claims) {
             if (refund) {
-                double amount = costService.computeDeletionRefund(ownerId, claim.overlappingChunks().size());
+                double amount = costService.computeDeletionRefund(ownerId, claim.region().area());
                 if (amount > 0.0) {
                     paymentService.refund(ownerId, new ClaimCostQuote(0, 0, 0, 0, 0, amount));
                     totalRefunded += amount;

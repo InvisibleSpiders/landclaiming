@@ -40,6 +40,7 @@ public final class FlagRegistry {
                 action("item_pickup", "Items", "Item Pickup", "Allow non-members to pick up items here.", FlagState.ALL),
                 action("item_drop", "Items", "Item Drop", "Allow non-members to drop items here.", FlagState.ALL),
                 world("piston_protection", "Protection", "Piston Protection", "Block piston movement touching this claim.", FlagState.ALL),
+                world("redstone_signal", "Protection", "Redstone Signal", "Block external redstone signals from powering blocks in this claim.", FlagState.OFF),
                 world("fluid_flow", "Environment", "Fluid Flow", "Allow water and lava to flow into this claim.", FlagState.OFF),
                 world("explosion_damage", "Environment", "Explosion Damage", "Allow explosions to damage claimed blocks.", FlagState.OFF),
                 world("fire_spread", "Environment", "Fire Spread", "Allow fire to spread into this claim.", FlagState.OFF),

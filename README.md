@@ -220,7 +220,7 @@ Default flags are locked down unless configured otherwise by the claim owner.
 Protection edge behavior:
 
 - `piston_protection: true` blocks piston movement that would move blocks from, into, or through claimed chunks, including an empty piston head extending into a protected claim.
-- `fluid_flow: false` and `fire_spread: false` block flow or spread entering a claim from outside that same claim. Movement within the same claim is not blocked by those boundary checks.
+- `fluid_flow: false` and `fire_spread: false` block flow or spread entering a claim from outside that same claim. Movement within the same claim is not blocked by those boundary checks. Placing a fluid source (bucket) inside a claim directly is governed by the `build`/`break` access flags, not the `fluid_flow` flag.
 
 ## Advanced Entity Control
 

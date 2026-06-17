@@ -58,6 +58,7 @@ class FlagRegistryTest {
                 "switch_access",
                 "redstone_access",
                 "piston_protection",
+                "redstone_signal",
                 "fluid_flow",
                 "explosion_damage",
                 "fire_spread",

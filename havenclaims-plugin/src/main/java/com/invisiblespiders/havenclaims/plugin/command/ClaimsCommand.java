@@ -561,7 +561,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         claims.forEach(claim -> player.sendMessage(message("admin.userclaims.list-entry", Map.of(
                 "claim_name", claim.name(),
                 "claim_id", claim.id().toString(),
-                "chunk_count", String.valueOf(claim.overlappingChunks().size())
+                "block_count", String.valueOf(claim.region().area())
         ))));
         return true;
     }
@@ -583,8 +583,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("admin.userclaims.view-owner", Map.of(
                 "owner", foundClaim.ownerUuid() == null ? "unknown" : playerName(player, foundClaim.ownerUuid())
         )));
-        player.sendMessage(message("admin.userclaims.view-chunks", Map.of(
-                "chunk_count", String.valueOf(foundClaim.overlappingChunks().size())
+        player.sendMessage(message("admin.userclaims.view-blocks", Map.of(
+                "block_count", String.valueOf(foundClaim.region().area())
         )));
         return true;
     }
@@ -1000,7 +1000,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("admin.claim.created", Map.of(
                 "claim_name", result.claim().name(),
                 "claim_id", result.claim().id().toString(),
-                "chunk_count", String.valueOf(result.claim().overlappingChunks().size())
+                "block_count", String.valueOf(result.claim().region().area())
         )));
         return true;
     }
@@ -1021,7 +1021,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         adminClaims.forEach(claim -> player.sendMessage(message("admin.claim.list-entry", Map.of(
                 "claim_name", claim.name(),
                 "claim_id", claim.id().toString(),
-                "chunk_count", String.valueOf(claim.overlappingChunks().size())
+                "block_count", String.valueOf(claim.region().area())
         ))));
         return true;
     }
@@ -1121,15 +1121,23 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 ? Optional.empty()
                 : selectionService.pendingSelection(player.getUniqueId());
         if (pendingSelection.isPresent()) {
-            BorderColor color = BorderColor.GREEN;
-            chunkBorderVisualService.showSelection(player, pendingSelection.orElseThrow(), color);
+            ClaimRegion selection = pendingSelection.orElseThrow();
+            BorderColor color = claimBorderColorService != null
+                    ? claimBorderColorService.colorForPlayerSelection(
+                            player.getUniqueId(),
+                            Optional.empty(),
+                            selection,
+                            permissionNodes(player)
+                      )
+                    : BorderColor.GREEN;
+            chunkBorderVisualService.showSelection(player, selection, color);
             player.sendMessage(message("claim.visual.border-selection", Map.of("color", color.messageName())));
             return true;
         }
 
         Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isPresent()) {
-            chunkBorderVisualService.showSelection(player, claim.orElseThrow().overlappingChunks(), BorderColor.GOLD);
+            chunkBorderVisualService.showSelection(player, claim.orElseThrow().region(), BorderColor.GOLD);
             player.sendMessage(message("claim.visual.border-claim"));
             return true;
         }
@@ -1155,7 +1163,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (claim.isEmpty()) {
             return true;
         }
-        chunkBorderVisualService.showSelection(player, claim.orElseThrow().overlappingChunks(), BorderColor.GOLD);
+        chunkBorderVisualService.showSelection(player, claim.orElseThrow().region(), BorderColor.GOLD);
         player.sendMessage(message("claim.visual.border-claim"));
         return true;
     }
@@ -2076,6 +2084,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         selectionService.consumeSelection(player.getUniqueId());
+        // Show a timed gold border as a creation-success confirmation, then auto-clear
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.showSelection(player, region, BorderColor.GOLD);
         }
@@ -2215,7 +2224,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
                 claim.id(),
                 claim.name(),
                 claim.owner().name(),
-                claim.overlappingChunks().size(),
+                claim.region().area(),
                 claim.members().size(),
                 claim.deniedPlayers().size(),
                 claim.flags().size(),
@@ -2234,7 +2243,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         player.sendMessage(message("claim.info.name", Map.of("claim_name", claim.name())));
         player.sendMessage(message("claim.info.owner-type", Map.of("owner_type", claim.owner().name())));
-        player.sendMessage(message("claim.info.chunks", Map.of("chunk_count", String.valueOf(claim.overlappingChunks().size()))));
+        player.sendMessage(message("claim.info.blocks", Map.of("block_count", String.valueOf(claim.region().area()))));
         player.sendMessage(message("claim.info.you-own", Map.of("is_owner", String.valueOf(player.getUniqueId().equals(claim.ownerUuid())))));
     }
 
