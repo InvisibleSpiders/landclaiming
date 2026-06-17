@@ -1,5 +1,7 @@
 # Claim Mode Inventory Implementation Plan
 
+**Plan status:** Historical execution artifact for the first claim-mode scope. Subclaims remain deliberately deferred future work; unchecked boxes below are retained from the original plan and are not the current active backlog.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build safe `/claimmode` inventory sessions that store player hotbar/offhand items, provide ephemeral claim-mode tools, guard item/economy interactions, and retire the permanent craftable claim tool.

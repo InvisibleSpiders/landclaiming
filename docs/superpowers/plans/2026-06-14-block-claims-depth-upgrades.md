@@ -1,5 +1,7 @@
 # Block Claims Depth Upgrades Implementation Plan
 
+**Plan status:** Deferred/superseded planning artifact. Keep this file for design context; do not treat its unchecked boxes as the current active task list.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move HavenClaims from chunk-only claims to block-area 2D claims with configurable vertical protection and HavenVault per-claim depth upgrades.

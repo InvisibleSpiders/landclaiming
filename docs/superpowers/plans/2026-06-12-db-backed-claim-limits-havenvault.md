@@ -1,5 +1,7 @@
 # DB-Backed Claim Limits — Phase B (HavenVault) Implementation Plan
 
+**Plan status:** Historical cross-repo execution artifact. The unchecked boxes below are preserved for context and should not be treated as the current active HavenClaims backlog.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a chunk-limit upgrade purchase flow to HavenVault: players buy extra claim chunks via `/upgrades` (exponential pricing, bulk discounts, configurable currency); admins adjust limits with `/hvault admin claim limit`.

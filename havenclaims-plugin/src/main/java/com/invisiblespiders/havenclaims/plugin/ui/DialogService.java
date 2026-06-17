@@ -344,11 +344,6 @@ public final class DialogService {
         );
     }
 
-    public void openClaimSetup(Player player) {
-        Objects.requireNonNull(player, "player");
-        player.sendMessage(Component.text("Claim setup dialog coming soon.", NamedTextColor.YELLOW));
-    }
-
     public void openClaimCreatePreview(Player player, ClaimCreatePreview preview, MessageService messageService) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(preview, "preview");
