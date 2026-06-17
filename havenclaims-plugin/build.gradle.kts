@@ -7,13 +7,13 @@ dependencies {
     api(project(":havenclaims-api"))
 
     compileOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")
-    compileOnly("dev.invisiblespiders.haven:haven-api:1.0.2")
+    compileOnly("dev.invisiblespiders.haven:haven-api:1.0.3")
     compileOnly("net.milkbowl.vault:VaultAPI:1.7")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testImplementation("org.assertj:assertj-core:3.27.3")
     testImplementation("org.mockito:mockito-core:5.18.0")
-    testImplementation("dev.invisiblespiders.haven:haven-api:1.0.2")
+    testImplementation("dev.invisiblespiders.haven:haven-api:1.0.3")
     testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
     testCompileOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")
     testRuntimeOnly("io.papermc.paper:paper-api:26.1.2.build.69-stable")

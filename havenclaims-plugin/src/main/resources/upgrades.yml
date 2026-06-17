@@ -1,0 +1,43 @@
+categories:
+  claims:
+    name: "Claims"
+    icon: "GRASS_BLOCK"
+    sort: 40
+
+upgrades:
+  claim-limit:
+    category: "claims"
+    permission: "havenclaims.upgrades.claim-limit"
+    scope: "PLAYER"
+    visibility: "VISIBLE"
+    levels:
+      1:
+        name: "Claim Limit I"
+        description:
+          - "<gray>Adds 1,280 claim blocks."
+        requirements:
+          - type: "money"
+            amount: "500"
+        effects:
+          - type: "claim-limit"
+            blocks: "1280"
+      2:
+        name: "Claim Limit II"
+        description:
+          - "<gray>Adds 2,560 claim blocks."
+        requirements:
+          - type: "money"
+            amount: "1500"
+        effects:
+          - type: "claim-limit"
+            blocks: "2560"
+      3:
+        name: "Claim Limit III"
+        description:
+          - "<gray>Adds 3,840 claim blocks."
+        requirements:
+          - type: "money"
+            amount: "3000"
+        effects:
+          - type: "claim-limit"
+            blocks: "3840"
