@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
+import org.bukkit.HeightMap;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -48,6 +49,36 @@ public final class ChunkBorderVisualService {
         renderer.show(player, ChunkBorderPlanner.plan(chunks, heightProvider, color, durationTicks));
     }
 
+    /** Shows a persistent border (no auto-expiry) for use during active selection. */
+    public void showPersistentSelection(Player player, Set<ClaimChunk> chunks, BorderColor color) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(chunks, "chunks");
+        Objects.requireNonNull(color, "color");
+        if (chunks.isEmpty()) {
+            clear(player.getUniqueId());
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        if (activePlayers.contains(playerId)) {
+            renderer.clear(playerId);
+        }
+        activePlayers.add(playerId);
+        renderer.show(player, ChunkBorderPlanner.plan(chunks, heightProvider, color, 0));
+    }
+
+    /** Shows a persistent border (no auto-expiry) for use during active selection. */
+    public void showPersistentSelection(Player player, ClaimRegion region, BorderColor color) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(region, "region");
+        Objects.requireNonNull(color, "color");
+        UUID playerId = player.getUniqueId();
+        if (activePlayers.contains(playerId)) {
+            renderer.clear(playerId);
+        }
+        activePlayers.add(playerId);
+        renderer.show(player, ChunkBorderPlanner.planRectangle(region, heightProvider, color, 0));
+    }
+
     public void showSelection(Player player, ClaimRegion region, BorderColor color) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(region, "region");
@@ -80,6 +111,8 @@ public final class ChunkBorderVisualService {
         if (world == null) {
             return 0.0D;
         }
-        return world.getHighestBlockYAt(blockX, blockZ) + GROUND_OFFSET;
+        // Use MOTION_BLOCKING_NO_LEAVES so the border sits on solid walkable ground
+        // rather than on top of leaf canopy, tall grass, or snow layers.
+        return world.getHighestBlockYAt(blockX, blockZ, HeightMap.MOTION_BLOCKING_NO_LEAVES) + GROUND_OFFSET;
     }
 }

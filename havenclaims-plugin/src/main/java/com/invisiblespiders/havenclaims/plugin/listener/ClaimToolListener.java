@@ -120,10 +120,21 @@ public class ClaimToolListener implements Listener {
 
         selectionService.select(player, clickedBlock).ifPresentOrElse(
                 region -> {
-                    showRegionBorder(player, region, BorderColor.GREEN);
+                    showPersistentRegionBorder(player, region, BorderColor.GREEN);
                     sendSelectionComplete(player, region);
                 },
-                () -> player.sendMessage(message("claim.tool.first-corner-selected"))
+                () -> {
+                    // Show a single-block highlight at the first corner for in-world feedback
+                    if (chunkBorderVisualService != null) {
+                        chunkBorderVisualService.showPersistentSelection(player, new java.util.HashSet<>(java.util.List.of(
+                                new com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk(
+                                        clickedBlock.getWorld().getUID(),
+                                        clickedBlock.getChunk().getX(),
+                                        clickedBlock.getChunk().getZ()
+                                ))), BorderColor.GREEN);
+                    }
+                    player.sendMessage(message("claim.tool.first-corner-selected"));
+                }
         );
     }
 
@@ -136,6 +147,12 @@ public class ClaimToolListener implements Listener {
     private void showRegionBorder(Player player, com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion region, BorderColor color) {
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.showSelection(player, region, color);
+        }
+    }
+
+    private void showPersistentRegionBorder(Player player, com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion region, BorderColor color) {
+        if (chunkBorderVisualService != null) {
+            chunkBorderVisualService.showPersistentSelection(player, region, color);
         }
     }
 

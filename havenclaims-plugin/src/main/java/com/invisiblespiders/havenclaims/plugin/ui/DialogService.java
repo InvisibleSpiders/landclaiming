@@ -11,12 +11,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 public final class DialogService {
+    private static final Logger LOGGER = Logger.getLogger(DialogService.class.getName());
     private boolean preferDialogs;
     private final DialogRenderer dialogRenderer;
 
@@ -256,6 +259,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimMenu(player, menu, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Menu dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -264,6 +268,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openFlagEditor(player, editor, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Flag Editor dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -272,6 +277,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimDashboard(player, dashboard, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Dashboard dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -280,6 +286,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimInfo(player, info, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Info dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -288,6 +295,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openClaimMembers(player, members, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Claim Members dialog; falling back to chat.", error);
             return false;
         }
     }
@@ -296,6 +304,7 @@ public final class DialogService {
         try {
             return dialogRenderer.openDeniedPlayers(player, denied, messageService);
         } catch (LinkageError | RuntimeException error) {
+            LOGGER.log(Level.WARNING, "[HavenClaims] Failed to open Denied Players dialog; falling back to chat.", error);
             return false;
         }
     }

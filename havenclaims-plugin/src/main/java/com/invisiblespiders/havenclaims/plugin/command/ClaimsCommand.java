@@ -1129,7 +1129,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
 
         Optional<Claim> claim = claimAtPlayer(player);
         if (claim.isPresent()) {
-            chunkBorderVisualService.showSelection(player, claim.orElseThrow().overlappingChunks(), BorderColor.GOLD);
+            chunkBorderVisualService.showSelection(player, claim.orElseThrow().region(), BorderColor.GOLD);
             player.sendMessage(message("claim.visual.border-claim"));
             return true;
         }
@@ -1155,7 +1155,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         if (claim.isEmpty()) {
             return true;
         }
-        chunkBorderVisualService.showSelection(player, claim.orElseThrow().overlappingChunks(), BorderColor.GOLD);
+        chunkBorderVisualService.showSelection(player, claim.orElseThrow().region(), BorderColor.GOLD);
         player.sendMessage(message("claim.visual.border-claim"));
         return true;
     }
@@ -2076,6 +2076,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
 
         selectionService.consumeSelection(player.getUniqueId());
+        // Show a timed gold border as a creation-success confirmation, then auto-clear
         if (chunkBorderVisualService != null) {
             chunkBorderVisualService.showSelection(player, region, BorderColor.GOLD);
         }
