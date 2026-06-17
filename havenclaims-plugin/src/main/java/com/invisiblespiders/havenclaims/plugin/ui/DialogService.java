@@ -547,7 +547,7 @@ public final class DialogService {
                     "claim.flag-editor.dialog.title",
                     Map.of("claim_name", editor.claimName()),
                     "<gold>Flags for <yellow><claim_name></yellow>"))
-                    .afterAction(DialogBase.DialogAfterAction.NONE)
+                    .afterAction(DialogBase.DialogAfterAction.CLOSE)
                     .build();
 
             Dialog dialog = Dialog.create(factory -> {
