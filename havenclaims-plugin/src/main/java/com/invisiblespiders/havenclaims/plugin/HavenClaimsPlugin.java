@@ -66,6 +66,9 @@ import dev.invisiblespiders.haven.api.service.HavenDataSource;
 import dev.invisiblespiders.haven.api.service.HavenEconomyService;
 import dev.invisiblespiders.haven.api.service.HavenSuiteEntry;
 import dev.invisiblespiders.haven.api.service.HavenSuiteRegistry;
+import dev.invisiblespiders.haven.api.upgrade.HavenUpgradeService;
+import com.invisiblespiders.havenclaims.plugin.upgrade.HavenClaimsUpgradeConfig;
+import com.invisiblespiders.havenclaims.plugin.upgrade.HavenClaimsUpgradeProvider;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
@@ -105,12 +108,14 @@ public final class HavenClaimsPlugin extends JavaPlugin
     private HavenDataSource havenDataSource;
     private DialogService dialogService;
     private BlockAccrualService blockAccrualService;
+    private HavenUpgradeService upgradeService;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("permissions.yml");
+        saveResourceIfMissing("upgrades.yml");
 
         ClaimService claimService = new ClaimService();
         ClaimToolService claimToolService = new ClaimToolService(this);
@@ -282,7 +287,8 @@ public final class HavenClaimsPlugin extends JavaPlugin
                         limitService,
                         this::performReload,
                         adminClaimBrowserService,
-                        overLimitConfirmService
+                        overLimitConfirmService,
+                        () -> upgradeService
                 );
         var claimCommand = Objects.requireNonNull(getCommand("claim"), "claim command is not defined in plugin.yml");
         claimCommand.setExecutor(claimsCommand);
@@ -295,6 +301,13 @@ public final class HavenClaimsPlugin extends JavaPlugin
         claimsCommand.setClaimModeCommand(claimModeCommand);
 
         getLogger().info("HavenClaims enabled.");
+        upgradeService = HavenAPI.get(HavenUpgradeService.class);
+        if (upgradeService != null) {
+            upgradeService.registerProvider(new HavenClaimsUpgradeProvider(
+                    HavenClaimsUpgradeConfig.from(loadYamlResource("upgrades.yml")),
+                    limitService
+            ));
+        }
         HavenSuiteRegistry suiteRegistry = HavenAPI.get(HavenSuiteRegistry.class);
         if (suiteRegistry != null) {
             suiteRegistry.register(this);
@@ -330,6 +343,13 @@ public final class HavenClaimsPlugin extends JavaPlugin
                     getConfig().getDouble("access-denial.knockback.strength", 0.65D));
             dialogService.reload(
                     getConfig().getBoolean("ui.prefer-dialogs", true));
+            if (upgradeService != null) {
+                upgradeService.unregisterProvider(HavenClaimsUpgradeProvider.ID);
+                upgradeService.registerProvider(new HavenClaimsUpgradeProvider(
+                        HavenClaimsUpgradeConfig.from(loadYamlResource("upgrades.yml")),
+                        limitService
+                ));
+            }
             String defaultDel = getConfig().getString("notifications.claim-boundary.delivery", "action_bar");
             claimBoundaryNotificationListener.reload(
                     getConfig().getBoolean("notifications.claim-boundary.enabled", true),
@@ -380,6 +400,13 @@ public final class HavenClaimsPlugin extends JavaPlugin
 
     @Override
     public void onDisable() {
+        HavenUpgradeService currentUpgradeService = upgradeService != null
+                ? upgradeService
+                : HavenAPI.get(HavenUpgradeService.class);
+        if (currentUpgradeService != null) {
+            currentUpgradeService.unregisterProvider(HavenClaimsUpgradeProvider.ID);
+        }
+        upgradeService = null;
         HavenSuiteRegistry suiteRegistry = HavenAPI.get(HavenSuiteRegistry.class);
         if (suiteRegistry != null) {
             suiteRegistry.unregister(getName());

@@ -278,6 +278,7 @@ command:
     delete: "<yellow>/claim delete [claim-id]</yellow><gray> - deletes the current claim or claim ID if you own it.</gray>"
     cancel: "<yellow>/claim cancel</yellow><gray> - clears your pending selection.</gray>"
     info: "<yellow>/claim info</yellow><gray> - shows the claim at your current chunk.</gray>"
+    upgrades: "<yellow>/claim upgrades</yellow><gray> - opens claim upgrades.</gray>"
     admin: "<yellow>/claim admin <create|list|delete|teleport></yellow><gray> - manages server-owned admin claims.</gray>"
 dialog:
   setup-title: "<gold>Create Claim</gold>"
@@ -367,3 +368,7 @@ admin:
   disband:
     success: "<green>Disbanded <count> claim(s). Refunded: <amount>."
     no-refund-success: "<green>Disbanded <count> claim(s). No refund issued."
+
+upgrades:
+  no-permission: "<red>You do not have permission to open HavenClaims upgrades.</red>"
+  unavailable: "<red>HavenClaims upgrades are not available yet.</red>"

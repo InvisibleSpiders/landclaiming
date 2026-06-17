@@ -27,6 +27,12 @@ permissions:
   havenclaims.gui:
     description: Allows opening claim menus.
     default: true
+  havenclaims.upgrades:
+    description: Allows opening the upgrades dialog.
+    default: true
+  havenclaims.upgrades.claim-limit:
+    description: Allows purchasing claim limit upgrades.
+    default: true
   havenclaims.member.manage:
     description: Allows managing claim members.
     default: true

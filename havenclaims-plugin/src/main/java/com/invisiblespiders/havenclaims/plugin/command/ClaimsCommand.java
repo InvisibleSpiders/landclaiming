@@ -51,7 +51,10 @@ import com.invisiblespiders.havenclaims.plugin.ui.InventoryGuiFallbackService;
 import com.invisiblespiders.havenclaims.plugin.visual.BorderColor;
 import com.invisiblespiders.havenclaims.plugin.visual.ClaimBorderColorService;
 import com.invisiblespiders.havenclaims.plugin.visual.ChunkBorderVisualService;
+import dev.invisiblespiders.haven.api.HavenAPI;
 import dev.invisiblespiders.haven.api.model.ReloadResult;
+import dev.invisiblespiders.haven.api.upgrade.HavenUpgradeService;
+import dev.invisiblespiders.haven.api.upgrade.UpgradeViewRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -79,6 +82,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private static final String CLAIM_CREATE_PERMISSION = "havenclaims.claim";
     private static final String CLAIM_MENU_PERMISSION = "havenclaims.gui";
     private static final String CLAIM_DENY_PERMISSION = "havenclaims.deny.manage";
+    private static final String CLAIM_UPGRADES_PERMISSION = "havenclaims.upgrades";
     private static final String ADMIN_USERCLAIMS_EDIT_PERMISSION = "havenclaims.admin.userclaims.edit";
     private static final String CLAIM_LIMIT_BYPASS_PERMISSION = "havenclaims.bypass.claim-limit";
     private static final String CLAIM_BUFFER_BYPASS_PERMISSION = "havenclaims.bypass.claim-buffer";
@@ -101,7 +105,8 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             "admin",
             "cancel",
             "confirm-purchase",
-            "info"
+            "info",
+            "upgrades"
     );
     private static final List<String> ADMIN_SUGGESTIONS = List.of("create", "list", "delete", "teleport", "userclaims", "limit", "reload", "browse");
     private static final List<String> ADMIN_LIMIT_SUGGESTIONS = List.of("set", "add", "remove", "get");
@@ -131,6 +136,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
     private final AdminClaimBrowserService adminClaimBrowserService;
     private ClaimModeCommand claimModeCommand;
     private final OverLimitConfirmService overLimitConfirmService;
+    private final Supplier<HavenUpgradeService> upgradeServiceSupplier;
 
     public ClaimsCommand(ClaimToolService claimToolService) {
         this(claimToolService, null, null, null, null, null, null, new MessageService(Map.of()), null, null, null, null, null, null, null, null, null, null, new HavenClaimsLimitService() {
@@ -138,7 +144,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             @Override public void setBlockLimit(java.util.UUID playerId, int limit) {}
             @Override public void addBlocks(java.util.UUID playerId, int blocks) {}
             @Override public void removeBlocks(java.util.UUID playerId, int blocks) {}
-        }, null, null, null);
+        }, null, null, null, () -> HavenAPI.get(HavenUpgradeService.class));
     }
 
     public ClaimsCommand(
@@ -165,6 +171,58 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
             AdminClaimBrowserService adminClaimBrowserService,
             OverLimitConfirmService overLimitConfirmService
     ) {
+        this(
+                claimToolService,
+                selectionService,
+                claimCreationService,
+                claimIndex,
+                claimCostService,
+                claimPaymentService,
+                pendingClaimMergeService,
+                messageService,
+                claimMemberService,
+                claimDenyService,
+                claimFlagService,
+                claimFlagEditorService,
+                claimMenuService,
+                dialogService,
+                inventoryGuiFallbackService,
+                chunkBorderVisualService,
+                claimBorderColorService,
+                adminClaimService,
+                claimLimitService,
+                reloadAction,
+                adminClaimBrowserService,
+                overLimitConfirmService,
+                () -> HavenAPI.get(HavenUpgradeService.class)
+        );
+    }
+
+    public ClaimsCommand(
+            ClaimToolService claimToolService,
+            SelectionService selectionService,
+            ClaimCreationService claimCreationService,
+            ClaimIndex claimIndex,
+            ClaimCostService claimCostService,
+            ClaimPaymentService claimPaymentService,
+            PendingClaimMergeService pendingClaimMergeService,
+            MessageService messageService,
+            ClaimMemberService claimMemberService,
+            ClaimDenyService claimDenyService,
+            ClaimFlagService claimFlagService,
+            ClaimFlagEditorService claimFlagEditorService,
+            ClaimMenuService claimMenuService,
+            DialogService dialogService,
+            InventoryGuiFallbackService inventoryGuiFallbackService,
+            ChunkBorderVisualService chunkBorderVisualService,
+            ClaimBorderColorService claimBorderColorService,
+            AdminClaimService adminClaimService,
+            HavenClaimsLimitService claimLimitService,
+            Supplier<ReloadResult> reloadAction,
+            AdminClaimBrowserService adminClaimBrowserService,
+            OverLimitConfirmService overLimitConfirmService,
+            Supplier<HavenUpgradeService> upgradeServiceSupplier
+    ) {
         Objects.requireNonNull(claimToolService, "claimToolService");
         this.selectionService = selectionService;
         this.claimCreationService = claimCreationService;
@@ -187,6 +245,7 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         this.reloadAction = reloadAction;
         this.adminClaimBrowserService = adminClaimBrowserService;
         this.overLimitConfirmService = overLimitConfirmService;
+        this.upgradeServiceSupplier = Objects.requireNonNull(upgradeServiceSupplier, "upgradeServiceSupplier");
     }
 
     public void setClaimModeCommand(ClaimModeCommand claimModeCommand) {
@@ -275,6 +334,9 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
             return showInfo(player, args[1]);
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("upgrades")) {
+            return openUpgrades(player);
         }
 
         sendHelp(player);
@@ -2340,7 +2402,22 @@ public class ClaimsCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message("command.help.delete"));
         player.sendMessage(message("command.help.cancel"));
         player.sendMessage(message("command.help.info"));
+        player.sendMessage(message("command.help.upgrades"));
         player.sendMessage(message("command.help.admin"));
+    }
+
+    private boolean openUpgrades(Player player) {
+        if (!player.hasPermission(CLAIM_UPGRADES_PERMISSION)) {
+            player.sendMessage(message("upgrades.no-permission"));
+            return true;
+        }
+        HavenUpgradeService upgradeService = upgradeServiceSupplier.get();
+        if (upgradeService == null) {
+            player.sendMessage(message("upgrades.unavailable"));
+            return true;
+        }
+        upgradeService.openDialog(player, new UpgradeViewRequest(Set.of("havenclaims"), Set.of("claims")));
+        return true;
     }
 
     private Component claimCreateDenied(String reason) {

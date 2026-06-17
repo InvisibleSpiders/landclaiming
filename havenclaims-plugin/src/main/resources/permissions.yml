@@ -27,6 +27,8 @@ flag-edit:
 
 commands:
   havenclaims.deny.manage: "Allows claim owners and managers to use /claim deny, /claim undeny, and /claim denied."
+  havenclaims.upgrades: "Allows players to open the HavenClaims upgrades view."
+  havenclaims.upgrades.claim-limit: "Allows players to purchase claim limit upgrades."
 admin:
   havenclaims.admin.claim.create: "Allows staff to create server-owned admin claims."
   havenclaims.admin.claim.edit: "Allows staff to edit server-owned admin claims."
