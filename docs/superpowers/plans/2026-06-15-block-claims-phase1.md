@@ -1,5 +1,7 @@
 # Block Claims Phase 1 Implementation Plan
 
+**Plan status:** Historical execution artifact. The unchecked boxes below are preserved from the original plan and should not be treated as the current active backlog.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the chunk-based claim system with block-exact rectangular claims — block-coord selection, block-area limits, flat-per-block pricing, block accrual, and a YES/NO purchase prompt for over-limit claims.

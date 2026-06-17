@@ -1,5 +1,7 @@
 # DB-Backed Claim Limits — HavenClaims (Phase A) Implementation Plan
 
+**Plan status:** Historical execution artifact. The unchecked boxes below are preserved from the original plan and should not be treated as the current active backlog.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace permission-based chunk limits with a per-player DB-backed integer limit, expose it as a `HavenClaimsLimitService` API, and add admin commands to adjust limits directly.

@@ -1,7 +1,7 @@
 # DB-Backed Claim Limits + HavenVault Chunk Upgrades — Design
 
 Date: 2026-06-12
-Status: Approved (pending spec review)
+Status: Approved historical spec. Follow current code and follow-up plans for implementation state.
 Repos: HavenClaims (primary), HavenVault (upgrade UI)
 
 ## Problem

@@ -1,5 +1,7 @@
 # Claim Creation Flow Implementation Plan
 
+**Plan status:** Historical execution artifact. The unchecked boxes below are preserved from the original plan and should not be treated as the current active backlog.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the first playable claim loop: select chunks, create a saved claim, clear pending selections, and protect claimed chunks immediately.
