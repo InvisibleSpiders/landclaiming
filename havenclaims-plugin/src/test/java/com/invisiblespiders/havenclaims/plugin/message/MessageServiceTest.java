@@ -13,15 +13,15 @@ class MessageServiceTest {
     void renderPlainReplacesPlaceholders() {
         MessageService service = new MessageService(Map.of(
                 "claim.created",
-                "<green>Claim <white><claim_name></white> created with <yellow><chunk_count></yellow> chunks."
+                "<green>Claim <white><claim_name></white> created with <yellow><block_count></yellow> blocks."
         ));
 
         String rendered = service.renderPlain("claim.created", Map.of(
                 "claim_name", "Spawn",
-                "chunk_count", "9"
+                "block_count", "9"
         ));
 
-        assertThat(rendered).isEqualTo("Claim Spawn created with 9 chunks.");
+        assertThat(rendered).isEqualTo("Claim Spawn created with 9 blocks.");
     }
 
     @Test

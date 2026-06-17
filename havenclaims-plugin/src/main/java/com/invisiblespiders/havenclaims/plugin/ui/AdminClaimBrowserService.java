@@ -187,7 +187,7 @@ public final class AdminClaimBrowserService {
         World world = Bukkit.getWorld(claim.worldId());
         if (world != null) worldName = world.getName();
         meta.lore(List.of(
-                Component.text("Chunks: " + claim.overlappingChunks().size())
+                Component.text("Blocks: " + claim.region().area())
                         .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
                 Component.text("World: " + worldName)
                         .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),

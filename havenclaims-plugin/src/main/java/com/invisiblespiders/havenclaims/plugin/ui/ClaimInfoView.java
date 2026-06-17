@@ -8,7 +8,7 @@ public record ClaimInfoView(
         UUID claimId,
         String claimName,
         String ownerType,
-        int chunkCount,
+        int blockCount,
         int memberCount,
         int deniedCount,
         int flagCount,

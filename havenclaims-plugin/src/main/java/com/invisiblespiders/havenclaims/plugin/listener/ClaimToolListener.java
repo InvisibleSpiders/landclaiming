@@ -118,20 +118,29 @@ public class ClaimToolListener implements Listener {
             clickedBlock = player.getLocation().getBlock();
         }
 
-        selectionService.select(player, clickedBlock).ifPresentOrElse(
+        final Block targetBlock = clickedBlock;
+        selectionService.select(player, targetBlock).ifPresentOrElse(
                 region -> {
-                    showPersistentRegionBorder(player, region, BorderColor.GREEN);
+                    BorderColor color = claimBorderColorService != null
+                            ? claimBorderColorService.colorForPlayerSelection(player.getUniqueId(), Optional.empty(), region, permissionNodes(player))
+                            : BorderColor.GREEN;
+                    showPersistentRegionBorder(player, region, color);
                     sendSelectionComplete(player, region);
                 },
                 () -> {
                     // Show a single-block highlight at the first corner for in-world feedback
                     if (chunkBorderVisualService != null) {
-                        chunkBorderVisualService.showPersistentSelection(player, new java.util.HashSet<>(java.util.List.of(
-                                new com.invisiblespiders.havenclaims.plugin.claim.ClaimChunk(
-                                        clickedBlock.getWorld().getUID(),
-                                        clickedBlock.getChunk().getX(),
-                                        clickedBlock.getChunk().getZ()
-                                ))), BorderColor.GREEN);
+                        com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion singleBlockRegion = new com.invisiblespiders.havenclaims.plugin.claim.ClaimRegion(
+                                targetBlock.getWorld().getUID(),
+                                targetBlock.getX(),
+                                targetBlock.getZ(),
+                                targetBlock.getX(),
+                                targetBlock.getZ()
+                        );
+                        BorderColor color = claimBorderColorService != null
+                                ? claimBorderColorService.colorForPlayerSelection(player.getUniqueId(), Optional.empty(), singleBlockRegion, permissionNodes(player))
+                                : BorderColor.GREEN;
+                        chunkBorderVisualService.showPersistentSelection(player, singleBlockRegion, color);
                     }
                     player.sendMessage(message("claim.tool.first-corner-selected"));
                 }
@@ -246,6 +255,13 @@ public class ClaimToolListener implements Listener {
             return Component.text(key, NamedTextColor.YELLOW);
         }
         return messageService.render(key, placeholders);
+    }
+
+    private java.util.Set<String> permissionNodes(Player player) {
+        return player.getEffectivePermissions().stream()
+                .filter(org.bukkit.permissions.PermissionAttachmentInfo::getValue)
+                .map(org.bukkit.permissions.PermissionAttachmentInfo::getPermission)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     private void clearBorder(Player player) {

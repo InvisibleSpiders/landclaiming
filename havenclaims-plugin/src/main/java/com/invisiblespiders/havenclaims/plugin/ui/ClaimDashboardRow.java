@@ -6,7 +6,7 @@ import java.util.UUID;
 public record ClaimDashboardRow(
         UUID claimId,
         String claimName,
-        int chunkCount,
+        int blockCount,
         boolean currentClaim,
         String manageCommand
 ) {

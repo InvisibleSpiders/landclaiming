@@ -113,7 +113,11 @@ public final class ProtectionListener implements Listener {
 
     @EventHandler
     public void onBlockSpread(BlockSpreadEvent event) {
-        if (isDeniedEnteringClaim(claimChunk(event.getSource()), claimChunk(event.getBlock()), "fire_spread")) {
+        Block toBlock = event.getBlock();
+        if (isDeniedEnteringClaimExact(
+                claimChunk(toBlock), toBlock.getX(), toBlock.getZ(),
+                claimChunk(event.getSource()),
+                "fire_spread")) {
             event.setCancelled(true);
         }
     }
@@ -282,7 +286,8 @@ public final class ProtectionListener implements Listener {
     }
 
     private Optional<Claim> claimAt(Block block) {
-        return claimIndex.findAt(claimChunk(block));
+        return claimIndex.findAt(claimChunk(block))
+                .filter(claim -> claim.region().containsBlock(block.getX(), block.getZ()));
     }
 
     private ClaimChunk claimChunk(Block block) {
